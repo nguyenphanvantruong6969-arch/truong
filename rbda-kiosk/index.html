@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phân bổ Câu lạc bộ — RB-DA</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">RB</span>
+      <div class="brand-text">
+        <div class="brand-title">Phân bổ CLB</div>
+        <div class="brand-sub">Reserve-Based DA</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <button class="nav-item is-active" data-tab="pipeline">
+        <span class="nav-icon">01</span> Vận hành pipeline
+      </button>
+      <button class="nav-item" data-tab="results">
+        <span class="nav-icon">02</span> Kết quả
+      </button>
+      <button class="nav-item" data-tab="fallback">
+        <span class="nav-icon">03</span> Nhập dự phòng
+      </button>
+      <button class="nav-item" data-tab="admin">
+        <span class="nav-icon">04</span> Quản lý club &amp; dự trữ
+      </button>
+      <button class="nav-item" data-tab="scoring">
+        <span class="nav-icon">05</span> Chấm điểm (mù)
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div id="dbStatusLine" class="db-status">— đang tải —</div>
+      <div id="lastRunLine" class="db-status db-status-sub"></div>
+    </div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+
+    <div class="toast-stack" id="toastStack"></div>
+
+    <!-- ---------- TAB 1: PIPELINE ---------- -->
+    <section class="view is-active" id="view-pipeline">
+      <header class="view-header">
+        <h1>Vận hành pipeline</h1>
+        <p class="view-desc">Kiểm tra dữ liệu, sinh số bốc thăm, chạy thuật toán RB-DA và xuất kết quả.</p>
+      </header>
+
+      <div class="status-strip" id="statusStrip">
+        <div class="strip-item"><span class="strip-num" id="statStudents">—</span><span class="strip-label">học sinh</span></div>
+        <div class="strip-div"></div>
+        <div class="strip-item"><span class="strip-num" id="statClubs">—</span><span class="strip-label">club</span></div>
+        <div class="strip-div"></div>
+        <div class="strip-item"><span class="strip-num" id="statPrefs">—</span><span class="strip-label">đã nộp nguyện vọng</span></div>
+        <div class="strip-div"></div>
+        <div class="strip-item"><span class="strip-num" id="statMatched">—</span><span class="strip-label">đã xếp club</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Nhập dữ liệu từ Microsoft Forms</h2>
+        </div>
+        <p class="hint-text">
+          Nhận file CSV đã chuẩn hoá bởi <code>06_ms_forms_transform.py</code>.
+          Hệ thống tự nhận diện định dạng "dài" hoặc "rộng" — không cần chọn.
+        </p>
+        <div class="import-grid">
+          <div class="import-col">
+            <div class="import-col-title">CSV chọn club muốn thi/xét (Bước 1)</div>
+            <input type="file" id="fileTestSelection" accept=".csv" class="file-input">
+            <div class="import-preview" id="previewTestSelection" hidden></div>
+            <button class="btn btn-secondary" id="btnImportTestSelection" disabled>Nhập vào hệ thống</button>
+            <span class="save-feedback" id="feedbackImportTestSelection"></span>
+          </div>
+          <div class="import-col">
+            <div class="import-col-title">CSV xếp hạng nguyện vọng (Bước 2)</div>
+            <input type="file" id="filePreferences" accept=".csv" class="file-input">
+            <div class="import-preview" id="previewPreferences" hidden></div>
+            <button class="btn btn-secondary" id="btnImportPreferences" disabled>Nhập vào hệ thống</button>
+            <span class="save-feedback" id="feedbackImportPreferences"></span>
+          </div>
+        </div>
+        <div class="import-warnings" id="importWarnings" hidden></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>5 bước xử lý</h2>
+          <div class="panel-actions">
+            <label class="seed-input-wrap">
+              Seed
+              <input type="number" id="seedInput" value="42" class="seed-input">
+            </label>
+            <button class="btn btn-secondary" id="btnValidate">Kiểm tra dữ liệu</button>
+            <button class="btn btn-primary" id="btnRun">Chạy pipeline</button>
+          </div>
+        </div>
+
+        <div class="stb-lock-line" id="stbLockLine"></div>
+
+        <ol class="stepper" id="stepper">
+          <li class="step" data-step="validate">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <div class="step-title">Kiểm tra toàn vẹn dữ liệu</div>
+              <div class="step-detail">Chưa chạy</div>
+            </div>
+          </li>
+          <li class="step" data-step="stb_lottery">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <div class="step-title">Sinh số bốc thăm (STB)</div>
+              <div class="step-detail">Chưa chạy</div>
+            </div>
+          </li>
+          <li class="step" data-step="rbda_cascade">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <div class="step-title">Chạy vòng lặp RB-DA</div>
+              <div class="step-detail">Chưa chạy</div>
+            </div>
+          </li>
+          <li class="step" data-step="write_results">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <div class="step-title">Ghi kết quả vào cơ sở dữ liệu</div>
+              <div class="step-detail">Chưa chạy</div>
+            </div>
+          </li>
+          <li class="step" data-step="export">
+            <span class="step-dot"></span>
+            <div class="step-body">
+              <div class="step-title">Xuất file CSV</div>
+              <div class="step-detail">Chưa chạy</div>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="panel panel-log" id="logPanel" hidden>
+        <div class="panel-head"><h2>Nhật ký lỗi</h2></div>
+        <pre class="log-box" id="logBox"></pre>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Lịch sử chạy pipeline</h2>
+          <div class="panel-actions">
+            <button class="btn btn-ghost" id="btnToggleHistory">Hiện/ẩn</button>
+          </div>
+        </div>
+        <table class="data-table" id="historyTable" hidden>
+          <thead><tr><th>#</th><th>Thời điểm</th><th>Seed</th><th>Vòng lặp</th><th>Đã xếp</th><th>Tổng</th><th>Bốc thăm lại?</th></tr></thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- TAB 2: KẾT QUẢ ---------- -->
+    <section class="view" id="view-results">
+      <header class="view-header">
+        <h1>Kết quả phân bổ</h1>
+        <p class="view-desc">Danh sách học sinh đã được xếp club và tình trạng lấp đầy từng club.</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Tỉ lệ lấp đầy theo club</h2>
+        </div>
+        <div id="clubFillList" class="fill-list"></div>
+        <div class="fill-legend">
+          <span class="legend-dot" style="background:var(--moss)"></span> Tổng quát
+          <span class="legend-dot" style="background:var(--gold); margin-left:16px"></span> Có suất dự trữ
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Danh sách xếp club</h2>
+          <div class="panel-actions">
+            <span id="unmatchedBadge" class="unmatched-badge" hidden></span>
+            <input type="text" id="resultsSearch" class="text-input" placeholder="Tìm theo mã hoặc tên học sinh…">
+            <button class="btn btn-secondary" id="btnExport">Xuất CSV</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr><th>Mã học sinh</th><th>Họ tên</th><th>Câu lạc bộ</th><th>Diện</th><th>Nguyện vọng</th></tr>
+          </thead>
+          <tbody id="resultsTableBody"></tbody>
+        </table>
+        <div id="resultsEmptyState" class="empty-state" hidden>
+          Chưa có kết quả — chạy pipeline ở tab "Vận hành pipeline" trước.
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- TAB 3: NHẬP DỰ PHÒNG (KIOSK) ---------- -->
+    <section class="view" id="view-fallback">
+      <header class="view-header">
+        <h1>Nhập dự phòng tại kiosk</h1>
+        <p class="view-desc">Dùng khi học sinh không thể nộp qua Microsoft Forms. Hai bước tách biệt — chọn club để thi và xếp hạng nguyện vọng — không ảnh hưởng lẫn nhau.</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Bước 0 — Tìm hoặc tạo học sinh</h2></div>
+        <div class="search-row">
+          <input type="text" id="studentSearchInput" class="text-input" placeholder="Nhập mã học sinh hoặc tên…">
+          <button class="btn btn-secondary" id="btnStudentSearch">Tìm</button>
+        </div>
+        <div id="studentSearchResults" class="search-results"></div>
+
+        <div class="new-student-row">
+          <input type="text" id="newStudentId" class="text-input text-input-sm" placeholder="Mã học sinh mới">
+          <input type="text" id="newStudentName" class="text-input" placeholder="Họ tên">
+          <button class="btn btn-secondary" id="btnCreateStudent">Tạo học sinh mới</button>
+        </div>
+      </div>
+
+      <div class="panel" id="fallbackWorkArea" hidden>
+        <div class="panel-head">
+          <h2 id="currentStudentLabel">—</h2>
+          <div class="panel-actions">
+            <button class="btn btn-ghost" id="btnResetStudentEntry">Sửa lại từ đầu</button>
+            <button class="btn-icon-danger" id="btnDeleteStudent">Xoá học sinh</button>
+          </div>
+        </div>
+
+        <div class="fallback-steps">
+          <div class="fallback-step">
+            <h3>Bước 1 — Chọn club muốn thi / xét (tick-box)</h3>
+            <div id="testSelectionGrid" class="option-list"></div>
+            <button class="btn btn-primary" id="btnSubmitTestSelection">Lưu lựa chọn thi</button>
+            <span class="save-feedback" id="testSelectionFeedback"></span>
+          </div>
+
+          <div class="fallback-step">
+            <h3>Bước 2 — Xếp hạng nguyện vọng (độc lập, tối đa 10 club)</h3>
+            <p class="hint-text">Bấm chọn club theo thứ tự ưu tiên giảm dần. Có thể xếp hạng club không nằm trong danh sách đã tick ở Bước 1.</p>
+            <div id="rankingSourceGrid" class="option-list"></div>
+            <div class="ranking-result">
+              <div class="ranking-result-label">Thứ tự nguyện vọng hiện tại:</div>
+              <ol id="rankingList" class="ranking-list"></ol>
+              <button class="btn btn-ghost" id="btnClearRanking">Xoá hết</button>
+            </div>
+            <button class="btn btn-primary" id="btnSubmitPreferences">Lưu nguyện vọng</button>
+            <span class="save-feedback" id="preferencesFeedback"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- TAB 4: QUẢN LÝ CLUB & DỰ TRỮ ---------- -->
+    <section class="view" id="view-admin">
+      <header class="view-header">
+        <h1>Quản lý club &amp; diện dự trữ</h1>
+        <p class="view-desc">Tạo/sửa club và gán diện dự trữ cho học sinh. Tiêu chí dự trữ hoàn toàn do trường tự đặt — hệ thống chỉ so khớp nhãn (reserve_group) giữa club và học sinh, không hardcode logic.</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Thêm / sửa club</h2></div>
+        <div class="admin-form-grid">
+          <input type="text" id="clubFormId" class="text-input text-input-sm" placeholder="Mã club (vd: club_01)">
+          <input type="text" id="clubFormName" class="text-input" placeholder="Tên club">
+          <input type="number" id="clubFormCapacity" class="text-input text-input-sm" placeholder="Tổng chỗ" min="1">
+          <input type="number" id="clubFormReserveCapacity" class="text-input text-input-sm" placeholder="Suất dự trữ" min="0" value="0">
+          <input type="text" id="clubFormReserveGroup" class="text-input text-input-sm" placeholder="Nhãn dự trữ (bỏ trống nếu không có)" list="reserveGroupOptions">
+          <datalist id="reserveGroupOptions"></datalist>
+          <button class="btn btn-primary" id="btnSaveClub">Lưu club</button>
+        </div>
+        <span class="save-feedback" id="clubFormFeedback"></span>
+
+        <table class="data-table" style="margin-top:18px;">
+          <thead><tr><th>Mã club</th><th>Tên</th><th>Tổng chỗ</th><th>Suất dự trữ</th><th>Nhãn dự trữ</th><th></th></tr></thead>
+          <tbody id="adminClubTableBody"></tbody>
+        </table>
+        <div id="adminClubEmptyState" class="empty-state" hidden>
+          Chưa có club nào — thêm club đầu tiên bằng form ở trên.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Gán diện dự trữ cho học sinh</h2></div>
+        <div class="search-row">
+          <input type="text" id="adminStudentSearch" class="text-input" placeholder="Tìm học sinh theo mã hoặc tên…">
+          <input type="text" id="bulkReserveGroupInput" class="text-input text-input-sm" placeholder="Nhãn dự trữ áp dụng" list="reserveGroupOptions">
+          <button class="btn btn-secondary" id="btnBulkAssign">Gán cho học sinh đã tick</button>
+        </div>
+        <table class="data-table">
+          <thead><tr><th></th><th>Mã học sinh</th><th>Họ tên</th><th>Nhãn dự trữ hiện tại</th></tr></thead>
+          <tbody id="adminStudentTableBody"></tbody>
+        </table>
+        <div id="adminStudentEmptyState" class="empty-state" hidden>
+          Chưa có học sinh nào trong hệ thống — thêm qua tab "Nhập dự phòng" hoặc import từ Microsoft Forms.
+        </div>
+        <div class="pagination-row" id="adminStudentPagination">
+          <button class="btn btn-ghost" id="btnAdminPrevPage">‹ Trước</button>
+          <span class="pagination-label" id="adminPaginationLabel">—</span>
+          <button class="btn btn-ghost" id="btnAdminNextPage">Sau ›</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- TAB 5: CHẤM ĐIỂM (MÙ) ---------- -->
+    <section class="view" id="view-scoring">
+      <header class="view-header">
+        <h1>Chấm điểm (mù)</h1>
+        <p class="view-desc">Chọn club để chấm. Danh sách chỉ hiện mã học sinh và họ tên — không hiện số bốc thăm hay thứ hạng nguyện vọng, đảm bảo người chấm không thể thiên vị theo ưu tiên đã biết trước.</p>
+      </header>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Tiến độ theo club</h2></div>
+        <table class="data-table">
+          <thead><tr><th>Mã club</th><th>Tên</th><th>Số học sinh thi/xét</th><th>Đã chấm</th><th></th></tr></thead>
+          <tbody id="scoringOverviewBody"></tbody>
+        </table>
+        <div id="scoringOverviewEmpty" class="empty-state" hidden>
+          Chưa có club nào có học sinh đăng ký thi/xét.
+        </div>
+      </div>
+
+      <div class="panel" id="scoringWorkArea" hidden>
+        <div class="panel-head">
+          <h2 id="scoringClubLabel">—</h2>
+          <div class="panel-actions">
+            <button class="btn btn-primary" id="btnSaveScores">Lưu điểm</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Mã học sinh</th><th>Họ tên</th><th>Điểm</th></tr></thead>
+          <tbody id="scoringTableBody"></tbody>
+        </table>
+        <span class="save-feedback" id="scoringFeedback"></span>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

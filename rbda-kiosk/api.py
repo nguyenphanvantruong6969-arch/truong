@@ -1,0 +1,1223 @@
+"""
+api.py
+======
+Lớp API expose cho pywebview — mọi hàm public ở đây có thể được gọi
+từ JS qua window.pywebview.api.<ten_ham>(...) và luôn trả về dict
+(pywebview tự serialize JSON hai chiều).
+
+Quy ước trả về thống nhất cho mọi hàm:
+    { "ok": bool, "data": ..., "errors": [str, ...] }
+Để JS chỉ cần check `.ok` là biết thành công hay không, không phải
+try/catch riêng lẻ từng hàm.
+"""
+
+import csv
+import datetime
+import io
+import os
+import sys
+import traceback
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from rbda_priority_pipeline import (
+    init_db,
+    load_from_sqlite,
+    validate_data_integrity,
+    generate_stb_lottery,
+    run_rbda,
+    sanity_check_result,
+    verify_stability,
+    export_match_results,
+    default_reserve_eligible_fn,
+    write_match_results_to_sqlite,
+)
+
+import sqlite3
+
+
+def _now() -> str:
+    return datetime.datetime.now().isoformat(timespec="seconds")
+
+
+def _ok(data=None):
+    return {"ok": True, "data": data, "errors": []}
+
+
+def _fail(errors):
+    if isinstance(errors, str):
+        errors = [errors]
+    return {"ok": False, "data": None, "errors": errors}
+
+
+class PipelineAPI:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self.window = None  # gán qua set_window() sau khi main.py tạo cửa sổ pywebview
+        init_db(self.db_path)
+
+    def set_window(self, window) -> None:
+        """
+        Gọi từ main.py sau webview.create_window(...):
+            api = PipelineAPI(db_path)
+            window = webview.create_window("...", "index.html", js_api=api)
+            api.set_window(window)
+        Không bắt buộc — nếu không gọi, mọi tính năng vẫn hoạt động,
+        chỉ riêng import CSV sẽ nhận nội dung file qua FileReader ở JS
+        (đã dùng theo mặc định) thay vì hộp thoại chọn file gốc của hệ điều hành.
+        """
+        self.window = window
+
+    # -----------------------------------------------------------------
+    # TAB "VẬN HÀNH PIPELINE"
+    # -----------------------------------------------------------------
+
+    def get_last_run_info(self):
+        """Thông tin lần chạy pipeline gần nhất — để hiện ở sidebar/dashboard."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            row = cur.execute("SELECT * FROM run_meta WHERE id = 1").fetchone()
+            conn.close()
+            return _ok(dict(row) if row else None)
+        except Exception as e:
+            return _fail(f"Loi doc thong tin lan chay gan nhat: {e}")
+
+    def get_dashboard_status(self):
+        """Số liệu tổng quan để hiển thị ngay khi mở tab Pipeline."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            n_students = cur.execute("SELECT COUNT(*) FROM students").fetchone()[0]
+            n_clubs = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
+            n_prefs = cur.execute(
+                "SELECT COUNT(DISTINCT student_id) FROM preferences"
+            ).fetchone()[0]
+            n_matched = cur.execute(
+                "SELECT COUNT(*) FROM match_results WHERE club_id IS NOT NULL"
+            ).fetchone()[0]
+            has_results = cur.execute(
+                "SELECT COUNT(*) FROM match_results"
+            ).fetchone()[0] > 0
+            conn.close()
+            return _ok({
+                "n_students": n_students,
+                "n_clubs": n_clubs,
+                "n_students_with_preferences": n_prefs,
+                "n_matched": n_matched,
+                "has_results": has_results,
+            })
+        except Exception as e:
+            return _fail(f"Loi doc trang thai: {e}")
+
+    def check_data_integrity(self):
+        """Nút 'Kiểm tra dữ liệu' — chỉ validate, KHÔNG chạy pipeline."""
+        try:
+            students, clubs, tested_scores, applicants, preferences, _ = (
+                load_from_sqlite(self.db_path)
+            )
+            errors = validate_data_integrity(students, clubs, preferences, applicants)
+            if errors:
+                return _fail(errors)
+            return _ok({
+                "message": "Du lieu hop le.",
+                "n_students": len(students),
+                "n_clubs": len(clubs),
+            })
+        except Exception as e:
+            return _fail([f"Loi khi kiem tra: {e}", traceback.format_exc()])
+
+    def get_pipeline_run_warning(self):
+        """
+        Gọi TRƯỚC khi hiện hộp xác nhận 'Chạy pipeline' (bước 1 trong xác
+        nhận 2 bước). Cho UI biết: (a) đã có kết quả cũ sẽ bị ghi đè chưa,
+        (b) STB đã bị khoá chưa (nếu khoá, chạy bình thường sẽ TÁI SỬ DỤNG
+        STB cũ chứ không vẽ lại — chỉ vẽ lại nếu force_redraw_stb=True).
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            has_results = cur.execute(
+                "SELECT COUNT(*) FROM match_results"
+            ).fetchone()[0] > 0
+            lock_row = cur.execute(
+                "SELECT is_locked, locked_at FROM stb_lock WHERE id = 1"
+            ).fetchone()
+            last_run = cur.execute(
+                "SELECT run_at, seed FROM run_meta WHERE id = 1"
+            ).fetchone()
+            conn.close()
+            return _ok({
+                "has_existing_results": has_results,
+                "stb_locked": bool(lock_row[0]) if lock_row else False,
+                "stb_locked_at": lock_row[1] if lock_row else None,
+                "last_run_at": last_run[0] if last_run else None,
+                "last_run_seed": last_run[1] if last_run else None,
+            })
+        except Exception as e:
+            return _fail(f"Loi kiem tra trang thai truoc khi chay: {e}")
+
+    def get_stb_lock_status(self):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            row = cur.execute(
+                "SELECT is_locked, locked_at, unlocked_at FROM stb_lock WHERE id = 1"
+            ).fetchone()
+            conn.close()
+            if not row:
+                return _ok({"is_locked": False, "locked_at": None, "unlocked_at": None})
+            return _ok({
+                "is_locked": bool(row[0]),
+                "locked_at": row[1],
+                "unlocked_at": row[2],
+            })
+        except Exception as e:
+            return _fail(f"Loi doc trang thai khoa STB: {e}")
+
+    def get_run_history(self, limit: int = 20):
+        """Nhật ký toàn bộ các lần chạy pipeline, mới nhất trước — phục vụ kiểm toán."""
+        try:
+            limit = max(1, min(int(limit), 200))
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute(
+                "SELECT run_id, seed, run_at, rounds_run, n_matched, n_total, stb_redrawn "
+                "FROM run_history ORDER BY run_id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi doc nhat ky chay: {e}")
+
+    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
+        """
+        Nút 'Chạy pipeline' — chạy trọn 5 bước, trả về log từng bước
+        để UI hiển thị lên stepper theo thời gian thực (từng bước một,
+        không phải chỉ kết quả cuối).
+
+        Quy tắc khoá STB (giải quyết #3 ghi đè âm thầm + #4 khoá STB):
+          - Nếu STB CHƯA khoá (lần chạy đầu tiên, hoặc sau khi người
+            dùng chủ động mở khoá): vẽ STB cho MỌI học sinh, rồi tự
+            động khoá lại ngay sau khi vẽ xong.
+          - Nếu STB ĐÃ khoá và force_redraw_stb=False (mặc định): KHÔNG
+            vẽ lại — chỉ vẽ bổ sung cho học sinh MỚI (stb_number NULL,
+            vd học sinh vừa được thêm qua kiosk sau khi đã khoá), số đã
+            có giữ nguyên. Đây là hành vi mặc định khi bấm 'Chạy lại'.
+          - Nếu STB đã khoá và force_redraw_stb=True (người dùng xác
+            nhận 2 bước trên UI để "vẽ lại"): vẽ lại TOÀN BỘ, ghi log
+            unlocked_at của lần khoá cũ rồi khoá lại với thời điểm mới.
+          - Mọi lần chạy (kể cả tái sử dụng STB) đều được append vào
+            run_history — không bao giờ mất dấu vết lần chạy nào.
+        """
+        steps_log = []
+        try:
+            steps_log.append({"step": "validate", "status": "running"})
+            students, clubs, tested_scores, applicants, preferences, _ = (
+                load_from_sqlite(self.db_path)
+            )
+            errors = validate_data_integrity(students, clubs, preferences, applicants)
+            if errors:
+                steps_log.append({"step": "validate", "status": "error", "detail": errors})
+                return _fail({"steps": steps_log, "errors": errors})
+            steps_log.append({"step": "validate", "status": "done"})
+
+            steps_log.append({"step": "stb_lottery", "status": "running"})
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            lock_row = cur.execute(
+                "SELECT is_locked FROM stb_lock WHERE id = 1"
+            ).fetchone()
+            already_locked = bool(lock_row[0]) if lock_row else False
+            stb_redrawn = False
+
+            if not already_locked or force_redraw_stb:
+                # Ve lai TOAN BO
+                stb_lottery = generate_stb_lottery(list(students.keys()), seed=seed)
+                conn.executemany(
+                    "UPDATE students SET stb_number = ? WHERE student_id = ?",
+                    [(v, k) for k, v in stb_lottery.items()],
+                )
+                if already_locked and force_redraw_stb:
+                    cur.execute(
+                        "UPDATE stb_lock SET unlocked_at = ? WHERE id = 1", (_now(),)
+                    )
+                cur.execute(
+                    "UPDATE stb_lock SET is_locked = 1, locked_at = ? WHERE id = 1",
+                    (_now(),),
+                )
+                stb_redrawn = True
+                stb_step_detail = f"Da ve moi STB cho {len(stb_lottery)} hoc sinh va khoa lai."
+            else:
+                # Da khoa: chi ve bo sung cho hoc sinh moi (stb_number con NULL)
+                missing = [
+                    sid for sid, info in students.items() if info.get("stb") is None
+                ]
+                if missing:
+                    supplement = generate_stb_lottery(missing, seed=seed)
+                    # danh so tiep noi sau STB lon nhat hien co, tranh trung
+                    existing_max_row = cur.execute(
+                        "SELECT MAX(stb_number) FROM students"
+                    ).fetchone()
+                    offset = (existing_max_row[0] + 1) if existing_max_row[0] is not None else 0
+                    conn.executemany(
+                        "UPDATE students SET stb_number = ? WHERE student_id = ?",
+                        [(v + offset, k) for k, v in supplement.items()],
+                    )
+                    stb_step_detail = (
+                        f"STB da khoa — giu nguyen so cu, chi ve bo sung cho "
+                        f"{len(missing)} hoc sinh moi chua co so."
+                    )
+                else:
+                    stb_step_detail = "STB da khoa — tai su dung toan bo so cu, khong ve lai."
+            conn.commit()
+            conn.close()
+            steps_log.append({"step": "stb_lottery", "status": "done", "detail": stb_step_detail})
+
+            # Doc lai students de lay stb_number moi nhat (bao gom vua ve bo sung)
+            students, clubs, tested_scores, applicants, preferences, stb_lottery = (
+                load_from_sqlite(self.db_path)
+            )
+
+            steps_log.append({"step": "rbda_cascade", "status": "running"})
+            reserve_fn = default_reserve_eligible_fn(students, clubs)
+            result = run_rbda(
+                students, clubs, tested_scores, applicants, preferences,
+                stb_lottery, is_reserve_eligible_fn=reserve_fn,
+            )
+            sanity_problems = sanity_check_result(result, clubs, preferences)
+            stability_problems = verify_stability(result, clubs, preferences, reserve_fn)
+            if sanity_problems or stability_problems:
+                steps_log.append({
+                    "step": "rbda_cascade", "status": "error",
+                    "detail": sanity_problems + stability_problems,
+                })
+                return _fail({"steps": steps_log, "errors": sanity_problems + stability_problems})
+            steps_log.append({
+                "step": "rbda_cascade", "status": "done",
+                "detail": f"{result.rounds_run} vong lap, khong loi",
+            })
+
+            steps_log.append({"step": "write_results", "status": "running"})
+            write_match_results_to_sqlite(self.db_path, result)
+            steps_log.append({"step": "write_results", "status": "done"})
+
+            steps_log.append({"step": "export", "status": "running"})
+            export_path = os.path.join(os.path.dirname(self.db_path), "match_results.csv")
+            export_match_results(result, export_path)
+            steps_log.append({"step": "export", "status": "done", "detail": export_path})
+
+            n_matched = sum(1 for v in result.assignment.values() if v)
+            run_at = _now()
+
+            conn = sqlite3.connect(self.db_path)
+            conn.execute(
+                "INSERT INTO run_meta (id, seed, run_at, rounds_run, n_matched, n_total) "
+                "VALUES (1, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET seed=excluded.seed, run_at=excluded.run_at, "
+                "rounds_run=excluded.rounds_run, n_matched=excluded.n_matched, n_total=excluded.n_total",
+                (seed, run_at, result.rounds_run, n_matched, len(result.assignment)),
+            )
+            # run_history: KHONG BAO GIO ghi de — moi lan chay them 1 dong moi,
+            # de nguoi dung luon xem lai duoc lich su chay pipeline (giai quyet #3).
+            conn.execute(
+                "INSERT INTO run_history (seed, run_at, rounds_run, n_matched, n_total, stb_redrawn) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (seed, run_at, result.rounds_run, n_matched, len(result.assignment),
+                 1 if stb_redrawn else 0),
+            )
+            conn.commit()
+            conn.close()
+
+            return _ok({
+                "steps": steps_log,
+                "n_matched": n_matched,
+                "n_total": len(result.assignment),
+                "rounds_run": result.rounds_run,
+                "export_path": export_path,
+                "stb_redrawn": stb_redrawn,
+            })
+        except Exception as e:
+            steps_log.append({"step": "unknown", "status": "error", "detail": str(e)})
+            return _fail({"steps": steps_log, "errors": [str(e), traceback.format_exc()]})
+
+    # -----------------------------------------------------------------
+    # NHẬP DỮ LIỆU TỪ MICROSOFT FORMS (CSV đã chuẩn hoá bởi
+    # 06_ms_forms_transform.py) — trước đây KHÔNG có đường nào để CSV
+    # này vào app.db, đây là mảnh còn thiếu duy nhất trong luồng dữ liệu.
+    #
+    # JS đọc file bằng FileReader.readAsText() ở phía trình duyệt rồi
+    # gửi NGUYÊN VĂN nội dung CSV (chuỗi text) qua đây — không cần
+    # main.py hỗ trợ thêm gì, không phụ thuộc hộp thoại chọn file gốc
+    # của hệ điều hành (vốn không ổn định trong mọi bản pywebview).
+    #
+    # Hỗ trợ 2 định dạng cho MỖI loại CSV — tự nhận diện theo header,
+    # không cần người dùng chọn định dạng:
+    #   (a) "dài" (long) — đúng 1-1 với cấu trúc bảng DB, do
+    #       06_ms_forms_transform.py xuất ra:
+    #         nguyện vọng:      student_id,name,club_id,rank
+    #         chọn club thi:    student_id,club_id
+    #   (b) "rộng" (wide) — 1 dòng/học sinh, tiện đọc bằng mắt:
+    #         nguyện vọng:      student_id,name,pref_1,pref_2,...,pref_10
+    #         chọn club thi:    student_id,name,test_club_1,test_club_2,...
+    # -----------------------------------------------------------------
+
+    @staticmethod
+    def _parse_csv_rows(csv_text: str):
+        """Tự nhận diện dấu phân cách (, hoặc ;) và trả về (fieldnames, rows)."""
+        sample = csv_text[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel
+        reader = csv.DictReader(io.StringIO(csv_text), dialect=dialect)
+        fieldnames = [ (f or "").strip().lower() for f in (reader.fieldnames or []) ]
+        rows = []
+        for raw_row in reader:
+            row = { (k or "").strip().lower(): (v.strip() if isinstance(v, str) else v)
+                    for k, v in raw_row.items() if k is not None }
+            rows.append(row)
+        return fieldnames, rows
+
+    def preview_import_csv(self, csv_text: str, kind: str):
+        """
+        Xem trước trước khi nhập thật (không ghi DB) — cho UI hiện
+        'phát hiện định dạng X, Y dòng, Z học sinh sẽ được tạo mới'
+        trước khi người dùng bấm xác nhận nhập.
+        kind: "preferences" hoặc "test_selection"
+        """
+        try:
+            fieldnames, rows = self._parse_csv_rows(csv_text)
+            if not rows:
+                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+
+            is_wide = any(f.startswith("pref_") or f.startswith("test_club_") for f in fieldnames)
+            fmt = "wide" if is_wide else "long"
+
+            conn = sqlite3.connect(self.db_path)
+            existing_ids = {r[0] for r in conn.execute("SELECT student_id FROM students")}
+            conn.close()
+
+            row_student_ids = {r.get("student_id", "") for r in rows if r.get("student_id")}
+            new_students = [sid for sid in row_student_ids if sid not in existing_ids]
+
+            return _ok({
+                "format": fmt,
+                "kind": kind,
+                "fieldnames": fieldnames,
+                "n_rows": len(rows),
+                "n_students_detected": len(row_student_ids),
+                "n_new_students": len(new_students),
+                "sample_row": rows[0] if rows else None,
+            })
+        except Exception as e:
+            return _fail(f"Loi doc truoc CSV: {e}")
+
+    def import_preferences_csv(self, csv_text: str, create_missing_students: bool = True):
+        """
+        Nhập CSV nguyện vọng (Bước 2 — xếp hạng) từ Microsoft Forms.
+        Ghi đè TOÀN BỘ nguyện vọng cũ của TỪNG học sinh xuất hiện trong
+        file (giống hành vi submit_preferences ở kiosk) — không đụng
+        tới học sinh không có trong file.
+        """
+        try:
+            fieldnames, rows = self._parse_csv_rows(csv_text)
+            if not rows:
+                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+
+            is_wide = any(f.startswith("pref_") for f in fieldnames)
+
+            # Gom thanh { student_id: (name, [club_id_theo_thu_tu]) }
+            grouped: dict = {}
+            if is_wide:
+                pref_cols = sorted(
+                    [f for f in fieldnames if f.startswith("pref_")],
+                    key=lambda f: int(f.split("_")[1]) if f.split("_")[1].isdigit() else 999,
+                )
+                for row in rows:
+                    sid = row.get("student_id")
+                    if not sid:
+                        continue
+                    ordered = [row[c] for c in pref_cols if row.get(c)]
+                    grouped[sid] = (row.get("name", ""), ordered)
+            else:
+                if "student_id" not in fieldnames or "club_id" not in fieldnames:
+                    return _fail(
+                        "CSV dang 'dai' can co cot student_id va club_id "
+                        f"(cot hien co: {fieldnames})"
+                    )
+                has_rank = "rank" in fieldnames
+                by_sid_rows: dict = {}
+                for row in rows:
+                    sid = row.get("student_id")
+                    if not sid or not row.get("club_id"):
+                        continue
+                    by_sid_rows.setdefault(sid, []).append(row)
+                for sid, sid_rows in by_sid_rows.items():
+                    if has_rank:
+                        sid_rows.sort(key=lambda r: int(r["rank"]) if r.get("rank", "").isdigit() else 999)
+                    name = next((r.get("name") for r in sid_rows if r.get("name")), "")
+                    grouped[sid] = (name, [r["club_id"] for r in sid_rows])
+
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+            existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
+
+            n_created, n_updated, n_skipped = 0, 0, 0
+            row_errors = []
+
+            for sid, (name, ordered_clubs) in grouped.items():
+                # loai bo trung lap giu thu tu xuat hien dau tien
+                seen = set()
+                deduped = []
+                for cid in ordered_clubs:
+                    if cid not in seen:
+                        seen.add(cid)
+                        deduped.append(cid)
+                if len(deduped) != len(ordered_clubs):
+                    row_errors.append(f"{sid}: co club trung lap trong nguyen vong, da tu dong loai bo trung.")
+
+                if len(deduped) > 10:
+                    row_errors.append(f"{sid}: co {len(deduped)} nguyen vong (>10), CHUA nhap — bo qua hoc sinh nay.")
+                    n_skipped += 1
+                    continue
+
+                invalid_clubs = [c for c in deduped if c not in valid_club_ids]
+                if invalid_clubs:
+                    row_errors.append(f"{sid}: club khong ton tai {invalid_clubs} — bo qua hoc sinh nay.")
+                    n_skipped += 1
+                    continue
+
+                if sid not in existing_students:
+                    if not create_missing_students:
+                        row_errors.append(f"{sid}: chua co trong he thong, bo qua (create_missing_students=False).")
+                        n_skipped += 1
+                        continue
+                    cur.execute(
+                        "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                        "VALUES (?, ?, NULL, NULL)",
+                        (sid, name or sid),
+                    )
+                    existing_students.add(sid)
+                    n_created += 1
+                elif name:
+                    cur.execute(
+                        "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
+                        (name, sid),
+                    )
+
+                cur.execute("DELETE FROM preferences WHERE student_id = ?", (sid,))
+                cur.executemany(
+                    "INSERT INTO preferences (student_id, club_id, rank) VALUES (?, ?, ?)",
+                    [(sid, cid, i + 1) for i, cid in enumerate(deduped)],
+                )
+                n_updated += 1
+
+            conn.commit()
+            conn.close()
+
+            return _ok({
+                "n_students_created": n_created,
+                "n_students_with_preferences_written": n_updated,
+                "n_students_skipped": n_skipped,
+                "warnings": row_errors,
+            })
+        except Exception as e:
+            return _fail([f"Loi nhap CSV nguyen vong: {e}", traceback.format_exc()])
+
+    def import_test_selection_csv(self, csv_text: str, create_missing_students: bool = True):
+        """
+        Nhập CSV chọn club muốn thi/xét (Bước 1 — tick-box) từ
+        Microsoft Forms. Ghi đè toàn bộ lựa chọn thi cũ của từng học
+        sinh xuất hiện trong file, giống hành vi submit_test_selection.
+        """
+        try:
+            fieldnames, rows = self._parse_csv_rows(csv_text)
+            if not rows:
+                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+
+            is_wide = any(f.startswith("test_club_") for f in fieldnames)
+
+            grouped: dict = {}
+            if is_wide:
+                test_cols = [f for f in fieldnames if f.startswith("test_club_")]
+                for row in rows:
+                    sid = row.get("student_id")
+                    if not sid:
+                        continue
+                    selected = [row[c] for c in test_cols if row.get(c)]
+                    grouped[sid] = (row.get("name", ""), selected)
+            else:
+                if "student_id" not in fieldnames or "club_id" not in fieldnames:
+                    return _fail(
+                        "CSV dang 'dai' can co cot student_id va club_id "
+                        f"(cot hien co: {fieldnames})"
+                    )
+                for row in rows:
+                    sid = row.get("student_id")
+                    if not sid or not row.get("club_id"):
+                        continue
+                    name, clubs_list = grouped.get(sid, ("", []))
+                    grouped[sid] = (row.get("name") or name, clubs_list + [row["club_id"]])
+
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+            existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
+
+            n_created, n_updated, n_skipped = 0, 0, 0
+            row_errors = []
+
+            for sid, (name, club_ids) in grouped.items():
+                deduped = sorted(set(club_ids), key=club_ids.index)
+                invalid_clubs = [c for c in deduped if c not in valid_club_ids]
+                if invalid_clubs:
+                    row_errors.append(f"{sid}: club khong ton tai {invalid_clubs} — bo qua hoc sinh nay.")
+                    n_skipped += 1
+                    continue
+
+                if sid not in existing_students:
+                    if not create_missing_students:
+                        row_errors.append(f"{sid}: chua co trong he thong, bo qua (create_missing_students=False).")
+                        n_skipped += 1
+                        continue
+                    cur.execute(
+                        "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                        "VALUES (?, ?, NULL, NULL)",
+                        (sid, name or sid),
+                    )
+                    existing_students.add(sid)
+                    n_created += 1
+                elif name:
+                    cur.execute(
+                        "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
+                        (name, sid),
+                    )
+
+                cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (sid,))
+                cur.executemany(
+                    "INSERT INTO club_test_selection (student_id, club_id) VALUES (?, ?)",
+                    [(sid, cid) for cid in deduped],
+                )
+                n_updated += 1
+
+            conn.commit()
+            conn.close()
+
+            return _ok({
+                "n_students_created": n_created,
+                "n_students_with_selection_written": n_updated,
+                "n_students_skipped": n_skipped,
+                "warnings": row_errors,
+            })
+        except Exception as e:
+            return _fail([f"Loi nhap CSV chon club thi: {e}", traceback.format_exc()])
+
+    # -----------------------------------------------------------------
+    # CHẤM ĐIỂM MÙ (blind scoring) — trước đây club_scores chỉ được
+    # điền qua seed_sample_data(), KHÔNG có màn hình cho giáo viên chấm
+    # thật. Yêu cầu thiết kế cốt lõi "chấm mù" (grader không thấy STB,
+    # không thấy thứ hạng nguyện vọng của học sinh) được ĐẢM BẢO Ở ĐÂY
+    # bằng cách chỉ trả về student_id + tên — KHÔNG BAO GIỜ trả stb_number
+    # hay preferences trong bất kỳ hàm nào của mục này.
+    # -----------------------------------------------------------------
+
+    def get_scoring_overview(self):
+        """Tổng quan tiến độ chấm điểm theo từng club — cho màn hình chọn club để chấm."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute("""
+                SELECT c.club_id, c.name,
+                       COUNT(DISTINCT t.student_id) AS n_applicants,
+                       COUNT(DISTINCT sc.student_id) AS n_scored
+                FROM clubs c
+                LEFT JOIN club_test_selection t ON t.club_id = c.club_id
+                LEFT JOIN club_scores sc ON sc.club_id = c.club_id AND sc.student_id = t.student_id
+                GROUP BY c.club_id
+                ORDER BY c.club_id
+            """).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi doc tong quan cham diem: {e}")
+
+    def get_club_applicants_for_scoring(self, club_id: str):
+        """
+        Danh sách học sinh cần chấm cho 1 club — CHỈ mã số, tên, và
+        điểm đã chấm trước đó (nếu có, để sửa). KHÔNG kèm STB, KHÔNG
+        kèm thứ hạng nguyện vọng — đúng yêu cầu chấm mù (blind scoring).
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            club = cur.execute(
+                "SELECT club_id, name FROM clubs WHERE club_id = ?", (club_id,)
+            ).fetchone()
+            if not club:
+                conn.close()
+                return _fail(f"Club {club_id} khong ton tai")
+            rows = cur.execute("""
+                SELECT s.student_id, s.name, sc.score
+                FROM club_test_selection t
+                JOIN students s ON s.student_id = t.student_id
+                LEFT JOIN club_scores sc ON sc.student_id = t.student_id AND sc.club_id = t.club_id
+                WHERE t.club_id = ?
+                ORDER BY s.student_id
+            """, (club_id,)).fetchall()
+            conn.close()
+            return _ok({
+                "club_id": club["club_id"],
+                "club_name": club["name"],
+                "applicants": [dict(r) for r in rows],
+            })
+        except Exception as e:
+            return _fail(f"Loi doc danh sach cham diem: {e}")
+
+    def submit_club_scores(self, club_id: str, scores: list):
+        """
+        Lưu điểm chấm cho 1 club. scores: [{"student_id": "...", "score": 8.5}, ...]
+        Chỉ cho điểm học sinh THỰC SỰ có trong club_test_selection của
+        club này (không thể chấm 'khống' cho học sinh không thi/xét).
+        """
+        try:
+            if not isinstance(scores, list) or not scores:
+                return _fail("scores phai la list khong rong")
+
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            club_exists = cur.execute(
+                "SELECT 1 FROM clubs WHERE club_id = ?", (club_id,)
+            ).fetchone()
+            if not club_exists:
+                conn.close()
+                return _fail(f"Club {club_id} khong ton tai")
+
+            valid_applicants = {
+                r[0] for r in cur.execute(
+                    "SELECT student_id FROM club_test_selection WHERE club_id = ?",
+                    (club_id,),
+                ).fetchall()
+            }
+
+            n_saved, skipped = 0, []
+            for entry in scores:
+                sid = entry.get("student_id")
+                score = entry.get("score")
+                if sid not in valid_applicants:
+                    skipped.append(f"{sid}: khong nam trong danh sach thi/xet club nay")
+                    continue
+                if score is None or score == "":
+                    # cho phep xoa diem (bo trong o) bang cach xoa ban ghi
+                    cur.execute(
+                        "DELETE FROM club_scores WHERE student_id = ? AND club_id = ?",
+                        (sid, club_id),
+                    )
+                    continue
+                try:
+                    score = float(score)
+                except (TypeError, ValueError):
+                    skipped.append(f"{sid}: diem '{score}' khong phai so")
+                    continue
+                cur.execute(
+                    "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
+                    "ON CONFLICT(student_id, club_id) DO UPDATE SET score = excluded.score",
+                    (sid, club_id, score),
+                )
+                n_saved += 1
+
+            conn.commit()
+            conn.close()
+            return _ok({"club_id": club_id, "n_saved": n_saved, "warnings": skipped})
+        except Exception as e:
+            return _fail(f"Loi luu diem: {e}")
+
+    # -----------------------------------------------------------------
+    # TAB "KẾT QUẢ"
+    # -----------------------------------------------------------------
+
+    def get_match_results(self, search: str = ""):
+        """Bảng kết quả, lọc theo student_id/name nếu search có giá trị."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            query = """
+                SELECT m.student_id, s.name, m.club_id, c.name as club_name,
+                       m.matched_tier, m.rank_in_student_pref
+                FROM match_results m
+                JOIN students s ON s.student_id = m.student_id
+                LEFT JOIN clubs c ON c.club_id = m.club_id
+            """
+            params = ()
+            if search:
+                query += " WHERE m.student_id LIKE ? OR s.name LIKE ?"
+                params = (f"%{search}%", f"%{search}%")
+            query += " ORDER BY m.student_id"
+            rows = cur.execute(query, params).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi doc ket qua: {e}")
+
+    def get_club_fill_stats(self):
+        """Tỉ lệ lấp đầy mỗi club — dùng vẽ thanh progress bar."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute("""
+                SELECT c.club_id, c.name, c.capacity, c.reserve_capacity,
+                       COUNT(m.student_id) as matched
+                FROM clubs c
+                LEFT JOIN match_results m ON m.club_id = c.club_id
+                GROUP BY c.club_id
+                ORDER BY c.club_id
+            """).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi doc thong ke club: {e}")
+
+    def export_csv(self, output_path: str):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute("SELECT student_id, club_id FROM match_results ORDER BY student_id").fetchall()
+            conn.close()
+            import csv
+            with open(output_path, "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["student_id", "club_id"])
+                for r in rows:
+                    w.writerow([r["student_id"], r["club_id"] or ""])
+            return _ok({"path": output_path, "n_rows": len(rows)})
+        except Exception as e:
+            return _fail(f"Loi xuat CSV: {e}")
+
+    # -----------------------------------------------------------------
+    # TAB "QUẢN LÝ CLUB & DỰ TRỮ" (admin thao tác trực tiếp — trường tự quyết)
+    # -----------------------------------------------------------------
+
+    def list_clubs_admin(self):
+        """Giống list_clubs nhưng bao gồm cả reserve_group, dùng cho form sửa."""
+        return self.list_clubs()
+
+    def create_or_update_club(
+        self, club_id: str, name: str, capacity: int,
+        reserve_capacity: int = 0, reserve_group: str = "",
+    ):
+        """
+        Tạo mới hoặc cập nhật 1 club (UPSERT theo club_id).
+        reserve_group: chuỗi tự do do trường tự đặt (vd 'chinh_sach',
+        'khoi10', hoặc để trống '' nếu club không có dự trữ).
+        """
+        try:
+            capacity = int(capacity)
+            reserve_capacity = int(reserve_capacity)
+            if capacity <= 0:
+                return _fail("Capacity phai > 0")
+            if reserve_capacity > capacity:
+                return _fail("Reserve_capacity khong duoc lon hon capacity")
+            if not club_id.strip():
+                return _fail("Can nhap club_id")
+
+            reserve_group_value = reserve_group.strip() or None
+
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(club_id) DO UPDATE SET
+                    name=excluded.name,
+                    capacity=excluded.capacity,
+                    reserve_capacity=excluded.reserve_capacity,
+                    reserve_group=excluded.reserve_group
+                """,
+                (club_id.strip(), name.strip(), capacity, reserve_capacity, reserve_group_value),
+            )
+            conn.commit()
+            conn.close()
+            return _ok({"club_id": club_id, "action": "upserted"})
+        except Exception as e:
+            return _fail(f"Loi luu club: {e}")
+
+    def delete_club(self, club_id: str):
+        """
+        Xoá club — CHẶN nếu đã có preferences/match_results tham chiếu
+        tới club này, để tránh mất dữ liệu học sinh đã nộp.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            n_prefs = cur.execute(
+                "SELECT COUNT(*) FROM preferences WHERE club_id = ?", (club_id,)
+            ).fetchone()[0]
+            n_matches = cur.execute(
+                "SELECT COUNT(*) FROM match_results WHERE club_id = ?", (club_id,)
+            ).fetchone()[0]
+            if n_prefs > 0 or n_matches > 0:
+                conn.close()
+                return _fail(
+                    f"Khong the xoa: club {club_id} da co {n_prefs} nguyen vong "
+                    f"va {n_matches} ket qua tham chieu toi. Phai xu ly du lieu lien quan truoc."
+                )
+            cur.execute("DELETE FROM clubs WHERE club_id = ?", (club_id,))
+            cur.execute("DELETE FROM club_test_selection WHERE club_id = ?", (club_id,))
+            cur.execute("DELETE FROM club_scores WHERE club_id = ?", (club_id,))
+            conn.commit()
+            conn.close()
+            return _ok({"club_id": club_id, "deleted": True})
+        except Exception as e:
+            return _fail(f"Loi xoa club: {e}")
+
+    def list_reserve_groups_in_use(self):
+        """Danh sách các reserve_group đang được dùng (để gợi ý trong form, tránh gõ sai chính tả)."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            rows = cur.execute(
+                "SELECT DISTINCT reserve_group FROM clubs WHERE reserve_group IS NOT NULL "
+                "UNION "
+                "SELECT DISTINCT reserve_group FROM students WHERE reserve_group IS NOT NULL"
+            ).fetchall()
+            conn.close()
+            return _ok(sorted(r[0] for r in rows if r[0]))
+        except Exception as e:
+            return _fail(f"Loi doc danh sach reserve_group: {e}")
+
+    def set_student_reserve_group(self, student_id: str, reserve_group: str):
+        """Gán (hoặc gỡ, nếu reserve_group='') diện dự trữ cho 1 học sinh."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return _fail(f"Hoc sinh {student_id} khong ton tai")
+            value = reserve_group.strip() or None
+            cur.execute(
+                "UPDATE students SET reserve_group = ? WHERE student_id = ?",
+                (value, student_id),
+            )
+            conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "reserve_group": value})
+        except Exception as e:
+            return _fail(f"Loi gan reserve_group: {e}")
+
+    def bulk_set_reserve_group(self, student_ids: list, reserve_group: str):
+        """Gán hàng loạt — dùng khi trường có sẵn danh sách (vd cả 1 khối lớp)."""
+        try:
+            if not isinstance(student_ids, list) or not student_ids:
+                return _fail("student_ids phai la list khong rong")
+            value = reserve_group.strip() or None
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            existing_ids = {
+                r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
+            }
+            missing = [sid for sid in student_ids if sid not in existing_ids]
+            valid_ids = [sid for sid in student_ids if sid in existing_ids]
+            cur.executemany(
+                "UPDATE students SET reserve_group = ? WHERE student_id = ?",
+                [(value, sid) for sid in valid_ids],
+            )
+            conn.commit()
+            conn.close()
+            return _ok({"n_updated": len(valid_ids), "not_found": missing})
+        except Exception as e:
+            return _fail(f"Loi gan hang loat: {e}")
+
+    def list_students_admin(self, search: str = "", page: int = 1, page_size: int = 100):
+        """
+        Danh sách học sinh kèm reserve_group hiện tại, cho tab quản lý.
+        CÓ PHÂN TRANG (trước đây LIMIT 100 cứng khiến trường >100 học
+        sinh bị ẩn âm thầm không báo). Trả kèm total/total_pages để UI
+        vẽ nút điều hướng trang.
+        """
+        try:
+            page = max(1, int(page))
+            page_size = max(1, min(int(page_size), 500))
+            offset = (page - 1) * page_size
+
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+
+            where_clause = ""
+            params: tuple = ()
+            if search:
+                where_clause = " WHERE student_id LIKE ? OR name LIKE ?"
+                params = (f"%{search}%", f"%{search}%")
+
+            total = cur.execute(
+                f"SELECT COUNT(*) FROM students{where_clause}", params
+            ).fetchone()[0]
+
+            rows = cur.execute(
+                f"SELECT student_id, name, reserve_group FROM students{where_clause} "
+                "ORDER BY student_id LIMIT ? OFFSET ?",
+                params + (page_size, offset),
+            ).fetchall()
+            conn.close()
+
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            return _ok({
+                "rows": [dict(r) for r in rows],
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": total_pages,
+            })
+        except Exception as e:
+            return _fail(f"Loi doc danh sach hoc sinh: {e}")
+
+    # -----------------------------------------------------------------
+    # TAB "NHẬP DỰ PHÒNG" (kiosk fallback entry)
+    # -----------------------------------------------------------------
+
+    def list_clubs(self):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute(
+                "SELECT club_id, name, capacity, reserve_capacity FROM clubs ORDER BY club_id"
+            ).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi doc danh sach club: {e}")
+
+    def search_students(self, query: str):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute(
+                "SELECT student_id, name FROM students "
+                "WHERE student_id LIKE ? OR name LIKE ? LIMIT 20",
+                (f"%{query}%", f"%{query}%"),
+            ).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(f"Loi tim hoc sinh: {e}")
+
+    def get_student_entry_state(self, student_id: str):
+        """
+        Trạng thái nhập liệu hiện tại của 1 học sinh — dùng để tab
+        'Nhập dự phòng' hiển thị lại nếu học sinh quay lại kiosk.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            student = cur.execute(
+                "SELECT student_id, name FROM students WHERE student_id = ?",
+                (student_id,),
+            ).fetchone()
+            if not student:
+                conn.close()
+                return _fail(f"Khong tim thay hoc sinh {student_id}")
+
+            tested = [
+                r["club_id"]
+                for r in cur.execute(
+                    "SELECT club_id FROM club_test_selection WHERE student_id = ?",
+                    (student_id,),
+                ).fetchall()
+            ]
+            prefs = [
+                r["club_id"]
+                for r in cur.execute(
+                    "SELECT club_id FROM preferences WHERE student_id = ? ORDER BY rank",
+                    (student_id,),
+                ).fetchall()
+            ]
+            conn.close()
+            return _ok({
+                "student_id": student["student_id"],
+                "name": student["name"],
+                "tested_clubs": tested,
+                "ranked_clubs": prefs,
+            })
+        except Exception as e:
+            return _fail(f"Loi doc trang thai hoc sinh: {e}")
+
+    def submit_test_selection(self, student_id: str, club_ids: list):
+        """
+        BƯỚC 1 (độc lập với xếp hạng) — tick-box club muốn thi/xét.
+        Ghi đè toàn bộ lựa chọn cũ của học sinh này.
+        """
+        try:
+            if not isinstance(club_ids, list):
+                return _fail("club_ids phai la list")
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return _fail(f"Hoc sinh {student_id} khong ton tai")
+
+            invalid = [
+                cid for cid in club_ids
+                if not cur.execute(
+                    "SELECT 1 FROM clubs WHERE club_id = ?", (cid,)
+                ).fetchone()
+            ]
+            if invalid:
+                conn.close()
+                return _fail(f"Club khong ton tai: {invalid}")
+
+            cur.execute(
+                "DELETE FROM club_test_selection WHERE student_id = ?", (student_id,)
+            )
+            cur.executemany(
+                "INSERT INTO club_test_selection (student_id, club_id) VALUES (?, ?)",
+                [(student_id, cid) for cid in club_ids],
+            )
+            conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "n_selected": len(club_ids)})
+        except Exception as e:
+            return _fail(f"Loi ghi lua chon thi: {e}")
+
+    def submit_preferences(self, student_id: str, ordered_club_ids: list):
+        """
+        BƯỚC 2 (độc lập với tick-box thi) — xếp hạng nguyện vọng,
+        tối đa 10 club (giới hạn Microsoft Forms Ranking, giữ đồng
+        bộ với luồng nhập chính).
+        """
+        try:
+            if not isinstance(ordered_club_ids, list):
+                return _fail("ordered_club_ids phai la list")
+            if len(ordered_club_ids) == 0:
+                return _fail("Phai xep hang it nhat 1 nguyen vong")
+            if len(ordered_club_ids) > 10:
+                return _fail("Toi da 10 nguyen vong")
+            if len(ordered_club_ids) != len(set(ordered_club_ids)):
+                return _fail("Danh sach nguyen vong co club trung lap")
+
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return _fail(f"Hoc sinh {student_id} khong ton tai")
+
+            invalid = [
+                cid for cid in ordered_club_ids
+                if not cur.execute(
+                    "SELECT 1 FROM clubs WHERE club_id = ?", (cid,)
+                ).fetchone()
+            ]
+            if invalid:
+                conn.close()
+                return _fail(f"Club khong ton tai: {invalid}")
+
+            cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
+            cur.executemany(
+                "INSERT INTO preferences (student_id, club_id, rank) VALUES (?, ?, ?)",
+                [(student_id, cid, i + 1) for i, cid in enumerate(ordered_club_ids)],
+            )
+            conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "n_ranked": len(ordered_club_ids)})
+        except Exception as e:
+            return _fail(f"Loi ghi nguyen vong: {e}")
+
+    def create_student_if_missing(self, student_id: str, name: str):
+        """Kiosk fallback: nếu học sinh chưa có trong students, tạo mới (chưa có STB)."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                cur.execute(
+                    "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                    "VALUES (?, ?, NULL, NULL)",
+                    (student_id, name),
+                )
+                conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "created": not exists})
+        except Exception as e:
+            return _fail(f"Loi tao hoc sinh: {e}")
+
+    def reset_student_entry(self, student_id: str):
+        """
+        Nút 'Sửa lại từ đầu' — xoá lựa chọn thi (Bước 1) và nguyện vọng
+        (Bước 2) hiện tại của học sinh để nhập lại từ đầu tại kiosk.
+        KHÔNG xoá bản ghi học sinh (giữ nguyên student_id/tên/STB/reserve_group).
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return _fail(f"Hoc sinh {student_id} khong ton tai")
+            cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (student_id,))
+            cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
+            conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "reset": True})
+        except Exception as e:
+            return _fail(f"Loi xoa lua chon de nhap lai: {e}")
+
+    def delete_student(self, student_id: str):
+        """
+        Nút 'Xoá học sinh' — xoá hẳn học sinh khỏi hệ thống (dùng khi
+        tạo nhầm mã / trùng học sinh tại kiosk). CHẶN nếu học sinh đã
+        có mặt trong match_results (đã qua lần chạy pipeline gần nhất)
+        để tránh làm lệch thống kê lấp đầy club và mất dấu kiểm toán —
+        phải chạy lại pipeline (hoặc xử lý ở tab Quản lý) trước.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cur = conn.cursor()
+            exists = cur.execute(
+                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not exists:
+                conn.close()
+                return _fail(f"Hoc sinh {student_id} khong ton tai")
+            n_matches = cur.execute(
+                "SELECT COUNT(*) FROM match_results WHERE student_id = ?", (student_id,)
+            ).fetchone()[0]
+            if n_matches > 0:
+                conn.close()
+                return _fail(
+                    f"Khong the xoa: hoc sinh {student_id} da co trong ket qua cua "
+                    "lan chay pipeline gan nhat. Hay chay lai pipeline sau khi xu ly."
+                )
+            cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (student_id,))
+            cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
+            cur.execute("DELETE FROM club_scores WHERE student_id = ?", (student_id,))
+            cur.execute("DELETE FROM students WHERE student_id = ?", (student_id,))
+            conn.commit()
+            conn.close()
+            return _ok({"student_id": student_id, "deleted": True})
+        except Exception as e:
+            return _fail(f"Loi xoa hoc sinh: {e}")
