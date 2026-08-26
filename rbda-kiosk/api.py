@@ -140,6 +140,154 @@ class PipelineAPI:
         except Exception as e:
             return _fail([err("error_checking_integrity", detail=str(e)), traceback.format_exc()])
 
+    # -----------------------------------------------------------------
+    # KIỂM TRA SỨC KHOẺ DỮ LIỆU (pre-flight)
+    #
+    # validate_data_integrity() chỉ bắt dữ liệu KHÔNG HỢP LỆ (club không
+    # tồn tại, capacity <= 0, nguyện vọng trùng…). Nhưng có cả một nhóm
+    # tình huống mà dữ liệu VẪN HỢP LỆ, pipeline VẪN CHẠY, kết quả VẪN
+    # trông bình thường — trong khi ai được vào club đã bị thay đổi bởi
+    # một thiếu sót mà người vận hành không hề thấy. Ví dụ nguy hiểm nhất:
+    # giáo viên mới chấm được một nửa danh sách, nửa còn lại lập tức bị
+    # xếp dưới TOÀN BỘ các em đã có điểm — kể cả em thấp điểm nhất.
+    #
+    # Hàm này liệt kê đúng nhóm đó dưới dạng CẢNH BÁO (không phải lỗi):
+    # không chặn chạy pipeline, nhưng bắt buộc phải hiện ra trước mắt
+    # người vận hành để họ tự quyết định.
+    # -----------------------------------------------------------------
+
+    _HEALTH_SAMPLE_LIMIT = 5
+
+    def get_data_health_report(self):
+        """
+        Rà soát các thiếu sót dữ liệu ÂM THẦM LÀM ĐỔI KẾT QUẢ.
+        Trả về {"warnings": [...], "n_warnings": int, "n_high": int} —
+        mỗi cảnh báo là {code, params, severity} với severity là
+        "high" (gần như chắc chắn làm sai kết quả) hoặc "medium"/"info".
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            warnings = []
+
+            def warn(severity, code, **params):
+                entry = err(code, **params)
+                entry["severity"] = severity
+                warnings.append(entry)
+
+            # --- 1. Chấm điểm thiếu / chưa chấm ---------------------------
+            for row in cur.execute("""
+                SELECT c.club_id,
+                       COUNT(DISTINCT t.student_id) AS n_applicants,
+                       COUNT(DISTINCT sc.student_id) AS n_scored
+                FROM clubs c
+                JOIN club_test_selection t ON t.club_id = c.club_id
+                LEFT JOIN club_scores sc
+                       ON sc.club_id = c.club_id AND sc.student_id = t.student_id
+                GROUP BY c.club_id
+                ORDER BY c.club_id
+            """).fetchall():
+                n_app, n_scored = row["n_applicants"], row["n_scored"]
+                if n_app == 0:
+                    continue
+                if n_scored == 0:
+                    warn("high", "health_scoring_none",
+                         club_id=row["club_id"], n_applicants=n_app)
+                elif n_scored < n_app:
+                    warn("high", "health_scoring_partial",
+                         club_id=row["club_id"], n_applicants=n_app,
+                         n_scored=n_scored, n_missing=n_app - n_scored)
+
+            # --- 2. Đăng ký thi nhưng không xếp nguyện vọng club đó -------
+            wasted = cur.execute("""
+                SELECT t.student_id, t.club_id
+                FROM club_test_selection t
+                LEFT JOIN preferences p
+                       ON p.student_id = t.student_id AND p.club_id = t.club_id
+                WHERE p.student_id IS NULL
+                ORDER BY t.student_id, t.club_id
+            """).fetchall()
+            if wasted:
+                sample = ", ".join(
+                    f"{r['student_id']}→{r['club_id']}"
+                    for r in wasted[:self._HEALTH_SAMPLE_LIMIT]
+                )
+                warn("high", "health_tested_not_ranked",
+                     n=len(wasted), sample=sample)
+
+            # --- 3. Học sinh chưa xếp nguyện vọng nào ---------------------
+            no_pref = cur.execute("""
+                SELECT s.student_id FROM students s
+                LEFT JOIN preferences p ON p.student_id = s.student_id
+                WHERE p.student_id IS NULL
+                ORDER BY s.student_id
+            """).fetchall()
+            if no_pref:
+                warn("medium", "health_student_no_preferences",
+                     n=len(no_pref),
+                     sample=", ".join(r["student_id"] for r in no_pref[:self._HEALTH_SAMPLE_LIMIT]))
+
+            # --- 4. Nhãn dự trữ của học sinh mà không club nào dùng -------
+            for row in cur.execute("""
+                SELECT s.reserve_group AS g, COUNT(*) AS n
+                FROM students s
+                WHERE s.reserve_group IS NOT NULL AND TRIM(s.reserve_group) <> ''
+                  AND s.reserve_group NOT IN (
+                      SELECT reserve_group FROM clubs
+                      WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                  )
+                GROUP BY s.reserve_group ORDER BY s.reserve_group
+            """).fetchall():
+                warn("high", "health_orphan_student_group",
+                     reserve_group=row["g"], n=row["n"])
+
+            # --- 5. Club có suất dự trữ nhưng chưa đặt nhãn ---------------
+            for row in cur.execute("""
+                SELECT club_id, reserve_capacity FROM clubs
+                WHERE reserve_capacity > 0
+                  AND (reserve_group IS NULL OR TRIM(reserve_group) = '')
+                ORDER BY club_id
+            """).fetchall():
+                warn("high", "health_club_reserve_no_group",
+                     club_id=row["club_id"], reserve_capacity=row["reserve_capacity"])
+
+            # --- 6. Club dành suất cho nhãn chưa học sinh nào mang --------
+            for row in cur.execute("""
+                SELECT club_id, reserve_group, reserve_capacity FROM clubs
+                WHERE reserve_capacity > 0
+                  AND reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                  AND reserve_group NOT IN (
+                      SELECT reserve_group FROM students
+                      WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                  )
+                ORDER BY club_id
+            """).fetchall():
+                warn("medium", "health_club_group_no_students",
+                     club_id=row["club_id"], reserve_group=row["reserve_group"],
+                     reserve_capacity=row["reserve_capacity"])
+
+            # --- 7. Tổng chỗ ít hơn số học sinh đã nộp nguyện vọng --------
+            n_seats = cur.execute(
+                "SELECT COALESCE(SUM(capacity), 0) FROM clubs"
+            ).fetchone()[0]
+            n_with_prefs = cur.execute(
+                "SELECT COUNT(DISTINCT student_id) FROM preferences"
+            ).fetchone()[0]
+            if n_with_prefs > n_seats:
+                warn("info", "health_oversubscribed",
+                     n_seats=n_seats, n_students=n_with_prefs,
+                     n_short=n_with_prefs - n_seats)
+
+            conn.close()
+            return _ok({
+                "warnings": warnings,
+                "n_warnings": len(warnings),
+                "n_high": sum(1 for w in warnings if w["severity"] == "high"),
+            })
+        except Exception as e:
+            return _fail(err("error_checking_integrity", detail=str(e)))
+
     def get_pipeline_run_warning(self):
         """
         Gọi TRƯỚC khi hiện hộp xác nhận 'Chạy pipeline' (bước 1 trong xác

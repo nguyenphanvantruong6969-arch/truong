@@ -307,6 +307,43 @@ MESSAGES = {
         "vi": "{student_id}: điểm '{score}' không phải số",
         "en": "{student_id}: score '{score}' is not a number",
     },
+
+    # --- CẢNH BÁO SỨC KHOẺ DỮ LIỆU (get_data_health_report) ---
+    # Đây KHÔNG phải lỗi — dữ liệu vẫn hợp lệ và pipeline vẫn chạy được.
+    # Nhưng mỗi mục dưới đây đều làm KẾT QUẢ THAY ĐỔI theo cách người vận
+    # hành không nhìn thấy, nên phải cảnh báo TRƯỚC khi chạy.
+    "health_scoring_none": {
+        "vi": "Club {club_id}: có {n_applicants} học sinh đăng ký thi nhưng CHƯA CHẤM ĐIỂM AI. Toàn bộ các em này sẽ rơi xuống Tầng 2 và chỉ được xét bằng số bốc thăm — vòng thi coi như không có tác dụng.",
+        "en": "Club {club_id}: {n_applicants} student(s) registered for the tryout but NOBODY has been scored. All of them drop to Tier 2 and will be decided by lottery only — the tryout will have no effect.",
+    },
+    "health_scoring_partial": {
+        "vi": "Club {club_id}: mới chấm {n_scored}/{n_applicants} học sinh. {n_missing} em chưa có điểm sẽ bị xếp dưới TẤT CẢ các em đã có điểm, kể cả em điểm thấp nhất.",
+        "en": "Club {club_id}: only {n_scored} of {n_applicants} scored. The {n_missing} unscored student(s) will rank below EVERY scored student, including the lowest-scoring one.",
+    },
+    "health_tested_not_ranked": {
+        "vi": "{n} lượt đăng ký thi sẽ bị bỏ phí: học sinh đã đăng ký thi một club nhưng không xếp club đó vào nguyện vọng, nên dù điểm cao vẫn không thể được xếp vào đó. Ví dụ: {sample}",
+        "en": "{n} tryout registration(s) will be wasted: the student registered to test for a club but did not rank it, so no matter how well they score they cannot be placed there. For example: {sample}",
+    },
+    "health_student_no_preferences": {
+        "vi": "{n} học sinh chưa xếp nguyện vọng nào — các em này chắc chắn không được xếp vào club nào. Ví dụ: {sample}",
+        "en": "{n} student(s) have not ranked any preference — they cannot be placed in any club. For example: {sample}",
+    },
+    "health_orphan_student_group": {
+        "vi": "Nhãn dự trữ \"{reserve_group}\" đang gán cho {n} học sinh nhưng KHÔNG club nào dùng nhãn này. Các em đó sẽ không được ưu tiên ở đâu cả — kiểm tra xem có gõ sai chính tả không.",
+        "en": "Reserve label \"{reserve_group}\" is assigned to {n} student(s) but NO club uses it. Those students get no priority anywhere — check for a typo.",
+    },
+    "health_club_reserve_no_group": {
+        "vi": "Club {club_id} có {reserve_capacity} suất dự trữ nhưng chưa đặt nhãn dự trữ. Các suất này sẽ âm thầm chuyển thành suất phổ thông.",
+        "en": "Club {club_id} has {reserve_capacity} reserve seat(s) but no reserve label set. Those seats will silently become general seats.",
+    },
+    "health_club_group_no_students": {
+        "vi": "Club {club_id} dành {reserve_capacity} suất cho nhãn \"{reserve_group}\", nhưng chưa học sinh nào mang nhãn đó. Suất dự trữ sẽ không dùng đến.",
+        "en": "Club {club_id} reserves {reserve_capacity} seat(s) for label \"{reserve_group}\", but no student carries that label. The reserve seats will go unused.",
+    },
+    "health_oversubscribed": {
+        "vi": "Tổng chỗ toàn hệ thống là {n_seats}, trong khi có {n_students} học sinh đã nộp nguyện vọng. Ít nhất {n_short} em chắc chắn không có chỗ.",
+        "en": "Total seats across all clubs is {n_seats}, but {n_students} student(s) have submitted preferences. At least {n_short} student(s) cannot be placed.",
+    },
 }
 
 

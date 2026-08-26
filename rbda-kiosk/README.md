@@ -58,6 +58,36 @@ bấm — bấm tiếp sẽ xoá NGAY không cảnh báo). Tương tự, thanh x
 ngữ thay vì hiển thị sai ngôn ngữ — người dùng bấm "Chạy pipeline" lại
 để có thanh xác nhận mới đúng ngôn ngữ hiện tại.
 
+## Cảnh báo sức khoẻ dữ liệu (pre-flight)
+
+`validate_data_integrity()` chỉ bắt dữ liệu **không hợp lệ**. Nhưng có cả
+một nhóm tình huống mà dữ liệu **vẫn hợp lệ**, pipeline **vẫn chạy**, kết
+quả **vẫn trông bình thường** — trong khi ai được vào club đã bị đổi bởi
+một thiếu sót người vận hành không nhìn thấy. Đã kiểm chứng bằng thực
+nghiệm: cả 6 tình huống dưới đây trước đây đều **im lặng hoàn toàn**.
+
+Ví dụ nguy hiểm nhất: giáo viên mới chấm 1/3 danh sách → em được 4.0 điểm
+chiếm chắc một suất, còn 2 em chưa chấm bị đẩy xuống Tầng 2 và chỉ được
+xét bằng số bốc thăm. Kết quả trông hoàn toàn bình thường.
+
+`get_data_health_report()` rà soát và hiện các cảnh báo này **ngay phía
+trên nút "Chạy pipeline"**, phân theo 3 mức (Nghiêm trọng / Cần lưu ý /
+Thông tin), sắp xếp nghiêm trọng lên trước:
+
+| # | Tình huống | Hậu quả âm thầm | Mức |
+|---|---|---|---|
+| 1 | Club có người đăng ký thi nhưng **chưa chấm ai** | Cả club rơi xuống Tầng 2, vòng thi vô nghĩa | Nghiêm trọng |
+| 2 | **Chấm dở dang** (mới chấm một phần) | Em chưa chấm bị xếp dưới cả em thấp điểm nhất | Nghiêm trọng |
+| 3 | **Thi nhưng không xếp nguyện vọng** club đó | Điểm bị bỏ phí, không bao giờ được xếp vào đó | Nghiêm trọng |
+| 4 | Nhãn dự trữ của học sinh **không club nào dùng** (gõ sai) | Học sinh mất quyền ưu tiên ở mọi nơi | Nghiêm trọng |
+| 5 | Club có suất dự trữ nhưng **chưa đặt nhãn** | Suất dự trữ âm thầm thành suất phổ thông | Nghiêm trọng |
+| 6 | Học sinh **chưa xếp nguyện vọng nào** | Chắc chắn không được xếp vào đâu | Cần lưu ý |
+| 7 | Club dành suất cho nhãn **chưa ai mang** | Suất dự trữ không dùng đến | Cần lưu ý |
+| 8 | **Tổng chỗ ít hơn số học sinh** | Ít nhất N em chắc chắn không có chỗ | Thông tin |
+
+Đây là **cảnh báo, không phải lỗi** — không chặn chạy pipeline, chỉ bắt
+buộc hiện ra để người vận hành tự quyết định.
+
 ## Chạy test tự động
 
 ```bash
@@ -99,8 +129,21 @@ python3 -m pytest tests/ -v
   JS (`i18n.js`) khớp tuyệt đối với catalog Python (`i18n_errors.py`);
   `UI_STRINGS.vi`/`UI_STRINGS.en` trong `i18n.js` có đúng cùng 1 tập
   key; mọi key `data-i18n`/`data-i18n-placeholder`/`data-i18n-html`
-  dùng trong `index.html` đều tồn tại trong `UI_STRINGS`. **Tổng cộng
-  cả 3 file: 42 test, tất cả pass.**
+  dùng trong `index.html` đều tồn tại trong `UI_STRINGS`.
+- **Cảnh báo dữ liệu (`tests/test_data_health.py`, 14 test case):** mỗi
+  trong 8 tình huống ở bảng trên đều được bắt đúng mã cảnh báo, đúng
+  mức nghiêm trọng và đúng tham số; kèm các test **đối chứng âm** (dữ
+  liệu sạch, DB rỗng, đã chấm đủ, nhãn dự trữ khớp, đủ chỗ → tuyệt đối
+  không cảnh báo, tránh "báo động giả"); và 1 test xác nhận mọi cảnh
+  báo phát ra đều dịch được sang cả 2 ngôn ngữ, không sót placeholder.
+  **Tổng cộng cả 4 file: 62 test, tất cả pass.**
+- **Kiểm thử ngẫu nhiên diện rộng:** 400 kịch bản sinh ngẫu nhiên (đủ
+  loại quy mô, sức chứa, tỉ lệ dự trữ, tỉ lệ có điểm) — cả 400 đều
+  không vi phạm bất biến nào và không tồn tại cặp phá vỡ nào. Ngoài ra
+  đã kiểm chứng riêng: cùng seed cho kết quả y hệt (tái lập được), khoá
+  STB giữ nguyên kết quả đã công bố kể cả khi chạy lại với seed khác,
+  và điểm chấm thắng số bốc thăm đúng như thiết kế (điểm khác nhau →
+  seed không đổi kết quả; điểm bằng nhau → seed quyết định).
 - `app.js`/`i18n.js`: `node --check` xác nhận không lỗi cú pháp; toàn
   bộ tên hàm `callApi("...")` đối chiếu khớp 1-1 với hàm public trong
   `PipelineAPI`, và toàn bộ id DOM dùng trong `el(...)` đều tồn tại

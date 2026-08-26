@@ -97,6 +97,20 @@
 
       <div class="panel">
         <div class="panel-head">
+          <h2 data-i18n="health_panel_title">Cảnh báo dữ liệu</h2>
+          <div class="panel-actions">
+            <button class="btn btn-ghost" id="btnHealthRecheck" data-i18n="btn_health_recheck">Kiểm tra lại</button>
+          </div>
+        </div>
+        <p class="hint-text" data-i18n="health_panel_hint">
+          Những thiếu sót vẫn cho pipeline chạy được, nhưng âm thầm làm đổi kết quả. Kiểm tra trước khi chạy.
+        </p>
+        <div id="healthSummary" class="health-summary"></div>
+        <div id="healthList" class="health-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
           <h2 data-i18n="steps_panel_title">5 bước xử lý</h2>
           <div class="panel-actions">
             <label class="seed-input-wrap">

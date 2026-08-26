@@ -862,6 +862,67 @@ button, input {
 }
 
 /* ============================================================
+   CẢNH BÁO SỨC KHOẺ DỮ LIỆU (pre-flight)
+   ============================================================ */
+
+.health-summary {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.health-summary.is-clean { color: var(--moss); }
+.health-summary.is-warn { color: var(--rust); }
+
+.health-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.health-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--hairline);
+  background: var(--paper);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.health-item.sev-high {
+  border-left-color: var(--rust);
+  background: var(--rust-soft);
+}
+
+.health-item.sev-medium {
+  border-left-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.health-item.sev-info {
+  border-left-color: var(--slate);
+}
+
+.health-sev {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.health-item.sev-high .health-sev { color: var(--rust); }
+.health-item.sev-medium .health-sev { color: #8A5E12; }
+.health-item.sev-info .health-sev { color: var(--slate); }
+
+/* ============================================================
    NHẬP CSV TỪ MICROSOFT FORMS
    ============================================================ */
 

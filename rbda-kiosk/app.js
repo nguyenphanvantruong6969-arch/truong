@@ -194,6 +194,56 @@
     refreshDashboardStats();
     refreshStbLockLine();
     refreshSidebarStatus();
+    loadHealthReport();
+  }
+
+  /* ---- Cảnh báo sức khoẻ dữ liệu (pre-flight) ---- */
+
+  function loadHealthReport() {
+    callApi("get_data_health_report").then((res) => {
+      const summary = el("healthSummary");
+      const list = el("healthList");
+      clear(list);
+
+      if (!res.ok) {
+        summary.className = "health-summary is-warn";
+        summary.textContent = trErrs(res.errors).join("; ");
+        return;
+      }
+
+      const d = res.data;
+      if (!d.n_warnings) {
+        summary.className = "health-summary is-clean";
+        summary.textContent = t("health_clean");
+        return;
+      }
+
+      summary.className = "health-summary is-warn";
+      summary.textContent = t("health_summary", { n: d.n_warnings, n_high: d.n_high });
+
+      const SEV_LABEL = {
+        high: "health_sev_high",
+        medium: "health_sev_medium",
+        info: "health_sev_info",
+      };
+      // nghiêm trọng lên trước — người vận hành đọc từ trên xuống
+      const order = { high: 0, medium: 1, info: 2 };
+      d.warnings
+        .slice()
+        .sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9))
+        .forEach((w) => {
+          const row = document.createElement("div");
+          row.className = "health-item sev-" + (w.severity || "info");
+          const sev = document.createElement("span");
+          sev.className = "health-sev";
+          sev.textContent = t(SEV_LABEL[w.severity] || "health_sev_info");
+          const msg = document.createElement("span");
+          msg.textContent = trErr(w);
+          row.appendChild(sev);
+          row.appendChild(msg);
+          list.appendChild(row);
+        });
+    });
   }
 
   function refreshDashboardStats() {
@@ -311,6 +361,8 @@
       table.hidden = !table.hidden;
       if (!table.hidden) loadRunHistory();
     });
+
+    el("btnHealthRecheck").addEventListener("click", () => loadHealthReport());
 
     initCsvImportHandlers();
   }
@@ -502,6 +554,7 @@
         warnBox.hidden = true;
       }
       refreshDashboardStats();
+      loadHealthReport(); // dữ liệu vừa đổi -> cảnh báo có thể đã khác
     });
   }
 
@@ -1091,6 +1144,7 @@
     if (tab === "pipeline") {
       refreshDashboardStats();
       refreshStbLockLine();
+      loadHealthReport();
       if (!el("historyTable").hidden) loadRunHistory();
     } else if (tab === "results") {
       loadResultsTab();
