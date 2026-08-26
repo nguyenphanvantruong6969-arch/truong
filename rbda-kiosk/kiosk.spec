@@ -28,6 +28,7 @@ datas = [
     ("index.html", "."),
     ("style.css", "."),
     ("app.js", "."),
+    ("i18n.js", "."),
     ("assets/fonts", "assets/fonts"),
 ]
 
