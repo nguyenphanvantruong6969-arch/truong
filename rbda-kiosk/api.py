@@ -6,9 +6,18 @@ từ JS qua window.pywebview.api.<ten_ham>(...) và luôn trả về dict
 (pywebview tự serialize JSON hai chiều).
 
 Quy ước trả về thống nhất cho mọi hàm:
-    { "ok": bool, "data": ..., "errors": [str, ...] }
+    { "ok": bool, "data": ..., "errors": [...] }
 Để JS chỉ cần check `.ok` là biết thành công hay không, không phải
 try/catch riêng lẻ từng hàm.
+
+Mỗi phần tử trong "errors" (và trong các danh sách "warnings" trả về
+kèm data khi ok=True) là MỘT trong hai dạng:
+  - chuỗi thô (vd traceback) — hiển thị nguyên văn, không dịch.
+  - {"code": "...", "params": {...}} — do err() ở i18n_errors.py tạo ra,
+    frontend tự dịch sang ngôn ngữ đang chọn (xem ERROR_MESSAGES trong
+    app.js, phải khớp với MESSAGES trong i18n_errors.py).
+Điều này cho phép app hỗ trợ song ngữ (vi/en) mà không cần Python biết
+người dùng đang chọn ngôn ngữ nào.
 """
 
 import csv
@@ -32,6 +41,7 @@ from rbda_priority_pipeline import (
     default_reserve_eligible_fn,
     write_match_results_to_sqlite,
 )
+from i18n_errors import err
 
 import sqlite3
 
@@ -46,6 +56,8 @@ def _ok(data=None):
 
 def _fail(errors):
     if isinstance(errors, str):
+        errors = [errors]
+    elif isinstance(errors, dict) and "code" in errors and "params" in errors:
         errors = [errors]
     return {"ok": False, "data": None, "errors": errors}
 
@@ -82,7 +94,7 @@ class PipelineAPI:
             conn.close()
             return _ok(dict(row) if row else None)
         except Exception as e:
-            return _fail(f"Loi doc thong tin lan chay gan nhat: {e}")
+            return _fail(err("error_reading_last_run", detail=str(e)))
 
     def get_dashboard_status(self):
         """Số liệu tổng quan để hiển thị ngay khi mở tab Pipeline."""
@@ -109,7 +121,7 @@ class PipelineAPI:
                 "has_results": has_results,
             })
         except Exception as e:
-            return _fail(f"Loi doc trang thai: {e}")
+            return _fail(err("error_reading_dashboard", detail=str(e)))
 
     def check_data_integrity(self):
         """Nút 'Kiểm tra dữ liệu' — chỉ validate, KHÔNG chạy pipeline."""
@@ -126,7 +138,7 @@ class PipelineAPI:
                 "n_clubs": len(clubs),
             })
         except Exception as e:
-            return _fail([f"Loi khi kiem tra: {e}", traceback.format_exc()])
+            return _fail([err("error_checking_integrity", detail=str(e)), traceback.format_exc()])
 
     def get_pipeline_run_warning(self):
         """
@@ -156,7 +168,7 @@ class PipelineAPI:
                 "last_run_seed": last_run[1] if last_run else None,
             })
         except Exception as e:
-            return _fail(f"Loi kiem tra trang thai truoc khi chay: {e}")
+            return _fail(err("error_checking_run_warning", detail=str(e)))
 
     def get_stb_lock_status(self):
         try:
@@ -174,7 +186,7 @@ class PipelineAPI:
                 "unlocked_at": row[2],
             })
         except Exception as e:
-            return _fail(f"Loi doc trang thai khoa STB: {e}")
+            return _fail(err("error_reading_stb_lock", detail=str(e)))
 
     def get_run_history(self, limit: int = 20):
         """Nhật ký toàn bộ các lần chạy pipeline, mới nhất trước — phục vụ kiểm toán."""
@@ -191,7 +203,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi doc nhat ky chay: {e}")
+            return _fail(err("error_reading_run_history", detail=str(e)))
 
     def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
         """
@@ -250,7 +262,7 @@ class PipelineAPI:
                     (_now(),),
                 )
                 stb_redrawn = True
-                stb_step_detail = f"Da ve moi STB cho {len(stb_lottery)} hoc sinh va khoa lai."
+                stb_step_detail = err("stb_redrawn_and_locked", n=len(stb_lottery))
             else:
                 # Da khoa: chi ve bo sung cho hoc sinh moi (stb_number con NULL)
                 missing = [
@@ -267,12 +279,9 @@ class PipelineAPI:
                         "UPDATE students SET stb_number = ? WHERE student_id = ?",
                         [(v + offset, k) for k, v in supplement.items()],
                     )
-                    stb_step_detail = (
-                        f"STB da khoa — giu nguyen so cu, chi ve bo sung cho "
-                        f"{len(missing)} hoc sinh moi chua co so."
-                    )
+                    stb_step_detail = err("stb_supplemented", n=len(missing))
                 else:
-                    stb_step_detail = "STB da khoa — tai su dung toan bo so cu, khong ve lai."
+                    stb_step_detail = err("stb_reused")
             conn.commit()
             conn.close()
             steps_log.append({"step": "stb_lottery", "status": "done", "detail": stb_step_detail})
@@ -298,7 +307,7 @@ class PipelineAPI:
                 return _fail({"steps": steps_log, "errors": sanity_problems + stability_problems})
             steps_log.append({
                 "step": "rbda_cascade", "status": "done",
-                "detail": f"{result.rounds_run} vong lap, khong loi",
+                "detail": err("rbda_done", rounds=result.rounds_run),
             })
 
             steps_log.append({"step": "write_results", "status": "running"})
@@ -341,8 +350,9 @@ class PipelineAPI:
                 "stb_redrawn": stb_redrawn,
             })
         except Exception as e:
-            steps_log.append({"step": "unknown", "status": "error", "detail": str(e)})
-            return _fail({"steps": steps_log, "errors": [str(e), traceback.format_exc()]})
+            error_entry = err("error_running_pipeline", detail=str(e))
+            steps_log.append({"step": "unknown", "status": "error", "detail": error_entry})
+            return _fail({"steps": steps_log, "errors": [error_entry, traceback.format_exc()]})
 
     # -----------------------------------------------------------------
     # NHẬP DỮ LIỆU TỪ MICROSOFT FORMS (CSV đã chuẩn hoá bởi
@@ -392,7 +402,7 @@ class PipelineAPI:
         try:
             fieldnames, rows = self._parse_csv_rows(csv_text)
             if not rows:
-                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+                return _fail(err("csv_empty"))
 
             is_wide = any(f.startswith("pref_") or f.startswith("test_club_") for f in fieldnames)
             fmt = "wide" if is_wide else "long"
@@ -414,7 +424,7 @@ class PipelineAPI:
                 "sample_row": rows[0] if rows else None,
             })
         except Exception as e:
-            return _fail(f"Loi doc truoc CSV: {e}")
+            return _fail(err("error_reading_csv_preview", detail=str(e)))
 
     def import_preferences_csv(self, csv_text: str, create_missing_students: bool = True):
         """
@@ -426,7 +436,7 @@ class PipelineAPI:
         try:
             fieldnames, rows = self._parse_csv_rows(csv_text)
             if not rows:
-                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+                return _fail(err("csv_empty"))
 
             is_wide = any(f.startswith("pref_") for f in fieldnames)
 
@@ -445,10 +455,7 @@ class PipelineAPI:
                     grouped[sid] = (row.get("name", ""), ordered)
             else:
                 if "student_id" not in fieldnames or "club_id" not in fieldnames:
-                    return _fail(
-                        "CSV dang 'dai' can co cot student_id va club_id "
-                        f"(cot hien co: {fieldnames})"
-                    )
+                    return _fail(err("csv_missing_columns", fieldnames=fieldnames))
                 has_rank = "rank" in fieldnames
                 by_sid_rows: dict = {}
                 for row in rows:
@@ -479,22 +486,22 @@ class PipelineAPI:
                         seen.add(cid)
                         deduped.append(cid)
                 if len(deduped) != len(ordered_clubs):
-                    row_errors.append(f"{sid}: co club trung lap trong nguyen vong, da tu dong loai bo trung.")
+                    row_errors.append(err("csv_pref_duplicate_deduped", student_id=sid))
 
                 if len(deduped) > 10:
-                    row_errors.append(f"{sid}: co {len(deduped)} nguyen vong (>10), CHUA nhap — bo qua hoc sinh nay.")
+                    row_errors.append(err("csv_pref_too_many_skipped", student_id=sid, count=len(deduped)))
                     n_skipped += 1
                     continue
 
                 invalid_clubs = [c for c in deduped if c not in valid_club_ids]
                 if invalid_clubs:
-                    row_errors.append(f"{sid}: club khong ton tai {invalid_clubs} — bo qua hoc sinh nay.")
+                    row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
                     n_skipped += 1
                     continue
 
                 if sid not in existing_students:
                     if not create_missing_students:
-                        row_errors.append(f"{sid}: chua co trong he thong, bo qua (create_missing_students=False).")
+                        row_errors.append(err("csv_student_missing_skipped", student_id=sid))
                         n_skipped += 1
                         continue
                     cur.execute(
@@ -527,7 +534,7 @@ class PipelineAPI:
                 "warnings": row_errors,
             })
         except Exception as e:
-            return _fail([f"Loi nhap CSV nguyen vong: {e}", traceback.format_exc()])
+            return _fail([err("error_importing_preferences_csv", detail=str(e)), traceback.format_exc()])
 
     def import_test_selection_csv(self, csv_text: str, create_missing_students: bool = True):
         """
@@ -538,7 +545,7 @@ class PipelineAPI:
         try:
             fieldnames, rows = self._parse_csv_rows(csv_text)
             if not rows:
-                return _fail("File CSV rong hoac khong doc duoc dong nao.")
+                return _fail(err("csv_empty"))
 
             is_wide = any(f.startswith("test_club_") for f in fieldnames)
 
@@ -553,10 +560,7 @@ class PipelineAPI:
                     grouped[sid] = (row.get("name", ""), selected)
             else:
                 if "student_id" not in fieldnames or "club_id" not in fieldnames:
-                    return _fail(
-                        "CSV dang 'dai' can co cot student_id va club_id "
-                        f"(cot hien co: {fieldnames})"
-                    )
+                    return _fail(err("csv_missing_columns", fieldnames=fieldnames))
                 for row in rows:
                     sid = row.get("student_id")
                     if not sid or not row.get("club_id"):
@@ -576,13 +580,13 @@ class PipelineAPI:
                 deduped = sorted(set(club_ids), key=club_ids.index)
                 invalid_clubs = [c for c in deduped if c not in valid_club_ids]
                 if invalid_clubs:
-                    row_errors.append(f"{sid}: club khong ton tai {invalid_clubs} — bo qua hoc sinh nay.")
+                    row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
                     n_skipped += 1
                     continue
 
                 if sid not in existing_students:
                     if not create_missing_students:
-                        row_errors.append(f"{sid}: chua co trong he thong, bo qua (create_missing_students=False).")
+                        row_errors.append(err("csv_student_missing_skipped", student_id=sid))
                         n_skipped += 1
                         continue
                     cur.execute(
@@ -615,7 +619,7 @@ class PipelineAPI:
                 "warnings": row_errors,
             })
         except Exception as e:
-            return _fail([f"Loi nhap CSV chon club thi: {e}", traceback.format_exc()])
+            return _fail([err("error_importing_test_selection_csv", detail=str(e)), traceback.format_exc()])
 
     # -----------------------------------------------------------------
     # CHẤM ĐIỂM MÙ (blind scoring) — trước đây club_scores chỉ được
@@ -645,7 +649,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi doc tong quan cham diem: {e}")
+            return _fail(err("error_reading_scoring_overview", detail=str(e)))
 
     def get_club_applicants_for_scoring(self, club_id: str):
         """
@@ -662,7 +666,7 @@ class PipelineAPI:
             ).fetchone()
             if not club:
                 conn.close()
-                return _fail(f"Club {club_id} khong ton tai")
+                return _fail(err("club_not_found", club_id=club_id))
             rows = cur.execute("""
                 SELECT s.student_id, s.name, sc.score
                 FROM club_test_selection t
@@ -678,7 +682,7 @@ class PipelineAPI:
                 "applicants": [dict(r) for r in rows],
             })
         except Exception as e:
-            return _fail(f"Loi doc danh sach cham diem: {e}")
+            return _fail(err("error_reading_scoring_list", detail=str(e)))
 
     def submit_club_scores(self, club_id: str, scores: list):
         """
@@ -688,7 +692,7 @@ class PipelineAPI:
         """
         try:
             if not isinstance(scores, list) or not scores:
-                return _fail("scores phai la list khong rong")
+                return _fail(err("scores_must_be_nonempty_list"))
 
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
@@ -697,7 +701,7 @@ class PipelineAPI:
             ).fetchone()
             if not club_exists:
                 conn.close()
-                return _fail(f"Club {club_id} khong ton tai")
+                return _fail(err("club_not_found", club_id=club_id))
 
             valid_applicants = {
                 r[0] for r in cur.execute(
@@ -711,7 +715,7 @@ class PipelineAPI:
                 sid = entry.get("student_id")
                 score = entry.get("score")
                 if sid not in valid_applicants:
-                    skipped.append(f"{sid}: khong nam trong danh sach thi/xet club nay")
+                    skipped.append(err("score_not_applicant", student_id=sid))
                     continue
                 if score is None or score == "":
                     # cho phep xoa diem (bo trong o) bang cach xoa ban ghi
@@ -723,7 +727,7 @@ class PipelineAPI:
                 try:
                     score = float(score)
                 except (TypeError, ValueError):
-                    skipped.append(f"{sid}: diem '{score}' khong phai so")
+                    skipped.append(err("score_not_a_number", student_id=sid, score=score))
                     continue
                 cur.execute(
                     "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
@@ -736,7 +740,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"club_id": club_id, "n_saved": n_saved, "warnings": skipped})
         except Exception as e:
-            return _fail(f"Loi luu diem: {e}")
+            return _fail(err("error_saving_scores", detail=str(e)))
 
     # -----------------------------------------------------------------
     # TAB "KẾT QUẢ"
@@ -764,7 +768,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi doc ket qua: {e}")
+            return _fail(err("error_reading_results", detail=str(e)))
 
     def get_club_fill_stats(self):
         """Tỉ lệ lấp đầy mỗi club — dùng vẽ thanh progress bar."""
@@ -783,7 +787,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi doc thong ke club: {e}")
+            return _fail(err("error_reading_club_stats", detail=str(e)))
 
     def export_csv(self, output_path: str):
         try:
@@ -800,7 +804,7 @@ class PipelineAPI:
                     w.writerow([r["student_id"], r["club_id"] or ""])
             return _ok({"path": output_path, "n_rows": len(rows)})
         except Exception as e:
-            return _fail(f"Loi xuat CSV: {e}")
+            return _fail(err("error_exporting_csv", detail=str(e)))
 
     # -----------------------------------------------------------------
     # TAB "QUẢN LÝ CLUB & DỰ TRỮ" (admin thao tác trực tiếp — trường tự quyết)
@@ -823,11 +827,11 @@ class PipelineAPI:
             capacity = int(capacity)
             reserve_capacity = int(reserve_capacity)
             if capacity <= 0:
-                return _fail("Capacity phai > 0")
+                return _fail(err("capacity_must_be_positive"))
             if reserve_capacity > capacity:
-                return _fail("Reserve_capacity khong duoc lon hon capacity")
+                return _fail(err("reserve_capacity_exceeds_capacity"))
             if not club_id.strip():
-                return _fail("Can nhap club_id")
+                return _fail(err("club_id_required"))
 
             reserve_group_value = reserve_group.strip() or None
 
@@ -849,7 +853,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"club_id": club_id, "action": "upserted"})
         except Exception as e:
-            return _fail(f"Loi luu club: {e}")
+            return _fail(err("error_saving_club", detail=str(e)))
 
     def delete_club(self, club_id: str):
         """
@@ -867,10 +871,10 @@ class PipelineAPI:
             ).fetchone()[0]
             if n_prefs > 0 or n_matches > 0:
                 conn.close()
-                return _fail(
-                    f"Khong the xoa: club {club_id} da co {n_prefs} nguyen vong "
-                    f"va {n_matches} ket qua tham chieu toi. Phai xu ly du lieu lien quan truoc."
-                )
+                return _fail(err(
+                    "cannot_delete_club_referenced",
+                    club_id=club_id, n_prefs=n_prefs, n_matches=n_matches,
+                ))
             cur.execute("DELETE FROM clubs WHERE club_id = ?", (club_id,))
             cur.execute("DELETE FROM club_test_selection WHERE club_id = ?", (club_id,))
             cur.execute("DELETE FROM club_scores WHERE club_id = ?", (club_id,))
@@ -878,7 +882,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"club_id": club_id, "deleted": True})
         except Exception as e:
-            return _fail(f"Loi xoa club: {e}")
+            return _fail(err("error_deleting_club", detail=str(e)))
 
     def list_reserve_groups_in_use(self):
         """Danh sách các reserve_group đang được dùng (để gợi ý trong form, tránh gõ sai chính tả)."""
@@ -893,7 +897,7 @@ class PipelineAPI:
             conn.close()
             return _ok(sorted(r[0] for r in rows if r[0]))
         except Exception as e:
-            return _fail(f"Loi doc danh sach reserve_group: {e}")
+            return _fail(err("error_reading_reserve_groups", detail=str(e)))
 
     def set_student_reserve_group(self, student_id: str, reserve_group: str):
         """Gán (hoặc gỡ, nếu reserve_group='') diện dự trữ cho 1 học sinh."""
@@ -905,7 +909,7 @@ class PipelineAPI:
             ).fetchone()
             if not exists:
                 conn.close()
-                return _fail(f"Hoc sinh {student_id} khong ton tai")
+                return _fail(err("student_not_found", student_id=student_id))
             value = reserve_group.strip() or None
             cur.execute(
                 "UPDATE students SET reserve_group = ? WHERE student_id = ?",
@@ -915,13 +919,13 @@ class PipelineAPI:
             conn.close()
             return _ok({"student_id": student_id, "reserve_group": value})
         except Exception as e:
-            return _fail(f"Loi gan reserve_group: {e}")
+            return _fail(err("error_assigning_reserve_group", detail=str(e)))
 
     def bulk_set_reserve_group(self, student_ids: list, reserve_group: str):
         """Gán hàng loạt — dùng khi trường có sẵn danh sách (vd cả 1 khối lớp)."""
         try:
             if not isinstance(student_ids, list) or not student_ids:
-                return _fail("student_ids phai la list khong rong")
+                return _fail(err("student_ids_must_be_nonempty_list"))
             value = reserve_group.strip() or None
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
@@ -938,7 +942,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"n_updated": len(valid_ids), "not_found": missing})
         except Exception as e:
-            return _fail(f"Loi gan hang loat: {e}")
+            return _fail(err("error_bulk_assigning", detail=str(e)))
 
     def list_students_admin(self, search: str = "", page: int = 1, page_size: int = 100):
         """
@@ -982,7 +986,7 @@ class PipelineAPI:
                 "total_pages": total_pages,
             })
         except Exception as e:
-            return _fail(f"Loi doc danh sach hoc sinh: {e}")
+            return _fail(err("error_reading_student_list", detail=str(e)))
 
     # -----------------------------------------------------------------
     # TAB "NHẬP DỰ PHÒNG" (kiosk fallback entry)
@@ -999,7 +1003,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi doc danh sach club: {e}")
+            return _fail(err("error_reading_club_list", detail=str(e)))
 
     def search_students(self, query: str):
         try:
@@ -1014,7 +1018,7 @@ class PipelineAPI:
             conn.close()
             return _ok([dict(r) for r in rows])
         except Exception as e:
-            return _fail(f"Loi tim hoc sinh: {e}")
+            return _fail(err("error_searching_students", detail=str(e)))
 
     def get_student_entry_state(self, student_id: str):
         """
@@ -1031,7 +1035,7 @@ class PipelineAPI:
             ).fetchone()
             if not student:
                 conn.close()
-                return _fail(f"Khong tim thay hoc sinh {student_id}")
+                return _fail(err("student_not_found", student_id=student_id))
 
             tested = [
                 r["club_id"]
@@ -1055,7 +1059,7 @@ class PipelineAPI:
                 "ranked_clubs": prefs,
             })
         except Exception as e:
-            return _fail(f"Loi doc trang thai hoc sinh: {e}")
+            return _fail(err("error_reading_student_state", detail=str(e)))
 
     def submit_test_selection(self, student_id: str, club_ids: list):
         """
@@ -1064,7 +1068,7 @@ class PipelineAPI:
         """
         try:
             if not isinstance(club_ids, list):
-                return _fail("club_ids phai la list")
+                return _fail(err("club_ids_must_be_list"))
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
@@ -1072,7 +1076,7 @@ class PipelineAPI:
             ).fetchone()
             if not exists:
                 conn.close()
-                return _fail(f"Hoc sinh {student_id} khong ton tai")
+                return _fail(err("student_not_found", student_id=student_id))
 
             invalid = [
                 cid for cid in club_ids
@@ -1082,7 +1086,7 @@ class PipelineAPI:
             ]
             if invalid:
                 conn.close()
-                return _fail(f"Club khong ton tai: {invalid}")
+                return _fail(err("unknown_clubs", club_ids=invalid))
 
             cur.execute(
                 "DELETE FROM club_test_selection WHERE student_id = ?", (student_id,)
@@ -1095,7 +1099,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"student_id": student_id, "n_selected": len(club_ids)})
         except Exception as e:
-            return _fail(f"Loi ghi lua chon thi: {e}")
+            return _fail(err("error_saving_test_selection", detail=str(e)))
 
     def submit_preferences(self, student_id: str, ordered_club_ids: list):
         """
@@ -1105,13 +1109,13 @@ class PipelineAPI:
         """
         try:
             if not isinstance(ordered_club_ids, list):
-                return _fail("ordered_club_ids phai la list")
+                return _fail(err("ordered_club_ids_must_be_list"))
             if len(ordered_club_ids) == 0:
-                return _fail("Phai xep hang it nhat 1 nguyen vong")
+                return _fail(err("must_rank_at_least_one"))
             if len(ordered_club_ids) > 10:
-                return _fail("Toi da 10 nguyen vong")
+                return _fail(err("max_10_preferences"))
             if len(ordered_club_ids) != len(set(ordered_club_ids)):
-                return _fail("Danh sach nguyen vong co club trung lap")
+                return _fail(err("duplicate_preference_in_list"))
 
             conn = sqlite3.connect(self.db_path)
             cur = conn.cursor()
@@ -1120,7 +1124,7 @@ class PipelineAPI:
             ).fetchone()
             if not exists:
                 conn.close()
-                return _fail(f"Hoc sinh {student_id} khong ton tai")
+                return _fail(err("student_not_found", student_id=student_id))
 
             invalid = [
                 cid for cid in ordered_club_ids
@@ -1130,7 +1134,7 @@ class PipelineAPI:
             ]
             if invalid:
                 conn.close()
-                return _fail(f"Club khong ton tai: {invalid}")
+                return _fail(err("unknown_clubs", club_ids=invalid))
 
             cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
             cur.executemany(
@@ -1141,7 +1145,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"student_id": student_id, "n_ranked": len(ordered_club_ids)})
         except Exception as e:
-            return _fail(f"Loi ghi nguyen vong: {e}")
+            return _fail(err("error_saving_preferences", detail=str(e)))
 
     def create_student_if_missing(self, student_id: str, name: str):
         """Kiosk fallback: nếu học sinh chưa có trong students, tạo mới (chưa có STB)."""
@@ -1161,7 +1165,7 @@ class PipelineAPI:
             conn.close()
             return _ok({"student_id": student_id, "created": not exists})
         except Exception as e:
-            return _fail(f"Loi tao hoc sinh: {e}")
+            return _fail(err("error_creating_student", detail=str(e)))
 
     def reset_student_entry(self, student_id: str):
         """
@@ -1177,14 +1181,14 @@ class PipelineAPI:
             ).fetchone()
             if not exists:
                 conn.close()
-                return _fail(f"Hoc sinh {student_id} khong ton tai")
+                return _fail(err("student_not_found", student_id=student_id))
             cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (student_id,))
             cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
             conn.commit()
             conn.close()
             return _ok({"student_id": student_id, "reset": True})
         except Exception as e:
-            return _fail(f"Loi xoa lua chon de nhap lai: {e}")
+            return _fail(err("error_resetting_student_entry", detail=str(e)))
 
     def delete_student(self, student_id: str):
         """
@@ -1202,16 +1206,13 @@ class PipelineAPI:
             ).fetchone()
             if not exists:
                 conn.close()
-                return _fail(f"Hoc sinh {student_id} khong ton tai")
+                return _fail(err("student_not_found", student_id=student_id))
             n_matches = cur.execute(
                 "SELECT COUNT(*) FROM match_results WHERE student_id = ?", (student_id,)
             ).fetchone()[0]
             if n_matches > 0:
                 conn.close()
-                return _fail(
-                    f"Khong the xoa: hoc sinh {student_id} da co trong ket qua cua "
-                    "lan chay pipeline gan nhat. Hay chay lai pipeline sau khi xu ly."
-                )
+                return _fail(err("cannot_delete_student_matched", student_id=student_id))
             cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (student_id,))
             cur.execute("DELETE FROM preferences WHERE student_id = ?", (student_id,))
             cur.execute("DELETE FROM club_scores WHERE student_id = ?", (student_id,))
@@ -1220,4 +1221,4 @@ class PipelineAPI:
             conn.close()
             return _ok({"student_id": student_id, "deleted": True})
         except Exception as e:
-            return _fail(f"Loi xoa hoc sinh: {e}")
+            return _fail(err("error_deleting_student", detail=str(e)))

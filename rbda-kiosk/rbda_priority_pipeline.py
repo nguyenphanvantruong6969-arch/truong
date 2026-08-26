@@ -324,7 +324,7 @@ def verify_stability(
     clubs: dict[str, dict],
     preferences: dict[str, list[str]],
     is_reserve_eligible_fn: Callable[[str, str], bool],
-) -> list[str]:
+) -> list[dict]:
     """
     Kiểm chứng KHÔNG TỒN TẠI blocking pair, dùng ĐÚNG hàm lựa chọn
     động (club_choice_function) — tức là kiểm tra trực tiếp: "nếu
@@ -342,11 +342,14 @@ def verify_stability(
         sid NẰM TRONG tập được chọn.
 
     Returns:
-        list[str]: danh sách mô tả từng blocking pair tìm được.
-        Rỗng = kết quả ổn định (đúng theo lý thuyết, đúng theo
-        club_choice_function thật của cơ chế).
+        list[dict]: {"code": "blocking_pair", "params": {...}} cho mỗi
+        blocking pair tìm được (xem i18n_errors.py). Rỗng = kết quả ổn
+        định (đúng theo lý thuyết, đúng theo club_choice_function thật
+        của cơ chế).
     """
-    problems: list[str] = []
+    from i18n_errors import err
+
+    problems: list[dict] = []
     assignment = result.assignment
 
     held_by_club: dict[str, list[str]] = {cid: [] for cid in clubs}
@@ -375,11 +378,14 @@ def verify_stability(
                 trial_pool, capacity, reserve_capacity, eligible_fn, rank
             )
             if sid in accepted:
-                problems.append(
-                    f"Blocking pair: {sid} thich {candidate_cid} hon "
-                    f"{current_club!r}, va se duoc nhan neu ap dung lai "
-                    f"club_choice_function (hien co {len(holders)}/{capacity} cho)"
-                )
+                problems.append(err(
+                    "blocking_pair",
+                    student_id=sid,
+                    club_id=candidate_cid,
+                    current_club=current_club,
+                    n_holders=len(holders),
+                    capacity=capacity,
+                ))
 
     return problems
 
@@ -393,36 +399,41 @@ def validate_data_integrity(
     clubs: dict[str, dict],
     preferences: dict[str, list[str]],
     applicants: dict[str, list[str]],
-) -> list[str]:
+) -> list[dict]:
     """
-    Trả về danh sách lỗi (rỗng = dữ liệu hợp lệ). Không raise exception
-    để pipeline có thể báo cáo TOÀN BỘ lỗi một lần thay vì dừng ở lỗi đầu.
+    Trả về danh sách lỗi dạng {"code": ..., "params": {...}} (xem
+    i18n_errors.py) — rỗng = dữ liệu hợp lệ. Không raise exception để
+    pipeline có thể báo cáo TOÀN BỘ lỗi một lần thay vì dừng ở lỗi đầu.
+    Dùng err()/format_message() từ i18n_errors.py nếu cần chuỗi văn bản
+    (vd để in ra CLI) thay vì object có cấu trúc.
     """
-    errors: list[str] = []
+    from i18n_errors import err
+
+    errors: list[dict] = []
 
     for sid, prefs in preferences.items():
         if sid not in students:
-            errors.append(f"Học sinh {sid} có nguyện vọng nhưng không có trong students")
+            errors.append(err("pref_student_not_in_students", student_id=sid))
         if len(prefs) != len(set(prefs)):
-            errors.append(f"Học sinh {sid} có club trùng lặp trong danh sách nguyện vọng")
+            errors.append(err("pref_duplicate_club", student_id=sid))
         if len(prefs) > 10:
-            errors.append(f"Học sinh {sid} có hơn 10 nguyện vọng (vượt giới hạn Microsoft Forms)")
+            errors.append(err("pref_too_many", student_id=sid))
         for cid in prefs:
             if cid not in clubs:
-                errors.append(f"Học sinh {sid} xếp hạng club không tồn tại: {cid}")
+                errors.append(err("pref_unknown_club", student_id=sid, club_id=cid))
 
     for cid, info in clubs.items():
         if info["capacity"] <= 0:
-            errors.append(f"Club {cid} có capacity <= 0")
+            errors.append(err("club_capacity_not_positive", club_id=cid))
         if info["reserve_capacity"] > info["capacity"]:
-            errors.append(f"Club {cid} có reserve_capacity > capacity")
+            errors.append(err("club_reserve_exceeds_capacity", club_id=cid))
 
     for cid, applicant_list in applicants.items():
         if cid not in clubs:
-            errors.append(f"applicants tham chiếu club không tồn tại: {cid}")
+            errors.append(err("applicants_unknown_club", club_id=cid))
         for sid in applicant_list:
             if sid not in students:
-                errors.append(f"applicants tham chiếu học sinh không tồn tại: {sid}")
+                errors.append(err("applicants_unknown_student", student_id=sid))
 
     return errors
 
@@ -673,7 +684,8 @@ def run_full_pipeline(db_path: str, seed: int, output_csv_path: str) -> MatchRes
 
     errors = validate_data_integrity(students, clubs, preferences, applicants)
     if errors:
-        raise RuntimeError("Loi du lieu:\n" + "\n".join(errors))
+        from i18n_errors import format_all
+        raise RuntimeError("Loi du lieu:\n" + "\n".join(format_all(errors)))
 
     stb_lottery = generate_stb_lottery(list(students.keys()), seed=seed)
     # Ghi STB vừa sinh ngược lại vào DB để tái sử dụng / audit.
@@ -805,7 +817,7 @@ def sanity_check_result(
     result: MatchResult,
     clubs: dict[str, dict],
     preferences: dict[str, list[str]],
-) -> list[str]:
+) -> list[dict]:
     """
     Kiểm tra các bất biến bắt buộc của một kết quả matching hợp lệ
     (giống validate_results() trong 03_reference_rbda.py):
@@ -814,9 +826,12 @@ def sanity_check_result(
       3. Mỗi học sinh chỉ được xếp vào ĐÚNG 1 club (hoặc None).
       4. Club được gán phải nằm trong danh sách nguyện vọng của học sinh đó.
     Kiểm tra stability đầy đủ nằm ở verify_stability() (dùng
-    club_choice_function thật, không phải suy luận tĩnh).
+    club_choice_function thật, không phải suy luận tĩnh). Trả về list
+    các entry {"code": ..., "params": {...}} (xem i18n_errors.py).
     """
-    problems: list[str] = []
+    from i18n_errors import err
+
+    problems: list[dict] = []
 
     club_counts: dict[str, int] = {}
     club_reserve_counts: dict[str, int] = {}
@@ -827,17 +842,20 @@ def sanity_check_result(
         if result.matched_tier.get(sid) == "reserve":
             club_reserve_counts[cid] = club_reserve_counts.get(cid, 0) + 1
         if cid not in preferences.get(sid, []):
-            problems.append(f"{sid} được xếp vào {cid} nhưng không có trong nguyện vọng")
+            problems.append(err("assignment_not_in_preferences", student_id=sid, club_id=cid))
 
     for cid, count in club_counts.items():
         cap = clubs[cid]["capacity"]
         if count > cap:
-            problems.append(f"Club {cid} vượt capacity: {count}/{cap}")
+            problems.append(err("club_over_capacity", club_id=cid, count=count, capacity=cap))
 
     for cid, count in club_reserve_counts.items():
         reserve_cap = clubs[cid]["reserve_capacity"]
         if count > reserve_cap:
-            problems.append(f"Club {cid} vượt reserve_capacity ở tier dự trữ: {count}/{reserve_cap}")
+            problems.append(err(
+                "club_over_reserve_capacity",
+                club_id=cid, count=count, reserve_capacity=reserve_cap,
+            ))
 
     return problems
 

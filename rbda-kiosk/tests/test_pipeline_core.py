@@ -125,12 +125,17 @@ def test_run_rbda_respects_capacity_and_reserve_with_soft_reserves():
     ) == []
 
 
+def _codes(entries):
+    return [e["code"] for e in entries]
+
+
 def test_validate_data_integrity_flags_duplicate_and_overflowing_preferences():
     students = {"s1": {}}
     clubs = {"A": {"capacity": 5, "reserve_capacity": 0}}
     preferences = {"s1": ["A", "A"]}
     errors = validate_data_integrity(students, clubs, preferences, {})
-    assert any("trùng lặp" in e for e in errors)
+    assert "pref_duplicate_club" in _codes(errors)
+    assert errors[_codes(errors).index("pref_duplicate_club")]["params"]["student_id"] == "s1"
 
 
 def test_validate_data_integrity_flags_too_many_preferences():
@@ -138,7 +143,7 @@ def test_validate_data_integrity_flags_too_many_preferences():
     clubs = {f"c{i}": {"capacity": 5, "reserve_capacity": 0} for i in range(11)}
     preferences = {"s1": [f"c{i}" for i in range(11)]}
     errors = validate_data_integrity(students, clubs, preferences, {})
-    assert any("hơn 10" in e for e in errors)
+    assert "pref_too_many" in _codes(errors)
 
 
 def test_validate_data_integrity_flags_unknown_club_and_student_refs():
@@ -147,8 +152,8 @@ def test_validate_data_integrity_flags_unknown_club_and_student_refs():
     preferences = {"ghost": ["nowhere"]}
     applicants = {"nowhere": ["ghost"]}
     errors = validate_data_integrity(students, clubs, preferences, applicants)
-    assert any("không có trong students" in e for e in errors)
-    assert any("club không tồn tại" in e for e in errors)
+    assert "pref_student_not_in_students" in _codes(errors)
+    assert "pref_unknown_club" in _codes(errors)
 
 
 def test_validate_data_integrity_flags_bad_club_capacities():
@@ -158,8 +163,8 @@ def test_validate_data_integrity_flags_bad_club_capacities():
         "over_reserve": {"capacity": 5, "reserve_capacity": 10},
     }
     errors = validate_data_integrity(students, clubs, {}, {})
-    assert any("capacity <= 0" in e for e in errors)
-    assert any("reserve_capacity > capacity" in e for e in errors)
+    assert "club_capacity_not_positive" in _codes(errors)
+    assert "club_reserve_exceeds_capacity" in _codes(errors)
 
 
 def test_sanity_check_result_flags_over_capacity_and_out_of_preference_assignment():
@@ -170,8 +175,31 @@ def test_sanity_check_result_flags_over_capacity_and_out_of_preference_assignmen
         rounds_run=1,
     )
     problems = sanity_check_result(result, clubs, preferences)
-    assert any("vượt capacity" in p for p in problems)
-    assert any("không có trong nguyện vọng" in p for p in problems)
+    assert "club_over_capacity" in _codes(problems)
+    assert "assignment_not_in_preferences" in _codes(problems)
+
+
+def test_error_entries_are_translatable_to_both_languages():
+    """Every {code, params} entry the algorithm can emit must render
+    cleanly in both languages via i18n_errors.format_message — this is
+    the regression guard for the bilingual UI."""
+    from i18n_errors import format_message
+
+    students = {"s1": {}}
+    clubs = {
+        "A": {"capacity": 5, "reserve_capacity": 0},
+        "over_reserve": {"capacity": 0, "reserve_capacity": 10},
+    }
+    preferences = {"s1": ["A", "A", "ghost_club"]}
+    applicants = {"ghost_club_2": ["ghost_student"]}
+    errors = validate_data_integrity(students, clubs, preferences, applicants)
+    assert errors, "expected this deliberately-broken data to produce errors"
+
+    for entry in errors:
+        for lang in ("vi", "en"):
+            text = format_message(entry["code"], entry["params"], lang=lang)
+            assert text != entry["code"], f"missing {lang} translation for {entry['code']}"
+            assert "{" not in text, f"unfilled placeholder in {lang} text: {text!r}"
 
 
 def test_full_pipeline_on_seeded_sample_data_has_no_integrity_problems(tmp_path):

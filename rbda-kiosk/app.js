@@ -5,10 +5,19 @@
    mỗi hàm trả về Promise<{ok, data, errors}> (quy ước thống nhất ở api.py).
    Không dùng alert()/confirm() ở bất cứ đâu — thay bằng toast + xác nhận
    2 bước ngay tại chỗ (đổi label nút, yêu cầu bấm lần 2).
+
+   Song ngữ (vi/en): mọi chuỗi hiển thị đi qua I18N.t(key, params) (xem
+   i18n.js) — không hardcode chuỗi tiếng Việt/Anh trực tiếp trong file
+   này. Lỗi/chi tiết bước từ backend là {code, params} (xem api.py +
+   i18n_errors.py) và được dịch bằng I18N.translateError(s).
    ========================================================================== */
 
 (function () {
   "use strict";
+
+  const t = window.I18N.t;
+  const trErr = window.I18N.translateError;
+  const trErrs = window.I18N.translateErrors;
 
   /* ------------------------------------------------------------------ *
    * 0. TIỆN ÍCH DÙNG CHUNG
@@ -16,7 +25,11 @@
 
   function callApi(name, ...args) {
     if (!window.pywebview || !window.pywebview.api || typeof window.pywebview.api[name] !== "function") {
-      return Promise.resolve({ ok: false, data: null, errors: [`Chưa sẵn sàng kết nối tới backend (${name})`] });
+      return Promise.resolve({
+        ok: false,
+        data: null,
+        errors: [`Backend not ready yet (${name})`],
+      });
     }
     return window.pywebview.api[name](...args).catch((e) => ({
       ok: false,
@@ -43,13 +56,13 @@
 
   function showToast(message, type) {
     const stack = el("toastStack");
-    const t = document.createElement("div");
-    t.className = "toast" + (type === "error" ? " is-error" : type === "success" ? " is-success" : "");
-    t.textContent = message;
-    stack.appendChild(t);
+    const toastEl = document.createElement("div");
+    toastEl.className = "toast" + (type === "error" ? " is-error" : type === "success" ? " is-success" : "");
+    toastEl.textContent = message;
+    stack.appendChild(toastEl);
     setTimeout(() => {
-      t.classList.add("is-leaving");
-      setTimeout(() => t.remove(), 200);
+      toastEl.classList.add("is-leaving");
+      setTimeout(() => toastEl.remove(), 200);
     }, 3600);
   }
 
@@ -65,24 +78,34 @@
 
   // Nút xác nhận 2 bước (thay confirm() native) — bấm lần 1 đổi label +
   // class .is-confirming, bấm lần 2 trong vòng `windowMs` mới thật sự chạy.
-  function armTwoStepConfirm(button, confirmLabel, onConfirmed, windowMs) {
-    const original = button.textContent;
+  // `getConfirmLabel` là hàm (không phải chuỗi cố định) và nhãn gốc được
+  // đọc LẠI mỗi lần reset (qua data-i18n hoặc dataset.originalLabel) thay
+  // vì chụp 1 lần lúc gắn sự kiện — để đổi ngôn ngữ giữa chừng không làm
+  // nút "hồi" lại nhãn cũ khi bấm lần kế tiếp.
+  function armTwoStepConfirm(button, getConfirmLabel, onConfirmed, windowMs) {
     let armed = false;
     let timer = null;
+
+    function currentOriginalLabel() {
+      const key = button.getAttribute("data-i18n");
+      if (key) return t(key);
+      return button.dataset.originalLabel || button.textContent;
+    }
+
     button.addEventListener("click", () => {
       if (!armed) {
         armed = true;
-        button.textContent = confirmLabel;
+        button.textContent = typeof getConfirmLabel === "function" ? getConfirmLabel() : getConfirmLabel;
         button.classList.add("is-confirming");
         timer = setTimeout(() => {
           armed = false;
-          button.textContent = original;
+          button.textContent = currentOriginalLabel();
           button.classList.remove("is-confirming");
         }, windowMs || 4000);
       } else {
         clearTimeout(timer);
         armed = false;
-        button.textContent = original;
+        button.textContent = currentOriginalLabel();
         button.classList.remove("is-confirming");
         onConfirmed();
       }
@@ -90,10 +113,10 @@
   }
 
   function debounce(fn, ms) {
-    let t = null;
+    let timer = null;
     return (...args) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), ms);
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), ms);
     };
   }
 
@@ -116,6 +139,11 @@
     });
   }
 
+  function currentTabName() {
+    const active = document.querySelector(".nav-item.is-active");
+    return active ? active.dataset.tab : "pipeline";
+  }
+
   function switchTab(tabName) {
     document.querySelectorAll(".nav-item").forEach((btn) => {
       btn.classList.toggle("is-active", btn.dataset.tab === tabName);
@@ -135,12 +163,17 @@
     callApi("get_last_run_info").then((res) => {
       const line = el("lastRunLine");
       if (res.ok && res.data) {
-        line.textContent = `Chạy gần nhất: ${res.data.run_at} (seed=${res.data.seed}, ${res.data.n_matched}/${res.data.n_total} xếp được)`;
+        line.textContent = t("last_run_line", {
+          run_at: res.data.run_at,
+          seed: res.data.seed,
+          n_matched: res.data.n_matched,
+          n_total: res.data.n_total,
+        });
       } else {
-        line.textContent = "Chưa chạy pipeline lần nào";
+        line.textContent = t("never_run");
       }
     });
-    el("dbStatusLine").textContent = "Đã kết nối app.db";
+    el("dbStatusLine").textContent = t("db_connected");
   }
 
   /* ------------------------------------------------------------------ *
@@ -152,6 +185,11 @@
     preferences: null,
   };
 
+  // Bộ nhớ lần render gần nhất của stepper/log — dùng để dịch lại đúng
+  // nội dung khi người dùng đổi ngôn ngữ giữa chừng (không gọi lại API).
+  let lastRenderedSteps = null;
+  let lastRenderedTopErrors = null;
+
   function loadPipelineTab() {
     refreshDashboardStats();
     refreshStbLockLine();
@@ -161,7 +199,7 @@
   function refreshDashboardStats() {
     callApi("get_dashboard_status").then((res) => {
       if (!res.ok) {
-        showToast("Không đọc được trạng thái tổng quan: " + res.errors.join("; "), "error");
+        showToast(t("toast_dashboard_read_failed", { errors: trErrs(res.errors).join("; ") }), "error");
         return;
       }
       el("statStudents").textContent = res.data.n_students;
@@ -185,14 +223,14 @@
       line.appendChild(dot);
       const label = document.createElement("span");
       label.textContent = res.data.is_locked
-        ? `Số bốc thăm (STB) ĐÃ KHOÁ từ ${res.data.locked_at} — các lần chạy tiếp theo sẽ tái sử dụng, không vẽ lại.`
-        : "Số bốc thăm (STB) chưa từng được vẽ — lần chạy đầu tiên sẽ vẽ và tự động khoá lại.";
+        ? t("stb_locked_label", { locked_at: res.data.locked_at })
+        : t("stb_unlocked_label");
       line.appendChild(label);
 
       if (res.data.is_locked) {
         const redrawBtn = document.createElement("button");
         redrawBtn.className = "redraw-toggle";
-        redrawBtn.textContent = "Vẽ lại STB…";
+        redrawBtn.textContent = t("btn_redraw_stb");
         redrawBtn.addEventListener("click", () => promptForceRedraw());
         line.appendChild(redrawBtn);
       }
@@ -204,7 +242,7 @@
   function promptForceRedraw() {
     if (!forceRedrawArmed) {
       forceRedrawArmed = true;
-      showToast("Bấm nút 'Chạy pipeline' để vẽ lại STB — sẽ cần xác nhận thêm 1 lần nữa trước khi chạy.", "error");
+      showToast(t("toast_redraw_armed"), "error");
       setTimeout(() => {
         forceRedrawArmed = false;
       }, 20000);
@@ -214,27 +252,30 @@
   }
 
   function renderSteps(steps) {
+    lastRenderedSteps = steps;
     const stepper = el("stepper");
     steps.forEach((s) => {
       const li = stepper.querySelector(`.step[data-step="${s.step}"]`);
       if (!li) return;
       li.dataset.status = s.status;
       const detail = li.querySelector(".step-detail");
-      if (s.status === "running") detail.textContent = "Đang chạy…";
-      else if (s.status === "done") detail.textContent = s.detail || "Hoàn tất";
+      if (s.status === "running") detail.textContent = t("step_running");
+      else if (s.status === "done") detail.textContent = s.detail ? trErr(s.detail) : t("step_done_default");
       else if (s.status === "error")
-        detail.textContent = Array.isArray(s.detail) ? s.detail.join(" | ") : s.detail || "Lỗi";
+        detail.textContent = Array.isArray(s.detail) ? trErrs(s.detail).join(" | ") : (s.detail ? trErr(s.detail) : t("generic_error"));
     });
   }
 
   function resetSteps() {
+    lastRenderedSteps = null;
     document.querySelectorAll("#stepper .step").forEach((li) => {
       li.dataset.status = "";
-      li.querySelector(".step-detail").textContent = "Chưa chạy";
+      li.querySelector(".step-detail").textContent = t("step_not_run_yet");
     });
   }
 
   function showLog(errors) {
+    lastRenderedTopErrors = errors;
     const panel = el("logPanel");
     const box = el("logBox");
     if (!errors || !errors.length) {
@@ -243,7 +284,7 @@
       return;
     }
     panel.hidden = false;
-    box.textContent = errors.map((e) => (typeof e === "string" ? e : JSON.stringify(e))).join("\n");
+    box.textContent = trErrs(errors).join("\n");
   }
 
   function initPipelineHandlers() {
@@ -252,10 +293,10 @@
       callApi("check_data_integrity").then((res) => {
         el("btnValidate").disabled = false;
         if (res.ok) {
-          showToast(`Dữ liệu hợp lệ — ${res.data.n_students} học sinh, ${res.data.n_clubs} club.`, "success");
+          showToast(t("toast_data_valid", { n_students: res.data.n_students, n_clubs: res.data.n_clubs }), "success");
           showLog(null);
         } else {
-          showToast("Dữ liệu có lỗi — xem nhật ký bên dưới.", "error");
+          showToast(t("toast_data_invalid"), "error");
           showLog(res.errors);
         }
       });
@@ -292,13 +333,11 @@
       bar.id = "runConfirmBar";
       bar.className = "run-confirm-bar";
       const msg = document.createElement("span");
-      msg.textContent = wantsRedraw
-        ? "Xác nhận: VẼ LẠI toàn bộ số bốc thăm và chạy lại pipeline (ghi đè kết quả hiện tại)?"
-        : "Đã có kết quả cũ — chạy lại sẽ GHI ĐÈ (vẫn lưu vào lịch sử để kiểm toán). Xác nhận?";
+      msg.textContent = wantsRedraw ? t("confirm_redraw_run") : t("confirm_overwrite_run");
       bar.appendChild(msg);
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "btn btn-primary";
-      confirmBtn.textContent = "Xác nhận chạy";
+      confirmBtn.textContent = t("btn_confirm_run");
       confirmBtn.addEventListener("click", () => {
         bar.remove();
         forceRedrawArmed = false;
@@ -306,7 +345,7 @@
       });
       const cancelBtn = document.createElement("button");
       cancelBtn.className = "btn btn-ghost";
-      cancelBtn.textContent = "Huỷ";
+      cancelBtn.textContent = t("btn_cancel");
       cancelBtn.addEventListener("click", () => {
         bar.remove();
         forceRedrawArmed = false;
@@ -331,7 +370,11 @@
 
       if (res.ok) {
         showToast(
-          `Chạy pipeline thành công — ${res.data.n_matched}/${res.data.n_total} học sinh đã xếp club, ${res.data.rounds_run} vòng lặp.`,
+          t("toast_run_success", {
+            n_matched: res.data.n_matched,
+            n_total: res.data.n_total,
+            rounds: res.data.rounds_run,
+          }),
           "success"
         );
         showLog(null);
@@ -341,7 +384,7 @@
         if (!el("historyTable").hidden) loadRunHistory();
       } else {
         const errs = Array.isArray(res.errors) ? res.errors : res.errors && res.errors.errors ? res.errors.errors : [String(res.errors)];
-        showToast("Chạy pipeline thất bại — xem nhật ký lỗi.", "error");
+        showToast(t("toast_run_failed"), "error");
         showLog(errs);
       }
     });
@@ -355,7 +398,7 @@
         const tr = document.createElement("tr");
         const td = document.createElement("td");
         td.colSpan = 7;
-        td.textContent = "Chưa có lần chạy nào.";
+        td.textContent = t("history_empty");
         tr.appendChild(td);
         body.appendChild(tr);
         return;
@@ -365,7 +408,7 @@
         tr.innerHTML =
           `<td>${esc(r.run_id)}</td><td>${esc(r.run_at)}</td><td>${esc(r.seed)}</td>` +
           `<td>${esc(r.rounds_run)}</td><td>${esc(r.n_matched)}</td><td>${esc(r.n_total)}</td>` +
-          `<td>${r.stb_redrawn ? "Có" : "Không"}</td>`;
+          `<td>${r.stb_redrawn ? esc(t("yes")) : esc(t("no"))}</td>`;
         body.appendChild(tr);
       });
     });
@@ -401,16 +444,18 @@
         callApi("preview_import_csv", text, kind).then((res) => {
           if (!res.ok) {
             previewBox.hidden = false;
-            previewBox.textContent = "Lỗi đọc CSV: " + res.errors.join("; ");
+            previewBox.textContent = t("toast_csv_read_error_prefix", { errors: trErrs(res.errors).join("; ") });
             btn.disabled = true;
             return;
           }
           const d = res.data;
           previewBox.hidden = false;
-          previewBox.innerHTML =
-            `Định dạng nhận diện: <span class="preview-highlight">${d.format === "wide" ? "rộng (1 dòng/học sinh)" : "dài (nhiều dòng/học sinh)"}</span><br>` +
-            `${d.n_rows} dòng dữ liệu — ${d.n_students_detected} học sinh, ` +
-            `<span class="preview-highlight">${d.n_new_students} học sinh mới</span> sẽ được tạo.`;
+          previewBox.innerHTML = t("csv_preview_summary", {
+            format: d.format === "wide" ? t("csv_format_wide") : t("csv_format_long"),
+            n_rows: d.n_rows,
+            n_students_detected: d.n_students_detected,
+            n_new_students: d.n_new_students,
+          });
           btn.disabled = false;
           if (kind === "test_selection") importState.testSelection = text;
           else importState.preferences = text;
@@ -423,7 +468,7 @@
   function doImport(kind, apiFn, feedbackNode) {
     const text = kind === "test_selection" ? importState.testSelection : importState.preferences;
     if (!text) {
-      feedback(feedbackNode, "Chưa chọn file.", true);
+      feedback(feedbackNode, t("feedback_no_file_selected"), true);
       return;
     }
     const btn = kind === "test_selection" ? el("btnImportTestSelection") : el("btnImportPreferences");
@@ -431,14 +476,18 @@
     callApi(apiFn, text, true).then((res) => {
       btn.disabled = false;
       if (!res.ok) {
-        feedback(feedbackNode, "Nhập thất bại.", true);
+        feedback(feedbackNode, t("feedback_import_failed"), true);
         showLog(Array.isArray(res.errors) ? res.errors : [String(res.errors)]);
         return;
       }
       const d = res.data;
       const nWritten = d.n_students_with_preferences_written ?? d.n_students_with_selection_written ?? 0;
-      feedback(feedbackNode, `Đã nhập: ${nWritten} học sinh (${d.n_students_created} mới, ${d.n_students_skipped} bị bỏ qua).`, false);
-      showToast(`Nhập CSV thành công — ${nWritten} học sinh.`, "success");
+      feedback(
+        feedbackNode,
+        t("feedback_import_success", { n_written: nWritten, n_created: d.n_students_created, n_skipped: d.n_students_skipped }),
+        false
+      );
+      showToast(t("toast_csv_import_success", { n_written: nWritten }), "success");
 
       const warnBox = el("importWarnings");
       if (d.warnings && d.warnings.length) {
@@ -446,7 +495,7 @@
         clear(warnBox);
         d.warnings.forEach((w) => {
           const div = document.createElement("div");
-          div.textContent = "• " + w;
+          div.textContent = "• " + trErr(w);
           warnBox.appendChild(div);
         });
       } else {
@@ -462,7 +511,7 @@
 
   function loadResultsTab() {
     loadClubFillStats();
-    loadMatchResults("");
+    loadMatchResults(el("resultsSearch") ? el("resultsSearch").value : "");
   }
 
   function loadClubFillStats() {
@@ -470,7 +519,8 @@
       const box = el("clubFillList");
       clear(box);
       if (!res.ok || !res.data.length) {
-        box.innerHTML = '<div class="empty-state">Chưa có club nào.</div>';
+        box.innerHTML = '<div class="empty-state"></div>';
+        box.firstChild.textContent = t("admin_club_empty");
         return;
       }
       res.data.forEach((c) => {
@@ -512,17 +562,19 @@
         const tr = document.createElement("tr");
         const clubCell = r.club_id
           ? `<span class="club-tag">${esc(r.club_name || r.club_id)}</span>`
-          : `<span class="club-tag is-empty">Không xếp được</span>`;
+          : `<span class="club-tag is-empty">${esc(t("not_matched_label"))}</span>`;
         if (!r.club_id) nUnmatched++;
+        const tierLabel =
+          r.matched_tier === "reserve" ? t("tier_reserve") : r.matched_tier === "general" ? t("tier_general") : "—";
         tr.innerHTML =
           `<td>${esc(r.student_id)}</td><td>${esc(r.name)}</td><td>${clubCell}</td>` +
-          `<td>${esc(r.matched_tier || "—")}</td><td>${esc(r.rank_in_student_pref ?? "—")}</td>`;
+          `<td>${esc(tierLabel)}</td><td>${esc(r.rank_in_student_pref ?? "—")}</td>`;
         body.appendChild(tr);
       });
 
       if (nUnmatched > 0) {
         badge.hidden = false;
-        badge.textContent = `${nUnmatched} chưa xếp được club`;
+        badge.textContent = t("unmatched_badge", { n: nUnmatched });
       } else {
         badge.hidden = true;
       }
@@ -536,8 +588,8 @@
     );
     el("btnExport").addEventListener("click", () => {
       callApi("export_csv", "match_results_export.csv").then((res) => {
-        if (res.ok) showToast(`Đã xuất ${res.data.n_rows} dòng ra ${res.data.path}`, "success");
-        else showToast("Xuất CSV thất bại: " + res.errors.join("; "), "error");
+        if (res.ok) showToast(t("toast_export_success", { n_rows: res.data.n_rows, path: res.data.path }), "success");
+        else showToast(t("toast_export_failed", { errors: trErrs(res.errors).join("; ") }), "error");
       });
     });
   }
@@ -564,15 +616,15 @@
       const id = el("newStudentId").value.trim();
       const name = el("newStudentName").value.trim();
       if (!id || !name) {
-        showToast("Cần nhập cả mã học sinh và họ tên.", "error");
+        showToast(t("toast_need_id_and_name"), "error");
         return;
       }
       callApi("create_student_if_missing", id, name).then((res) => {
         if (!res.ok) {
-          showToast("Lỗi tạo học sinh: " + res.errors.join("; "), "error");
+          showToast(t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
           return;
         }
-        showToast(res.data.created ? "Đã tạo học sinh mới." : "Học sinh đã tồn tại — mở hồ sơ.", "success");
+        showToast(res.data.created ? t("toast_student_created") : t("toast_student_exists"), "success");
         el("newStudentId").value = "";
         el("newStudentName").value = "";
         selectFallbackStudent(id);
@@ -585,8 +637,8 @@
         (row) => row.dataset.clubId
       );
       callApi("submit_test_selection", currentFallbackStudent, checked).then((res) => {
-        if (res.ok) feedback(el("testSelectionFeedback"), `Đã lưu ${res.data.n_selected} lựa chọn.`, false);
-        else feedback(el("testSelectionFeedback"), "Lỗi: " + res.errors.join("; "), true);
+        if (res.ok) feedback(el("testSelectionFeedback"), t("feedback_test_selection_saved", { n: res.data.n_selected }), false);
+        else feedback(el("testSelectionFeedback"), t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), true);
       });
     });
 
@@ -598,39 +650,39 @@
     el("btnSubmitPreferences").addEventListener("click", () => {
       if (!currentFallbackStudent) return;
       if (!currentRanking.length) {
-        feedback(el("preferencesFeedback"), "Cần xếp hạng ít nhất 1 nguyện vọng.", true);
+        feedback(el("preferencesFeedback"), trErr({ code: "must_rank_at_least_one", params: {} }), true);
         return;
       }
       callApi("submit_preferences", currentFallbackStudent, currentRanking).then((res) => {
-        if (res.ok) feedback(el("preferencesFeedback"), `Đã lưu ${res.data.n_ranked} nguyện vọng.`, false);
-        else feedback(el("preferencesFeedback"), "Lỗi: " + res.errors.join("; "), true);
+        if (res.ok) feedback(el("preferencesFeedback"), t("feedback_preferences_saved", { n: res.data.n_ranked }), false);
+        else feedback(el("preferencesFeedback"), t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), true);
       });
     });
 
-    armTwoStepConfirm(el("btnResetStudentEntry"), "Bấm lần nữa để xoá hết & nhập lại", () => {
+    armTwoStepConfirm(el("btnResetStudentEntry"), () => t("confirm_reset_entry"), () => {
       if (!currentFallbackStudent) return;
       callApi("reset_student_entry", currentFallbackStudent).then((res) => {
         if (res.ok) {
-          showToast("Đã xoá lựa chọn thi và nguyện vọng — nhập lại từ đầu.", "success");
+          showToast(t("toast_reset_done"), "success");
           selectFallbackStudent(currentFallbackStudent);
         } else {
-          showToast("Lỗi: " + res.errors.join("; "), "error");
+          showToast(t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
         }
       });
     });
 
-    armTwoStepConfirm(el("btnDeleteStudent"), "Bấm lần nữa để xoá học sinh", () => {
+    armTwoStepConfirm(el("btnDeleteStudent"), () => t("confirm_delete_student"), () => {
       if (!currentFallbackStudent) return;
       const studentId = currentFallbackStudent;
       callApi("delete_student", studentId).then((res) => {
         if (res.ok) {
-          showToast(`Đã xoá học sinh ${studentId}.`, "success");
+          showToast(t("toast_student_deleted", { student_id: studentId }), "success");
           currentFallbackStudent = null;
           el("fallbackWorkArea").hidden = true;
           el("studentSearchInput").value = "";
           clear(el("studentSearchResults"));
         } else {
-          showToast("Không xoá được: " + res.errors.join("; "), "error");
+          showToast(t("toast_delete_failed_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
         }
       });
     });
@@ -646,7 +698,8 @@
       const box = el("studentSearchResults");
       clear(box);
       if (!res.ok || !res.data.length) {
-        box.innerHTML = '<div class="empty-state">Không tìm thấy học sinh nào.</div>';
+        box.innerHTML = '<div class="empty-state"></div>';
+        box.firstChild.textContent = t("search_no_students_found");
         return;
       }
       res.data.forEach((s) => {
@@ -662,7 +715,7 @@
   function selectFallbackStudent(studentId) {
     Promise.all([callApi("get_student_entry_state", studentId), callApi("list_clubs")]).then(([stateRes, clubsRes]) => {
       if (!stateRes.ok) {
-        showToast("Lỗi tải hồ sơ học sinh: " + stateRes.errors.join("; "), "error");
+        showToast(t("feedback_error_prefix", { errors: trErrs(stateRes.errors).join("; ") }), "error");
         return;
       }
       currentFallbackStudent = studentId;
@@ -701,11 +754,11 @@
       row.innerHTML = `<span>${esc(c.name)}</span><span class="cb-club-id">${esc(c.club_id)}</span>`;
       row.addEventListener("click", () => {
         if (currentRanking.includes(c.club_id)) {
-          showToast("Club này đã có trong danh sách nguyện vọng.", "error");
+          showToast(trErr({ code: "duplicate_preference_in_list", params: {} }), "error");
           return;
         }
         if (currentRanking.length >= 10) {
-          showToast("Tối đa 10 nguyện vọng.", "error");
+          showToast(trErr({ code: "max_10_preferences", params: {} }), "error");
           return;
         }
         currentRanking.push(c.club_id);
@@ -724,7 +777,7 @@
       const label = document.createElement("span");
       label.textContent = `${club ? club.name : cid} (${cid})`;
       const removeBtn = document.createElement("button");
-      removeBtn.textContent = "xoá";
+      removeBtn.textContent = t("btn_remove_ranked");
       removeBtn.addEventListener("click", () => {
         currentRanking.splice(idx, 1);
         renderRankingList();
@@ -766,15 +819,16 @@
           `<td>${esc(c.reserve_capacity)}</td><td>${esc(c.reserve_group || "—")}</td><td></td>`;
         const delBtn = document.createElement("button");
         delBtn.className = "btn-icon-danger";
-        delBtn.textContent = "Xoá";
-        armTwoStepConfirm(delBtn, "Bấm lần nữa để xoá", () => {
+        delBtn.dataset.originalLabel = t("btn_delete");
+        delBtn.textContent = delBtn.dataset.originalLabel;
+        armTwoStepConfirm(delBtn, () => t("confirm_delete_generic"), () => {
           callApi("delete_club", c.club_id).then((delRes) => {
             if (delRes.ok) {
-              showToast("Đã xoá club " + c.club_id, "success");
+              showToast(t("toast_club_deleted", { club_id: c.club_id }), "success");
               loadAdminClubs();
               loadReserveGroupOptions();
             } else {
-              showToast("Không xoá được: " + delRes.errors.join("; "), "error");
+              showToast(t("toast_delete_failed_prefix", { errors: trErrs(delRes.errors).join("; ") }), "error");
             }
           });
         });
@@ -828,8 +882,11 @@
         body.appendChild(tr);
       });
 
-      el("adminPaginationLabel").textContent =
-        `Trang ${res.data.page}/${res.data.total_pages} — tổng ${res.data.total} học sinh`;
+      el("adminPaginationLabel").textContent = t("pagination_label", {
+        page: res.data.page,
+        total_pages: res.data.total_pages,
+        total: res.data.total,
+      });
       el("btnAdminPrevPage").disabled = res.data.page <= 1;
       el("btnAdminNextPage").disabled = res.data.page >= res.data.total_pages;
     });
@@ -843,12 +900,12 @@
       const reserveCapacity = el("clubFormReserveCapacity").value || 0;
       const reserveGroup = el("clubFormReserveGroup").value.trim();
       if (!id || !name || !capacity) {
-        feedback(el("clubFormFeedback"), "Cần nhập mã club, tên, và tổng chỗ.", true);
+        feedback(el("clubFormFeedback"), t("feedback_club_form_required"), true);
         return;
       }
       callApi("create_or_update_club", id, name, capacity, reserveCapacity, reserveGroup).then((res) => {
         if (res.ok) {
-          feedback(el("clubFormFeedback"), "Đã lưu club " + id, false);
+          feedback(el("clubFormFeedback"), t("feedback_club_saved", { club_id: id }), false);
           el("clubFormId").value = "";
           el("clubFormName").value = "";
           el("clubFormCapacity").value = "";
@@ -857,7 +914,7 @@
           loadAdminClubs();
           loadReserveGroupOptions();
         } else {
-          feedback(el("clubFormFeedback"), "Lỗi: " + res.errors.join("; "), true);
+          feedback(el("clubFormFeedback"), t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), true);
         }
       });
     });
@@ -887,16 +944,16 @@
       );
       const group = el("bulkReserveGroupInput").value.trim();
       if (!ids.length) {
-        showToast("Chưa tick học sinh nào.", "error");
+        showToast(t("toast_no_students_ticked"), "error");
         return;
       }
       callApi("bulk_set_reserve_group", ids, group).then((res) => {
         if (res.ok) {
-          showToast(`Đã gán cho ${res.data.n_updated} học sinh.`, "success");
+          showToast(t("toast_bulk_assign_success", { n: res.data.n_updated }), "success");
           loadAdminStudents();
           loadReserveGroupOptions();
         } else {
-          showToast("Lỗi gán hàng loạt: " + res.errors.join("; "), "error");
+          showToast(t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
         }
       });
     });
@@ -937,7 +994,7 @@
         const tdAction = document.createElement("td");
         const btn = document.createElement("button");
         btn.className = "btn-row-link";
-        btn.textContent = "Chấm →";
+        btn.textContent = t("btn_score_link");
         btn.addEventListener("click", () => openScoringClub(c.club_id));
         tdAction.appendChild(btn);
         tr.appendChild(tdAction);
@@ -949,7 +1006,7 @@
   function openScoringClub(clubId) {
     callApi("get_club_applicants_for_scoring", clubId).then((res) => {
       if (!res.ok) {
-        showToast("Lỗi tải danh sách chấm điểm: " + res.errors.join("; "), "error");
+        showToast(t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
         return;
       }
       currentScoringClub = clubId;
@@ -985,23 +1042,77 @@
       }));
       callApi("submit_club_scores", currentScoringClub, scores).then((res) => {
         if (res.ok) {
-          feedback(el("scoringFeedback"), `Đã lưu điểm cho ${res.data.n_saved} học sinh.`, false);
+          feedback(el("scoringFeedback"), t("feedback_scores_saved", { n: res.data.n_saved }), false);
           if (res.data.warnings && res.data.warnings.length) {
-            showToast(res.data.warnings[0], "error");
+            showToast(trErr(res.data.warnings[0]), "error");
           }
           loadScoringOverview();
         } else {
-          feedback(el("scoringFeedback"), "Lỗi lưu điểm: " + res.errors.join("; "), true);
+          feedback(el("scoringFeedback"), t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), true);
         }
       });
     });
   }
 
   /* ------------------------------------------------------------------ *
-   * 8. KHỞI ĐỘNG
+   * 8. NGÔN NGỮ (vi/en)
+   * ------------------------------------------------------------------ */
+
+  function initLangToggle() {
+    const btn = el("btnLangToggle");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      window.I18N.setLang(window.I18N.getLang() === "vi" ? "en" : "vi");
+    });
+  }
+
+  // Nội dung tĩnh (data-i18n) tự cập nhật qua applyStaticText(). Nội dung
+  // ĐỘNG (đã render dựa trên ngôn ngữ cũ) cần được yêu cầu vẽ lại — dùng
+  // lại loader của tab đang mở (đọc từ SQLite, rẻ) thay vì lưu cache toàn
+  // bộ dữ liệu. stepper/log không gắn với tab nào nên xử lý riêng.
+  function reapplyDynamicTextForLangChange() {
+    // The run-confirmation bar (runPipelineFlow) is a safety-critical
+    // dialog for an irreversible action (overwrite results / redraw STB)
+    // built once from plain textContent, not data-i18n — leaving it up
+    // would show a stale-language confirmation next to a freshly
+    // retranslated page. Dismiss it (same as Cancel) rather than risk a
+    // mismatched-language safety prompt; the user just re-clicks "Run".
+    const confirmBar = el("runConfirmBar");
+    if (confirmBar) {
+      confirmBar.remove();
+      forceRedrawArmed = false;
+    }
+
+    refreshSidebarStatus();
+    if (lastRenderedSteps) renderSteps(lastRenderedSteps);
+    if (lastRenderedTopErrors) showLog(lastRenderedTopErrors);
+
+    const tab = currentTabName();
+    if (tab === "pipeline") {
+      refreshDashboardStats();
+      refreshStbLockLine();
+      if (!el("historyTable").hidden) loadRunHistory();
+    } else if (tab === "results") {
+      loadResultsTab();
+    } else if (tab === "admin") {
+      loadAdminTab();
+    } else if (tab === "scoring") {
+      loadScoringOverview();
+      if (currentScoringClub) openScoringClub(currentScoringClub);
+    }
+    // Tab "fallback": nhãn tĩnh đã tự cập nhật; các lưới club dùng tên
+    // club do trường nhập (dữ liệu, không phải chuỗi giao diện) nên
+    // không cần vẽ lại.
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 9. KHỞI ĐỘNG
    * ------------------------------------------------------------------ */
 
   function init() {
+    window.I18N.applyStaticText();
+    initLangToggle();
+    window.addEventListener("langchange", reapplyDynamicTextForLangChange);
     initTabs();
     initPipelineHandlers();
     initResultsHandlers();

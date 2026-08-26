@@ -1,4 +1,33 @@
+import os
+import re
 import sqlite3
+
+
+def test_every_error_code_used_in_api_py_is_in_the_i18n_catalog():
+    """Static-analysis guard: every err("code", ...) call site in api.py
+    (and in rbda_priority_pipeline.py) must have a matching entry with
+    both "vi" and "en" text in i18n_errors.MESSAGES — otherwise the UI
+    would silently fall back to showing the raw code instead of text."""
+    from i18n_errors import MESSAGES
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pattern = re.compile(r'err\(\s*["\'](\w+)["\']')
+
+    used_codes = set()
+    for filename in ("api.py", "rbda_priority_pipeline.py"):
+        source = open(os.path.join(base_dir, filename), encoding="utf-8").read()
+        used_codes.update(pattern.findall(source))
+
+    assert used_codes, "sanity check: should have found at least one err(...) call"
+
+    missing = used_codes - set(MESSAGES.keys())
+    assert not missing, f"error codes used but not in i18n_errors.MESSAGES: {missing}"
+
+    incomplete = {
+        code for code in used_codes
+        if not MESSAGES[code].get("vi") or not MESSAGES[code].get("en")
+    }
+    assert not incomplete, f"error codes missing a vi or en translation: {incomplete}"
 
 
 def test_dashboard_status_on_empty_db(api):
@@ -144,6 +173,17 @@ def test_run_pipeline_full_flow_and_results(api):
     assert done_steps == ["validate", "stb_lottery", "rbda_cascade", "write_results", "export"]
     assert res["data"]["n_total"] == 3
 
+    # step details that carry translatable text are structured {code,
+    # params} entries, not pre-formatted Vietnamese strings — this is
+    # what lets the frontend render them in whichever language is active.
+    by_step = {(s["step"], s["status"]): s for s in res["data"]["steps"]}
+    stb_detail = by_step[("stb_lottery", "done")]["detail"]
+    assert stb_detail["code"] == "stb_redrawn_and_locked"
+    assert stb_detail["params"]["n"] == 3
+    rbda_detail = by_step[("rbda_cascade", "done")]["detail"]
+    assert rbda_detail["code"] == "rbda_done"
+    assert isinstance(rbda_detail["params"]["rounds"], int)
+
     dashboard = api.get_dashboard_status()["data"]
     assert dashboard["has_results"] is True
 
@@ -245,6 +285,11 @@ def test_run_pipeline_reports_validation_errors(api):
     error_steps = [s for s in steps if s["status"] == "error"]
     assert len(error_steps) == 1
     assert error_steps[0]["step"] == "validate"
+
+    top_level_errors = res["errors"]["errors"]
+    assert top_level_errors, "validate errors should be surfaced at the top level too"
+    assert top_level_errors[0]["code"] == "club_capacity_not_positive"
+    assert top_level_errors[0]["params"]["club_id"] == "A"
 
 
 def test_scoring_is_blind_no_stb_or_preferences_leaked(api):

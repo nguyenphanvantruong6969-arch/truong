@@ -18,12 +18,45 @@ rbda-kiosk/
   main.py      -> điểm khởi động, tạo cửa sổ pywebview
   api.py       -> lớp PipelineAPI, cầu nối JS <-> rbda_priority_pipeline.py
   rbda_priority_pipeline.py -> thuật toán RB-DA + I/O SQLite (DEFAULT_SCHEMA)
+  i18n_errors.py -> catalog lỗi song ngữ (vi/en) dùng ở Python (xem "Song ngữ" bên dưới)
   index.html   -> 5 tab: Vận hành pipeline / Kết quả / Nhập dự phòng /
                   Quản lý club & dự trữ / Chấm điểm (mù)
   style.css    -> giao diện (token: giấy lạnh + ink + vàng đồng)
+  i18n.js      -> catalog văn bản song ngữ (vi/en) + hàm dịch dùng ở JS
   app.js       -> logic frontend, gọi window.pywebview.api.*
   tests/       -> bộ test tự động (pytest)
 ```
+
+## Song ngữ (vi/en)
+
+Toàn bộ giao diện — nhãn tĩnh, toast, thông báo lỗi từ backend — hỗ trợ
+2 ngôn ngữ, đổi bằng nút góc trên sidebar (lưu lựa chọn vào
+`localStorage`, mặc định tiếng Việt).
+
+Kiến trúc: `api.py` KHÔNG trả về chuỗi tiếng Việt đã format sẵn cho lỗi
+nữa — mọi `_fail(...)` trả về `{"code": "...", "params": {...}}` (xem
+`i18n_errors.py`). Phía JS (`i18n.js`) có một bản sao **y hệt**
+(`ERROR_MESSAGES`) để dịch các code đó sang ngôn ngữ đang chọn mà không
+cần gọi lại Python. Văn bản tĩnh trong `index.html` dùng thuộc tính
+`data-i18n`/`data-i18n-placeholder`/`data-i18n-html`, áp dụng bằng
+`I18N.applyStaticText()`.
+
+Tên club/học sinh (dữ liệu do trường nhập) KHÔNG bị dịch — chỉ chữ
+"khung" của app (nhãn nút, tiêu đề, thông báo lỗi/trạng thái) mới song
+ngữ.
+
+3 test trong `tests/test_i18n_sync.py` khoá 2 catalog (Python + JS)
+luôn khớp nhau tuyệt đối — sửa 1 bên mà quên bên kia sẽ FAIL test ngay,
+không đợi phát hiện bằng mắt.
+
+**Lưu ý an toàn đã xử lý:** đổi ngôn ngữ giữa lúc một nút xác nhận
+2 bước (`armTwoStepConfirm` — vd "Xoá học sinh") đang ở trạng thái
+"đã bấm lần 1" sẽ KHÔNG bị ghi đè nhãn về trạng thái ban đầu (nếu ghi
+đè, trạng thái nội bộ "đã bấm lần 1" vẫn còn mà nhãn lại hiện như chưa
+bấm — bấm tiếp sẽ xoá NGAY không cảnh báo). Tương tự, thanh xác nhận
+"Chạy lại sẽ ghi đè kết quả" (`runConfirmBar`) sẽ tự đóng khi đổi ngôn
+ngữ thay vì hiển thị sai ngôn ngữ — người dùng bấm "Chạy pipeline" lại
+để có thanh xác nhận mới đúng ngôn ngữ hiện tại.
 
 ## Chạy test tự động
 
@@ -35,38 +68,55 @@ python3 -m pytest tests/ -v
 
 ## Đã test
 
-- **Thuật toán (`tests/test_pipeline_core.py`, 13 test case):**
+- **Thuật toán (`tests/test_pipeline_core.py`, 14 test case):**
   `compute_club_priority` (thứ tự 2 tầng + tie-break bằng STB),
   `club_choice_function` (dự trữ được chọn trước, suất dự trữ không
   có ai đủ điều kiện sẽ tự động rơi vào general), `run_rbda` trên các
   kịch bản dựng tay đối chiếu bằng tay (bao gồm 1 kịch bản có dự
-  trữ), `validate_data_integrity`, `sanity_check_result`, và 1 test
-  tích hợp chạy `run_full_pipeline` trên dữ liệu mẫu 120 học sinh rồi
-  xác nhận `sanity_check_result`/`verify_stability` không phát hiện
-  vấn đề gì (không có blocking pair — kết quả ổn định đúng lý thuyết
-  matching).
-- **`api.py` (`tests/test_api.py`, 24 test case):** dashboard, CRUD
+  trữ), `validate_data_integrity`/`sanity_check_result` (nay trả về
+  entry có cấu trúc `{code, params}` — test theo `code`, không theo
+  chuỗi con nữa), 1 test xác nhận MỌI entry lỗi thuật toán có thể sinh
+  ra đều dịch được sang cả 2 ngôn ngữ (không thiếu key/placeholder), và
+  1 test tích hợp chạy `run_full_pipeline` trên dữ liệu mẫu 120 học
+  sinh rồi xác nhận `sanity_check_result`/`verify_stability` không
+  phát hiện vấn đề gì (không có blocking pair — kết quả ổn định đúng
+  lý thuyết matching).
+- **`api.py` (`tests/test_api.py`, 25 test case):** dashboard, CRUD
   club (kể cả chặn xoá club đang được tham chiếu), tạo/tìm học sinh,
   submit test selection & preferences (thành công + toàn bộ lỗi:
   trùng nguyện vọng, quá 10 club, học sinh không tồn tại, club không
   tồn tại), `run_pipeline` đầy đủ 5 bước (kể cả khoá STB, tái sử dụng
   STB khi chạy lại, vẽ bổ sung STB cho học sinh mới, vẽ lại toàn bộ
-  khi `force_redraw_stb=True`, báo lỗi validate đúng cách), chấm điểm
-  mù (xác nhận response KHÔNG rò rỉ STB/thứ hạng nguyện vọng), gán
-  diện dự trữ hàng loạt, phân trang danh sách học sinh, nhập CSV định
-  dạng rộng/dài, và 2 nút mới `reset_student_entry`/`delete_student`
-  (xem mục TODO đã xử lý bên dưới). **Tất cả 37 test pass.**
-- `app.js`: `node --check` xác nhận không lỗi cú pháp; toàn bộ tên
-  hàm `callApi("...")` đối chiếu khớp 1-1 với hàm public trong
+  khi `force_redraw_stb=True`, báo lỗi validate đúng cách — và xác
+  nhận step detail/error đều là entry `{code, params}` có cấu trúc,
+  không phải chuỗi Việt hoá sẵn), chấm điểm mù (xác nhận response
+  KHÔNG rò rỉ STB/thứ hạng nguyện vọng), gán diện dự trữ hàng loạt,
+  phân trang danh sách học sinh, nhập CSV định dạng rộng/dài,
+  `reset_student_entry`/`delete_student`, và 1 test tĩnh quét toàn bộ
+  `api.py`/`rbda_priority_pipeline.py` để chắc chắn mọi `err("code")`
+  gọi ra đều có mặt trong catalog với đủ cả 2 ngôn ngữ.
+- **Song ngữ (`tests/test_i18n_sync.py`, 3 test case):** catalog lỗi
+  JS (`i18n.js`) khớp tuyệt đối với catalog Python (`i18n_errors.py`);
+  `UI_STRINGS.vi`/`UI_STRINGS.en` trong `i18n.js` có đúng cùng 1 tập
+  key; mọi key `data-i18n`/`data-i18n-placeholder`/`data-i18n-html`
+  dùng trong `index.html` đều tồn tại trong `UI_STRINGS`. **Tổng cộng
+  cả 3 file: 42 test, tất cả pass.**
+- `app.js`/`i18n.js`: `node --check` xác nhận không lỗi cú pháp; toàn
+  bộ tên hàm `callApi("...")` đối chiếu khớp 1-1 với hàm public trong
   `PipelineAPI`, và toàn bộ id DOM dùng trong `el(...)` đều tồn tại
   trong `index.html`.
-- **Giao diện thật trong trình duyệt (Playwright + Chromium, mock
-  `window.pywebview.api`):** đã lái thử toàn bộ luồng tab "Nhập dự
-  phòng" — tạo học sinh mới, tick chọn club thi, xếp hạng nguyện
-  vọng, bấm "Sửa lại từ đầu" (xác nhận 2 bước, xoá đúng cả tick-box
-  lẫn danh sách xếp hạng, giữ nguyên học sinh), bấm "Xoá học sinh"
-  (xác nhận 2 bước, ẩn khu vực làm việc, xoá đúng học sinh) — chụp
-  ảnh màn hình xác nhận bố cục/hành vi đúng như thiết kế.
+- **Giao diện thật trong trình duyệt (Playwright + Chromium chạy
+  thẳng vào `PipelineAPI` thật qua một cầu HTTP cục bộ, KHÔNG mock):**
+  chạy trọn 1 lượt pipeline thật trên dữ liệu mẫu (45 học sinh/10
+  club) — xem cả VI và EN, xác nhận chi tiết từng bước
+  (`stb_lottery`, `rbda_cascade`, …) dịch đúng ở cả 2 ngôn ngữ kể cả
+  khi dịch LẠI (không gọi lại API) sau khi đổi ngôn ngữ; kích hoạt lỗi
+  validate thật (capacity=0) và xác nhận thông báo dịch đúng; lái thử
+  toàn bộ luồng tab "Nhập dự phòng" (tạo học sinh, tick chọn club thi,
+  xếp hạng nguyện vọng, "Sửa lại từ đầu", "Xoá học sinh") ở cả 2 ngôn
+  ngữ. Qua đó phát hiện và sửa 2 lỗi thật liên quan đổi ngôn ngữ giữa
+  chừng (xem mục "Song ngữ" ở trên) trước khi merge — không phải chỉ
+  kiểm tra bằng mắt tĩnh.
 
 ## CHƯA test được — cần Trường tự chạy trên máy có màn hình
 
