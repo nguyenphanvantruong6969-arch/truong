@@ -774,7 +774,12 @@ def seed_sample_data(
     test_rows, score_rows, pref_rows = [], [], []
 
     for sid in student_ids:
-        n_prefs = rng.randint(4, 10)
+        # Kẹp theo số club THỰC CÓ: trường có ít hơn 10 club là hoàn toàn
+        # bình thường, và rng.sample() sẽ ném ValueError nếu xin nhiều hơn
+        # số phần tử đang có (trước đây cứng randint(4, 10) -> crash với
+        # mọi bộ club_defs dưới 10 club).
+        lo, hi = min(4, len(club_ids)), min(10, len(club_ids))
+        n_prefs = rng.randint(lo, hi)
         ranked_clubs = rng.sample(club_ids, n_prefs)
         for rank, cid in enumerate(ranked_clubs, start=1):
             pref_rows.append((sid, cid, rank))

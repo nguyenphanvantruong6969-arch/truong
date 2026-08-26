@@ -202,6 +202,23 @@ def test_error_entries_are_translatable_to_both_languages():
             assert "{" not in text, f"unfilled placeholder in {lang} text: {text!r}"
 
 
+@pytest.mark.parametrize("n_clubs", [1, 2, 6, 9, 10, 15])
+def test_seed_sample_data_works_for_any_club_count(tmp_path, n_clubs):
+    """A school having fewer than 10 clubs is normal. seed_sample_data used
+    to hardcode randint(4, 10) preferences per student and crash in
+    rng.sample() whenever there were fewer clubs than that."""
+    club_defs = [(f"club_{i:02d}", 10, 0, None) for i in range(1, n_clubs + 1)]
+    db_path = str(tmp_path / f"sample_{n_clubs}.db")
+
+    seed_sample_data(db_path, n_students=15, club_defs=club_defs, seed=7)
+
+    students, clubs, tested_scores, applicants, preferences, _ = load_from_sqlite(db_path)
+    assert len(clubs) == n_clubs
+    assert validate_data_integrity(students, clubs, preferences, applicants) == []
+    # nobody may be given more preferences than there are clubs to rank
+    assert all(len(prefs) <= n_clubs for prefs in preferences.values())
+
+
 def test_full_pipeline_on_seeded_sample_data_has_no_integrity_problems(tmp_path):
     db_path = str(tmp_path / "app.db")
     csv_path = str(tmp_path / "match_results.csv")
