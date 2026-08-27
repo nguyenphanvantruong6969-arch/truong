@@ -170,7 +170,7 @@ def test_run_pipeline_full_flow_and_results(api):
     res = api.run_pipeline(seed=1)
     assert res["ok"] is True, res
     done_steps = [s["step"] for s in res["data"]["steps"] if s["status"] == "done"]
-    assert done_steps == ["validate", "stb_lottery", "rbda_cascade", "write_results", "export"]
+    assert done_steps == ["backup", "validate", "stb_lottery", "rbda_cascade", "write_results", "export"]
     assert res["data"]["n_total"] == 3
 
     # step details that carry translatable text are structured {code,

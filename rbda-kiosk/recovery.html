@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="recovery_title">Phục hồi dữ liệu</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="recovery-shell">
+  <div class="panel recovery-card">
+    <div class="panel-head">
+      <button type="button" class="lang-toggle-light" id="btnLangToggle" data-i18n="lang_toggle_label">EN</button>
+    </div>
+
+    <h1 class="recovery-heading" data-i18n="recovery_heading">Không thể mở cơ sở dữ liệu</h1>
+    <p class="recovery-intro" data-i18n="recovery_intro">
+      Ứng dụng không khởi động được vì tệp app.db gặp sự cố. Dữ liệu chưa
+      chắc đã mất — hãy thử các bước bên dưới trước khi liên hệ hỗ trợ.
+    </p>
+
+    <details class="recovery-error-detail">
+      <summary data-i18n="recovery_error_detail_label">Chi tiết lỗi kỹ thuật (để gửi cho người hỗ trợ nếu cần):</summary>
+      <pre id="initErrorDetail"></pre>
+    </details>
+
+    <p class="recovery-backups-label" data-i18n="recovery_backups_label">Các bản sao lưu tìm thấy trên máy này:</p>
+    <table class="data-table" id="backupsTable">
+      <thead>
+        <tr>
+          <th data-i18n="th_backup_name">Tên tệp</th>
+          <th data-i18n="th_backup_time">Thời điểm sao lưu</th>
+          <th data-i18n="th_backup_size">Dung lượng</th>
+        </tr>
+      </thead>
+      <tbody id="backupsTableBody"></tbody>
+    </table>
+    <p id="noBackupsMsg" hidden></p>
+
+    <div class="recovery-actions">
+      <button type="button" class="btn btn-primary" id="btnRestoreBackup" data-i18n="btn_restore_backup">
+        Khôi phục từ bản sao lưu gần nhất còn đọc được
+      </button>
+      <button type="button" class="btn btn-danger" id="btnStartFresh" data-i18n="btn_start_fresh">
+        Bắt đầu với cơ sở dữ liệu mới
+      </button>
+    </div>
+
+    <div id="recoveryStatus"></div>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="recovery.js"></script>
+</body>
+</html>

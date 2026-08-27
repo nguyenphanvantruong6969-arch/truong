@@ -1110,3 +1110,112 @@ button, input {
   font-family: var(--font-body);
   font-size: 13px;
 }
+
+/* ============================================================
+   RECOVERY.HTML — man hinh phuc hoi khi app.db hong/mat va
+   PipelineAPI khong khoi tao duoc (xem main.py, recovery.py).
+   Trang doc lap, khong dung .app-shell (khong co sidebar/tab).
+   ============================================================ */
+
+.btn-danger {
+  background: var(--paper);
+  color: var(--rust);
+  border-color: var(--rust-soft);
+}
+.btn-danger:hover:not(:disabled) { background: var(--rust-soft); }
+.btn-danger.is-confirming {
+  background: var(--rust);
+  color: #fff;
+  border-color: var(--rust);
+}
+
+.lang-toggle-light {
+  flex-shrink: 0;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.lang-toggle-light:hover { background: #E9EAE5; color: var(--ink); }
+
+.recovery-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.recovery-card {
+  width: 100%;
+  max-width: 720px;
+}
+
+.recovery-card .panel-head {
+  margin-bottom: 10px;
+  justify-content: flex-end;
+}
+
+.recovery-heading {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--rust);
+  margin: 0 0 6px;
+}
+
+.recovery-intro {
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0 0 18px;
+}
+
+.recovery-error-detail {
+  margin: 0 0 20px;
+}
+
+.recovery-error-detail summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--slate);
+  margin-bottom: 8px;
+}
+
+.recovery-error-detail pre {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.recovery-status {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.recovery-status.is-success { background: var(--moss-soft); color: var(--moss); }
+.recovery-status.is-error { background: var(--rust-soft); color: var(--rust); }
+.recovery-status.is-pending { background: var(--gold-soft); color: var(--gold); }

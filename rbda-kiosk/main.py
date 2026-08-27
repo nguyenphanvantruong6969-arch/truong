@@ -11,10 +11,12 @@ Cách chạy:
 
 import os
 import sys
+import traceback
 
 import webview
 
 from api import PipelineAPI
+from recovery import RecoveryAPI
 
 APP_TITLE = "Phân bổ Câu lạc bộ — RB-DA"
 
@@ -48,7 +50,32 @@ def resolve_db_path() -> str:
 
 def main() -> None:
     db_path = resolve_db_path()
-    api = PipelineAPI(db_path)
+
+    # KHÔNG BAO GIỜ được chết ngầm: nếu app.db hỏng/mất, PipelineAPI(...)
+    # (gọi init_db bên trong) ném exception NGAY TẠI ĐÂY — TRƯỚC khi có
+    # bất kỳ cửa sổ nào được tạo. Không bọc try/except thì tiến trình
+    # thoát với exit code 1 và KHÔNG cửa sổ nào hiện ra — đặc biệt
+    # nghiêm trọng trên bản build Windows console=False (kiosk), nơi
+    # không có terminal nào để người vận hành thấy lỗi (xem
+    # ke-hoach-mat-du-lieu.html, nhóm B). Thay vào đó: mở cửa sổ PHỤC HỒI
+    # (recovery.html/recovery.py) cho phép khôi phục từ bản sao lưu tự
+    # động (xem PipelineAPI._backup_db trong api.py) hoặc bắt đầu lại
+    # với DB trống.
+    try:
+        api = PipelineAPI(db_path)
+    except Exception as e:
+        recovery_path = os.path.join(RESOURCE_DIR, "recovery.html")
+        recovery_api = RecoveryAPI(db_path, f"{e}\n\n{traceback.format_exc()}")
+        webview.create_window(
+            APP_TITLE + " — Phục hồi dữ liệu",
+            recovery_path,
+            js_api=recovery_api,
+            width=900,
+            height=700,
+            min_size=(700, 560),
+        )
+        webview.start()
+        return
 
     index_path = os.path.join(RESOURCE_DIR, "index.html")
     window = webview.create_window(

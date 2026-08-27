@@ -227,6 +227,18 @@ MESSAGES = {
         "vi": "{rounds} vòng lặp, không lỗi",
         "en": "{rounds} round(s), no errors",
     },
+    "db_backed_up": {
+        "vi": "Đã sao lưu app.db trước khi chạy: {backup_name}",
+        "en": "Backed up app.db before running: {backup_name}",
+    },
+    "db_backup_failed": {
+        "vi": "Không sao lưu được app.db (pipeline vẫn tiếp tục chạy): {detail}",
+        "en": "Could not back up app.db (pipeline still continues): {detail}",
+    },
+    "pipeline_rolled_back": {
+        "vi": "Đã huỷ toàn bộ thay đổi của lần chạy này (kể cả số STB vừa vẽ, nếu có) do lỗi giữa chừng — dữ liệu quay lại đúng trạng thái trước khi bấm chạy.",
+        "en": "Rolled back every change from this run (including any freshly drawn STB numbers) because of a mid-run error — data is back to exactly the state before you clicked run.",
+    },
 
     # --- validate_data_integrity (rbda_priority_pipeline.py) ---
     "pref_student_not_in_students": {
@@ -343,6 +355,31 @@ MESSAGES = {
     "health_oversubscribed": {
         "vi": "Tổng chỗ toàn hệ thống là {n_seats}, trong khi có {n_students} học sinh đã nộp nguyện vọng. Ít nhất {n_short} em chắc chắn không có chỗ.",
         "en": "Total seats across all clubs is {n_seats}, but {n_students} student(s) have submitted preferences. At least {n_short} student(s) cannot be placed.",
+    },
+
+    # --- recovery.py / recovery.html — màn hình phục hồi khi app.db
+    # hỏng/mất và PipelineAPI không khởi tạo được (xem main.py) ---
+    "recovery_no_backups": {
+        "vi": "Không tìm thấy bản sao lưu nào — có thể chưa từng chạy pipeline lần nào trên máy này, hoặc thư mục sao lưu đã bị xoá.",
+        "en": "No backups found — the pipeline may never have run on this machine, or the backup folder was deleted.",
+    },
+    "recovery_all_backups_corrupt": {
+        "vi": "Đã thử cả {n_tried} bản sao lưu tìm thấy nhưng không bản nào đọc được nguyên vẹn.",
+        "en": "Tried all {n_tried} backup(s) found, but none of them could be read intact.",
+    },
+    "recovery_restore_failed": {
+        "vi": "Khôi phục thất bại: {detail}",
+        "en": "Restore failed: {detail}",
+    },
+    "recovery_restored_from": {
+        "vi": "Đã khôi phục từ bản sao lưu {backup_name}"
+              " (bỏ qua {n_skipped} bản mới hơn vì đọc không được).",
+        "en": "Restored from backup {backup_name}"
+              " (skipped {n_skipped} newer backup(s) that could not be read).",
+    },
+    "recovery_fresh_created": {
+        "vi": "Đã tạo app.db mới hoàn toàn trống. Tệp cũ được đổi tên (không xoá), nằm cùng thư mục.",
+        "en": "Created a brand-new, empty app.db. The old file was renamed (not deleted) and is in the same folder.",
     },
 }
 

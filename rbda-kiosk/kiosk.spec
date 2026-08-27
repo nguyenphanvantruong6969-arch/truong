@@ -29,6 +29,8 @@ datas = [
     ("style.css", "."),
     ("app.js", "."),
     ("i18n.js", "."),
+    ("recovery.html", "."),
+    ("recovery.js", "."),
     ("assets/fonts", "assets/fonts"),
 ]
 

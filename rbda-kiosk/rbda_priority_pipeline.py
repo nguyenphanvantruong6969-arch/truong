@@ -554,12 +554,35 @@ CREATE TABLE IF NOT EXISTS stb_lock (
 );
 """
 
+# busy_timeout dai hon mac dinh (5s) — nhieu tien trinh cung mo app.db
+# (vd may kiosk + script doi soat chay song song) se CHO thay vi nem
+# "database is locked" ngay lap tuc. synchronous=FULL danh doi mot it
+# toc do ghi de lay dam bao: sau khi commit() tra ve, du lieu da nam
+# tren dia that (khong chi trong page cache cua he dieu hanh), song
+# song voi mot ban ghi WAL da bi loai bo — xem ke hoach mat du lieu,
+# journal_mode giu nguyen mac dinh DELETE de file .db la BAN SAO DUY
+# NHAT can, tuong thich voi quy trinh sao luu USB copy-file don gian.
+_BUSY_TIMEOUT_MS = 15000
+
+
+def connect_db(db_path: str):
+    """
+    Mo mot ket noi sqlite3 toi app.db voi cac pragma do ben vung da
+    thong nhat (busy_timeout dai + synchronous=FULL, KHONG WAL). Moi
+    noi trong code can ghi/doc app.db nen di qua ham nay thay vi goi
+    sqlite3.connect() truc tiep, de dam bao hanh vi nhat quan.
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(db_path, timeout=_BUSY_TIMEOUT_MS / 1000)
+    conn.execute(f"PRAGMA busy_timeout = {_BUSY_TIMEOUT_MS}")
+    conn.execute("PRAGMA synchronous = FULL")
+    return conn
+
 
 def init_db(db_path: str) -> None:
     """Tạo app.db với schema mặc định nếu chưa tồn tại (idempotent)."""
-    import sqlite3
-
-    conn = sqlite3.connect(db_path)
+    conn = connect_db(db_path)
     conn.executescript(DEFAULT_SCHEMA)
     conn.execute(
         "INSERT OR IGNORE INTO stb_lock (id, is_locked, locked_at, unlocked_at) "
@@ -593,7 +616,7 @@ def load_from_sqlite(db_path: str):
     """
     import sqlite3
 
-    conn = sqlite3.connect(db_path)
+    conn = connect_db(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
@@ -651,9 +674,7 @@ def write_match_results_to_sqlite(
     db_path: str, match_result: MatchResult
 ) -> None:
     """Ghi kết quả vào bảng match_results (ghi đè toàn bộ), kèm tier và thứ hạng nguyện vọng."""
-    import sqlite3
-
-    conn = sqlite3.connect(db_path)
+    conn = connect_db(db_path)
     cur = conn.cursor()
     cur.execute("DELETE FROM match_results")
     cur.executemany(
@@ -689,9 +710,7 @@ def run_full_pipeline(db_path: str, seed: int, output_csv_path: str) -> MatchRes
 
     stb_lottery = generate_stb_lottery(list(students.keys()), seed=seed)
     # Ghi STB vừa sinh ngược lại vào DB để tái sử dụng / audit.
-    import sqlite3
-
-    conn = sqlite3.connect(db_path)
+    conn = connect_db(db_path)
     conn.executemany(
         "UPDATE students SET stb_number = ? WHERE student_id = ?",
         [(v, k) for k, v in stb_lottery.items()],
@@ -734,7 +753,6 @@ def seed_sample_data(
         Mặc định tạo 10 club nếu không truyền vào.
     """
     import random
-    import sqlite3
 
     rng = random.Random(seed)
     init_db(db_path)
@@ -749,7 +767,7 @@ def seed_sample_data(
     student_ids = [f"stu_{i:04d}" for i in range(1, n_students + 1)]
     reserve_groups = ["chinh_sach", None, None, None]  # ~25% thuộc diện dự trữ
 
-    conn = sqlite3.connect(db_path)
+    conn = connect_db(db_path)
     cur = conn.cursor()
     cur.execute("DELETE FROM students")
     cur.execute("DELETE FROM clubs")

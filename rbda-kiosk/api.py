@@ -39,7 +39,7 @@ from rbda_priority_pipeline import (
     verify_stability,
     export_match_results,
     default_reserve_eligible_fn,
-    write_match_results_to_sqlite,
+    connect_db,
 )
 from i18n_errors import err
 
@@ -87,7 +87,7 @@ class PipelineAPI:
     def get_last_run_info(self):
         """Thông tin lần chạy pipeline gần nhất — để hiện ở sidebar/dashboard."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             row = cur.execute("SELECT * FROM run_meta WHERE id = 1").fetchone()
@@ -99,7 +99,7 @@ class PipelineAPI:
     def get_dashboard_status(self):
         """Số liệu tổng quan để hiển thị ngay khi mở tab Pipeline."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             n_students = cur.execute("SELECT COUNT(*) FROM students").fetchone()[0]
             n_clubs = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
@@ -166,7 +166,7 @@ class PipelineAPI:
         "high" (gần như chắc chắn làm sai kết quả) hoặc "medium"/"info".
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             warnings = []
@@ -296,7 +296,7 @@ class PipelineAPI:
         STB cũ chứ không vẽ lại — chỉ vẽ lại nếu force_redraw_stb=True).
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             has_results = cur.execute(
                 "SELECT COUNT(*) FROM match_results"
@@ -320,7 +320,7 @@ class PipelineAPI:
 
     def get_stb_lock_status(self):
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             row = cur.execute(
                 "SELECT is_locked, locked_at, unlocked_at FROM stb_lock WHERE id = 1"
@@ -340,7 +340,7 @@ class PipelineAPI:
         """Nhật ký toàn bộ các lần chạy pipeline, mới nhất trước — phục vụ kiểm toán."""
         try:
             limit = max(1, min(int(limit), 200))
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute(
@@ -352,6 +352,41 @@ class PipelineAPI:
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_run_history", detail=str(e)))
+
+    _MAX_BACKUPS = 10
+
+    def _backup_db(self) -> str:
+        """
+        Sao lưu app.db bằng SQLite Backup API (connection.backup(), KHÔNG
+        phải copy file thô) ngay TRƯỚC khi pipeline bắt đầu ghi gì —
+        an toàn kể cả khi có tiến trình khác đang mở file cùng lúc, khác
+        với copy file trực tiếp vốn có thể chụp phải trạng thái nửa-ghi
+        (xem ke-hoach-mat-du-lieu.html). Giữ lại tối đa _MAX_BACKUPS bản
+        gần nhất, tự xoá bản cũ hơn. Trả về đường dẫn bản sao lưu.
+        """
+        backup_dir = os.path.dirname(self.db_path) or "."
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        backup_name = f"{os.path.basename(self.db_path)}.bak-{ts}"
+        backup_path = os.path.join(backup_dir, backup_name)
+
+        src = connect_db(self.db_path)
+        try:
+            dst = sqlite3.connect(backup_path)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+        finally:
+            src.close()
+
+        prefix = f"{os.path.basename(self.db_path)}.bak-"
+        existing = sorted(f for f in os.listdir(backup_dir) if f.startswith(prefix))
+        for stale in existing[: -self._MAX_BACKUPS] if len(existing) > self._MAX_BACKUPS else []:
+            try:
+                os.remove(os.path.join(backup_dir, stale))
+            except OSError:
+                pass
+        return backup_path
 
     def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
         """
@@ -372,9 +407,36 @@ class PipelineAPI:
             unlocked_at của lần khoá cũ rồi khoá lại với thời điểm mới.
           - Mọi lần chạy (kể cả tái sử dụng STB) đều được append vào
             run_history — không bao giờ mất dấu vết lần chạy nào.
+
+        Tính nguyên tử (giải quyết #1 trong ke-hoach-mat-du-lieu.html):
+          - Vẽ/khoá STB, ghi match_results, ghi run_meta/run_history đều
+            diễn ra trong MỘT connection/transaction duy nhất. Nếu bất kỳ
+            bước nào ở giữa ném lỗi (kể cả crash tiến trình được bắt
+            bằng try/except ở đây), TOÀN BỘ transaction rollback — kể cả
+            số STB vừa vẽ ("full rollback", phương án đã chốt: mọi lần
+            gọi lại run_pipeline() sau một crash bắt đầu từ trạng thái
+            sạch, không có "khoá STB mồ côi" không đi kèm kết quả nào).
+          - Xuất CSV chỉ thực hiện SAU KHI transaction đã commit thành
+            công — CSV là sản phẩm phụ, lỗi ghi file không được phép
+            khiến DB rơi vào trạng thái dở dang.
         """
         steps_log = []
+        conn = None
         try:
+            try:
+                backup_path = self._backup_db()
+                steps_log.append({
+                    "step": "backup", "status": "done",
+                    "detail": err("db_backed_up", backup_name=os.path.basename(backup_path)),
+                })
+            except Exception as e:
+                # Sao luu la luoi an toan, KHONG phai dieu kien tien quyet —
+                # loi sao luu khong duoc chan pipeline chay.
+                steps_log.append({
+                    "step": "backup", "status": "error",
+                    "detail": err("db_backup_failed", detail=str(e)),
+                })
+
             steps_log.append({"step": "validate", "status": "running"})
             students, clubs, tested_scores, applicants, preferences, _ = (
                 load_from_sqlite(self.db_path)
@@ -386,7 +448,7 @@ class PipelineAPI:
             steps_log.append({"step": "validate", "status": "done"})
 
             steps_log.append({"step": "stb_lottery", "status": "running"})
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             lock_row = cur.execute(
                 "SELECT is_locked FROM stb_lock WHERE id = 1"
@@ -396,10 +458,10 @@ class PipelineAPI:
 
             if not already_locked or force_redraw_stb:
                 # Ve lai TOAN BO
-                stb_lottery = generate_stb_lottery(list(students.keys()), seed=seed)
+                stb_lottery_new = generate_stb_lottery(list(students.keys()), seed=seed)
                 conn.executemany(
                     "UPDATE students SET stb_number = ? WHERE student_id = ?",
-                    [(v, k) for k, v in stb_lottery.items()],
+                    [(v, k) for k, v in stb_lottery_new.items()],
                 )
                 if already_locked and force_redraw_stb:
                     cur.execute(
@@ -410,7 +472,9 @@ class PipelineAPI:
                     (_now(),),
                 )
                 stb_redrawn = True
-                stb_step_detail = err("stb_redrawn_and_locked", n=len(stb_lottery))
+                stb_step_detail = err("stb_redrawn_and_locked", n=len(stb_lottery_new))
+                for sid, v in stb_lottery_new.items():
+                    students[sid]["stb"] = v
             else:
                 # Da khoa: chi ve bo sung cho hoc sinh moi (stb_number con NULL)
                 missing = [
@@ -428,16 +492,19 @@ class PipelineAPI:
                         [(v + offset, k) for k, v in supplement.items()],
                     )
                     stb_step_detail = err("stb_supplemented", n=len(missing))
+                    for sid, v in supplement.items():
+                        students[sid]["stb"] = v + offset
                 else:
                     stb_step_detail = err("stb_reused")
-            conn.commit()
-            conn.close()
             steps_log.append({"step": "stb_lottery", "status": "done", "detail": stb_step_detail})
 
-            # Doc lai students de lay stb_number moi nhat (bao gom vua ve bo sung)
-            students, clubs, tested_scores, applicants, preferences, stb_lottery = (
-                load_from_sqlite(self.db_path)
-            )
+            # Khong mo connection moi de doc lai stb_number: cac thay doi
+            # o tren CHUA commit, mot connection khac se khong thay duoc
+            # (va se pha vo tinh nguyen tu). Cap nhat truc tiep vao dict
+            # students trong bo nho (da lam o hai nhanh phia tren) roi
+            # dung lai cho RB-DA — tuong duong voi doc lai tu DB nhung
+            # van nam trong CUNG MOT transaction.
+            stb_lottery = {sid: info["stb"] for sid, info in students.items()}
 
             steps_log.append({"step": "rbda_cascade", "status": "running"})
             reserve_fn = default_reserve_eligible_fn(students, clubs)
@@ -452,6 +519,10 @@ class PipelineAPI:
                     "step": "rbda_cascade", "status": "error",
                     "detail": sanity_problems + stability_problems,
                 })
+                conn.rollback()
+                conn.close()
+                conn = None
+                steps_log.append({"step": "rollback", "status": "done", "detail": err("pipeline_rolled_back")})
                 return _fail({"steps": steps_log, "errors": sanity_problems + stability_problems})
             steps_log.append({
                 "step": "rbda_cascade", "status": "done",
@@ -459,19 +530,25 @@ class PipelineAPI:
             })
 
             steps_log.append({"step": "write_results", "status": "running"})
-            write_match_results_to_sqlite(self.db_path, result)
+            cur.execute("DELETE FROM match_results")
+            cur.executemany(
+                "INSERT INTO match_results (student_id, club_id, round_num, matched_tier, rank_in_student_pref) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [
+                    (
+                        sid, cid, result.rounds_run,
+                        result.matched_tier.get(sid),
+                        result.rank_in_student_pref.get(sid),
+                    )
+                    for sid, cid in result.assignment.items()
+                ],
+            )
             steps_log.append({"step": "write_results", "status": "done"})
-
-            steps_log.append({"step": "export", "status": "running"})
-            export_path = os.path.join(os.path.dirname(self.db_path), "match_results.csv")
-            export_match_results(result, export_path)
-            steps_log.append({"step": "export", "status": "done", "detail": export_path})
 
             n_matched = sum(1 for v in result.assignment.values() if v)
             run_at = _now()
 
-            conn = sqlite3.connect(self.db_path)
-            conn.execute(
+            cur.execute(
                 "INSERT INTO run_meta (id, seed, run_at, rounds_run, n_matched, n_total) "
                 "VALUES (1, ?, ?, ?, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET seed=excluded.seed, run_at=excluded.run_at, "
@@ -480,14 +557,33 @@ class PipelineAPI:
             )
             # run_history: KHONG BAO GIO ghi de — moi lan chay them 1 dong moi,
             # de nguoi dung luon xem lai duoc lich su chay pipeline (giai quyet #3).
-            conn.execute(
+            cur.execute(
                 "INSERT INTO run_history (seed, run_at, rounds_run, n_matched, n_total, stb_redrawn) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (seed, run_at, result.rounds_run, n_matched, len(result.assignment),
                  1 if stb_redrawn else 0),
             )
+
+            # Diem commit DUY NHAT cua toan bo pipeline: neu bat ky dong
+            # nao o tren (ve STB, ghi ket qua, ghi run_meta/run_history)
+            # nem exception, khoi except ben duoi se rollback() thay vi
+            # chay den day — STB vua ve cung bi huy theo (full rollback).
             conn.commit()
             conn.close()
+            conn = None
+
+            # Xuat CSV CHI xay ra SAU KHI DB da commit thanh cong.
+            steps_log.append({"step": "export", "status": "running"})
+            export_path = os.path.join(os.path.dirname(self.db_path), "match_results.csv")
+            try:
+                export_match_results(result, export_path)
+                steps_log.append({"step": "export", "status": "done", "detail": export_path})
+            except Exception as e:
+                steps_log.append({
+                    "step": "export", "status": "error",
+                    "detail": err("error_exporting_csv", detail=str(e)),
+                })
+                export_path = None
 
             return _ok({
                 "steps": steps_log,
@@ -497,7 +593,24 @@ class PipelineAPI:
                 "export_path": export_path,
                 "stb_redrawn": stb_redrawn,
             })
-        except Exception as e:
+        except BaseException as e:
+            # BaseException (khong chi Exception): KeyboardInterrupt/
+            # SystemExit KHONG ke thua tu Exception, nhung mot "crash
+            # giua chung" phai duoc rollback du no la loai nao — full
+            # rollback (Option A) khong duoc phep chi ap dung cho mot
+            # so loai loi. Sau khi don dep xong, neu day la tin hieu
+            # dieu khien tien trinh (Ctrl+C, thoat) thi PHAI nem lai
+            # (raise) thay vi nuot thanh {ok: False} nhu mot loi
+            # nghiep vu binh thuong.
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                conn.close()
+                steps_log.append({"step": "rollback", "status": "done", "detail": err("pipeline_rolled_back")})
+            if not isinstance(e, Exception):
+                raise
             error_entry = err("error_running_pipeline", detail=str(e))
             steps_log.append({"step": "unknown", "status": "error", "detail": error_entry})
             return _fail({"steps": steps_log, "errors": [error_entry, traceback.format_exc()]})
@@ -555,7 +668,7 @@ class PipelineAPI:
             is_wide = any(f.startswith("pref_") or f.startswith("test_club_") for f in fieldnames)
             fmt = "wide" if is_wide else "long"
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             existing_ids = {r[0] for r in conn.execute("SELECT student_id FROM students")}
             conn.close()
 
@@ -617,7 +730,7 @@ class PipelineAPI:
                     name = next((r.get("name") for r in sid_rows if r.get("name")), "")
                     grouped[sid] = (name, [r["club_id"] for r in sid_rows])
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
             existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
@@ -716,7 +829,7 @@ class PipelineAPI:
                     name, clubs_list = grouped.get(sid, ("", []))
                     grouped[sid] = (row.get("name") or name, clubs_list + [row["club_id"]])
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
             existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
@@ -781,7 +894,7 @@ class PipelineAPI:
     def get_scoring_overview(self):
         """Tổng quan tiến độ chấm điểm theo từng club — cho màn hình chọn club để chấm."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute("""
@@ -806,7 +919,7 @@ class PipelineAPI:
         kèm thứ hạng nguyện vọng — đúng yêu cầu chấm mù (blind scoring).
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             club = cur.execute(
@@ -842,7 +955,7 @@ class PipelineAPI:
             if not isinstance(scores, list) or not scores:
                 return _fail(err("scores_must_be_nonempty_list"))
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             club_exists = cur.execute(
                 "SELECT 1 FROM clubs WHERE club_id = ?", (club_id,)
@@ -897,7 +1010,7 @@ class PipelineAPI:
     def get_match_results(self, search: str = ""):
         """Bảng kết quả, lọc theo student_id/name nếu search có giá trị."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             query = """
@@ -921,7 +1034,7 @@ class PipelineAPI:
     def get_club_fill_stats(self):
         """Tỉ lệ lấp đầy mỗi club — dùng vẽ thanh progress bar."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute("""
@@ -939,7 +1052,7 @@ class PipelineAPI:
 
     def export_csv(self, output_path: str):
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute("SELECT student_id, club_id FROM match_results ORDER BY student_id").fetchall()
@@ -983,7 +1096,7 @@ class PipelineAPI:
 
             reserve_group_value = reserve_group.strip() or None
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             cur.execute(
                 """
@@ -1009,7 +1122,7 @@ class PipelineAPI:
         tới club này, để tránh mất dữ liệu học sinh đã nộp.
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             n_prefs = cur.execute(
                 "SELECT COUNT(*) FROM preferences WHERE club_id = ?", (club_id,)
@@ -1035,7 +1148,7 @@ class PipelineAPI:
     def list_reserve_groups_in_use(self):
         """Danh sách các reserve_group đang được dùng (để gợi ý trong form, tránh gõ sai chính tả)."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             rows = cur.execute(
                 "SELECT DISTINCT reserve_group FROM clubs WHERE reserve_group IS NOT NULL "
@@ -1050,7 +1163,7 @@ class PipelineAPI:
     def set_student_reserve_group(self, student_id: str, reserve_group: str):
         """Gán (hoặc gỡ, nếu reserve_group='') diện dự trữ cho 1 học sinh."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
@@ -1075,7 +1188,7 @@ class PipelineAPI:
             if not isinstance(student_ids, list) or not student_ids:
                 return _fail(err("student_ids_must_be_nonempty_list"))
             value = reserve_group.strip() or None
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             existing_ids = {
                 r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
@@ -1104,7 +1217,7 @@ class PipelineAPI:
             page_size = max(1, min(int(page_size), 500))
             offset = (page - 1) * page_size
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
@@ -1142,7 +1255,7 @@ class PipelineAPI:
 
     def list_clubs(self):
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute(
@@ -1155,7 +1268,7 @@ class PipelineAPI:
 
     def search_students(self, query: str):
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             rows = cur.execute(
@@ -1174,7 +1287,7 @@ class PipelineAPI:
         'Nhập dự phòng' hiển thị lại nếu học sinh quay lại kiosk.
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             student = cur.execute(
@@ -1217,7 +1330,7 @@ class PipelineAPI:
         try:
             if not isinstance(club_ids, list):
                 return _fail(err("club_ids_must_be_list"))
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
@@ -1265,7 +1378,7 @@ class PipelineAPI:
             if len(ordered_club_ids) != len(set(ordered_club_ids)):
                 return _fail(err("duplicate_preference_in_list"))
 
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
@@ -1298,7 +1411,7 @@ class PipelineAPI:
     def create_student_if_missing(self, student_id: str, name: str):
         """Kiosk fallback: nếu học sinh chưa có trong students, tạo mới (chưa có STB)."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
@@ -1322,7 +1435,7 @@ class PipelineAPI:
         KHÔNG xoá bản ghi học sinh (giữ nguyên student_id/tên/STB/reserve_group).
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
@@ -1347,7 +1460,7 @@ class PipelineAPI:
         phải chạy lại pipeline (hoặc xử lý ở tab Quản lý) trước.
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = connect_db(self.db_path)
             cur = conn.cursor()
             exists = cur.execute(
                 "SELECT 1 FROM students WHERE student_id = ?", (student_id,)

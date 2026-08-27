@@ -15,15 +15,21 @@ không cần chỉnh `sys.path.insert` hay copy thêm gì.
 
 ```
 rbda-kiosk/
-  main.py      -> điểm khởi động, tạo cửa sổ pywebview
+  main.py      -> điểm khởi động, tạo cửa sổ pywebview (KHÔNG BAO GIỜ
+                  chết ngầm nếu app.db hỏng — mở recovery.html thay vào)
   api.py       -> lớp PipelineAPI, cầu nối JS <-> rbda_priority_pipeline.py
-  rbda_priority_pipeline.py -> thuật toán RB-DA + I/O SQLite (DEFAULT_SCHEMA)
+  rbda_priority_pipeline.py -> thuật toán RB-DA + I/O SQLite (DEFAULT_SCHEMA
+                  + connect_db(), pragma bền vững dùng chung mọi kết nối)
+  recovery.py  -> lớp RecoveryAPI, chỉ dùng khi app.db hỏng/mất (xem mục
+                  "Bền vững dữ liệu & phục hồi sự cố" bên dưới)
   i18n_errors.py -> catalog lỗi song ngữ (vi/en) dùng ở Python (xem "Song ngữ" bên dưới)
   index.html   -> 5 tab: Vận hành pipeline / Kết quả / Nhập dự phòng /
                   Quản lý club & dự trữ / Chấm điểm (mù)
+  recovery.html -> màn hình phục hồi độc lập, chỉ mở khi app.db hỏng/mất
   style.css    -> giao diện (token: giấy lạnh + ink + vàng đồng)
   i18n.js      -> catalog văn bản song ngữ (vi/en) + hàm dịch dùng ở JS
   app.js       -> logic frontend, gọi window.pywebview.api.*
+  recovery.js  -> logic frontend cho recovery.html, gọi RecoveryAPI
   tests/       -> bộ test tự động (pytest)
 ```
 
@@ -88,6 +94,56 @@ Thông tin), sắp xếp nghiêm trọng lên trước:
 Đây là **cảnh báo, không phải lỗi** — không chặn chạy pipeline, chỉ bắt
 buộc hiện ra để người vận hành tự quyết định.
 
+## Bền vững dữ liệu & phục hồi sự cố
+
+Xuất phát từ một buổi rà soát thực nghiệm riêng (mô phỏng mất điện giữa
+chừng, tệp DB bị cắt cụt/hỏng, ghi đè khi có 2 tiến trình cùng mở app.db)
+— đã tìm thấy 4 lỗ hổng thật, cả 4 đều đã vá:
+
+1. **`run_pipeline()` giờ là MỘT giao dịch (transaction) duy nhất.** Vẽ
+   STB + khoá STB + ghi `match_results` + ghi `run_meta`/`run_history`
+   đều nằm trong cùng 1 connection, chỉ `commit()` MỘT LẦN ở cuối. Nếu
+   bất kỳ bước nào ở giữa lỗi — kể cả bị ngắt bằng Ctrl+C/`KeyboardInterrupt`
+   — TOÀN BỘ giao dịch rollback, **kể cả số STB vừa vẽ** ("full
+   rollback", phương án đã chốt: một crash giữa chừng không bao giờ để
+   lại trạng thái "STB đã khoá nhưng không có kết quả nào đi kèm"). Xuất
+   CSV chuyển sang xảy ra SAU KHI đã commit thành công — lỗi ghi file
+   CSV (hết dung lượng, mất quyền...) không còn có thể kéo DB vào trạng
+   thái dở dang.
+2. **Tự động sao lưu trước MỖI lần chạy pipeline.** Dùng SQLite Backup
+   API (`connection.backup()`, không phải copy file thô — an toàn kể cả
+   khi có tiến trình khác đang mở app.db, khác với copy tay có thể chụp
+   phải trạng thái nửa-ghi), lưu vào `app.db.bak-<timestamp>` cùng thư
+   mục, tự động chỉ giữ lại 10 bản gần nhất.
+3. **Không bao giờ chết ngầm nếu app.db hỏng/mất.** Trước đây
+   `PipelineAPI(db_path)` (gọi `init_db` bên trong) lỗi thì tiến trình
+   thoát với exit code 1 và KHÔNG cửa sổ nào hiện ra — đặc biệt nghiêm
+   trọng trên bản build Windows `console=False` (không có terminal nào
+   để người vận hành thấy lỗi). Giờ `main.py` bọc bước này trong
+   try/except: nếu lỗi, mở `recovery.html` (màn hình riêng, qua
+   `RecoveryAPI`) thay vì màn hình chính — hiện lỗi kỹ thuật + danh sách
+   bản sao lưu tìm thấy, cho chọn:
+   - **Khôi phục từ bản sao lưu gần nhất còn đọc được** — kiểm tra bằng
+     `PRAGMA quick_check`; nếu bản mới nhất CŨNG hỏng, tự động lùi sang
+     bản kế trước cho tới khi tìm được bản đọc được hoặc hết bản để thử
+     (không dừng lại ở bản đầu tiên gặp lỗi).
+   - **Bắt đầu với cơ sở dữ liệu mới** — tệp hỏng được ĐỔI TÊN thành
+     `app.db.corrupt-<timestamp>` (không xoá, vẫn có thể gửi đi kiểm tra
+     sau), rồi tạo `app.db` mới hoàn toàn trống.
+   Cả hai thao tác xong đều yêu cầu đóng và mở lại ứng dụng.
+4. **Pragma bền vững trên mọi kết nối** (qua `connect_db()` dùng chung
+   trong `rbda_priority_pipeline.py`, thay cho gọi `sqlite3.connect()`
+   rải rác khắp nơi): `busy_timeout=15000` (15 giây thay vì mặc định 5
+   giây — 2 tiến trình cùng mở app.db sẽ CHỜ thay vì báo lỗi "database is
+   locked" ngay lập tức) và `synchronous=FULL` (đảm bảo dữ liệu đã thật
+   sự nằm trên đĩa sau khi `commit()` trả về, không chỉ trong bộ nhớ
+   đệm của hệ điều hành). **Cố tình KHÔNG bật `journal_mode=WAL`** — đã
+   thử nghiệm trực tiếp: WAL tạo tệp phụ `app.db-wal` chứa dữ liệu đã
+   commit; quy trình sao lưu bằng USB (copy tay file `app.db`) mà không
+   biết tới tệp `-wal` sẽ tạo ra bản sao lưu THIẾU dữ liệu mới nhất mà
+   không hề báo lỗi — giữ `journal_mode` mặc định (`DELETE`) để file
+   `.db` vẫn là bản sao DUY NHẤT cần copy.
+
 ## Chạy test tự động
 
 ```bash
@@ -136,7 +192,24 @@ python3 -m pytest tests/ -v
   liệu sạch, DB rỗng, đã chấm đủ, nhãn dự trữ khớp, đủ chỗ → tuyệt đối
   không cảnh báo, tránh "báo động giả"); và 1 test xác nhận mọi cảnh
   báo phát ra đều dịch được sang cả 2 ngôn ngữ, không sót placeholder.
-  **Tổng cộng cả 4 file: 62 test, tất cả pass.**
+- **Bền vững dữ liệu (`tests/test_data_durability.py`, 15 test case):**
+  Nhóm A (nguyên tử) — `run_pipeline` tự sao lưu trước khi chạy, giữ
+  đúng tối đa 10 bản; một `Exception` thường HAY một `KeyboardInterrupt`
+  (không kế thừa `Exception`) nổ ra giữa chừng sau khi đã vẽ STB đều
+  khiến state DB (khoá STB, `match_results`, `run_history`, số STB từng
+  học sinh) giữ NGUYÊN Y HỆT trạng thái trước khi chạy — full rollback
+  thật sự, không chỉ ở phần ghi kết quả; `KeyboardInterrupt` phải được
+  ném lại (không bị nuốt thành lỗi nghiệp vụ thường); một lỗi sanity/
+  stability (không phải exception) cũng rollback đúng cách; và app vẫn
+  chạy lại bình thường ngay sau một lần crash. Nhóm B (tệp hỏng/mất) —
+  tệp rác hoàn toàn hoặc bị cắt cụt khiến `PipelineAPI` báo lỗi rõ ràng
+  (không phải im lặng); `RecoveryAPI` báo đúng khi không có bản sao lưu
+  nào; "bắt đầu mới" đổi tên tệp hỏng (không xoá) và tạo được DB hoạt
+  động lại; khôi phục từ bản sao lưu khôi phục ĐÚNG lại toàn bộ lịch sử
+  chạy; và — kịch bản khó nhất — nếu bản sao lưu MỚI NHẤT cũng hỏng,
+  quy trình tự động lùi sang bản kế trước còn đọc được thay vì dừng lại
+  ở lỗi đầu tiên, báo đúng cả tên bản đã dùng lẫn số bản đã bỏ qua.
+  **Tổng cộng cả 5 file: 77 test, tất cả pass.**
 - **Kiểm thử ngẫu nhiên diện rộng:** 400 kịch bản sinh ngẫu nhiên (đủ
   loại quy mô, sức chứa, tỉ lệ dự trữ, tỉ lệ có điểm) — cả 400 đều
   không vi phạm bất biến nào và không tồn tại cặp phá vỡ nào. Ngoài ra
@@ -160,6 +233,14 @@ python3 -m pytest tests/ -v
   ngữ. Qua đó phát hiện và sửa 2 lỗi thật liên quan đổi ngôn ngữ giữa
   chừng (xem mục "Song ngữ" ở trên) trước khi merge — không phải chỉ
   kiểm tra bằng mắt tĩnh.
+- **`recovery.html` (Playwright, `window.pywebview.api` giả lập đúng
+  hợp đồng của `RecoveryAPI`):** hiện đúng lỗi kỹ thuật + bảng bản sao
+  lưu ở cả VI/EN; bấm "Khôi phục" và "Bắt đầu mới" (qua xác nhận 2
+  bước) đều hiện đúng thông báo kết quả dịch đúng ngôn ngữ, không sót
+  placeholder, không lỗi console. Qua đó phát hiện và sửa 1 lỗi thật:
+  nút đổi ngôn ngữ dùng nhầm class `.lang-toggle` (thiết kế cho nền tối
+  của sidebar) trên nền trắng của trang phục hồi, khiến chữ trắng-trên-
+  trắng vô hình — đã tách riêng class `.lang-toggle-light`.
 
 ## CHƯA test được — cần Trường tự chạy trên máy có màn hình
 
@@ -167,7 +248,8 @@ python3 -m pytest tests/ -v
   build_windows.bat) — sandbox này không có GTK/QT nên
   `webview.start()` báo lỗi thiếu backend GUI (đã xác minh: lỗi dừng
   đúng ở bước tạo cửa sổ, không phải lỗi code — mọi logic phía sau
-  `PipelineAPI` đã được test độc lập với pywebview ở trên).
+  `PipelineAPI`/`RecoveryAPI` đã được test độc lập với pywebview ở
+  trên, kể cả nhánh main.py mở `recovery.html` khi khởi tạo lỗi).
 - Toàn bộ luồng thao tác bằng chuột thật tại kiosk trên phần cứng
   thật (cảm ứng, độ trễ, responsive khi resize cửa sổ thật).
 
