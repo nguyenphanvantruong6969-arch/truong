@@ -13,8 +13,7 @@ import os
 import sys
 import traceback
 
-import webview
-
+import browser_host
 from api import PipelineAPI
 from recovery import RecoveryAPI
 
@@ -48,6 +47,53 @@ def resolve_db_path() -> str:
     return os.path.join(BASE_DIR, "app.db")
 
 
+def _show_ui(title: str, page: str, js_api, width: int, height: int,
+             min_size: tuple) -> None:
+    """
+    Hiện giao diện `page` với backend `js_api`, THỬ HAI CÁCH theo thứ tự:
+
+      1. Cửa sổ pywebview (ưu tiên — đúng trải nghiệm kiosk, cửa sổ riêng).
+      2. NẾU pywebview hỏng: máy chủ cục bộ + TRÌNH DUYỆT MẶC ĐỊNH của máy
+         (xem browser_host.py).
+
+    VÌ SAO CẦN CÁCH 2: trên Windows, pywebview bắt buộc đi qua
+    pythonnet -> .NET Framework, và mắt xích này đã hỏng thật trên máy
+    người dùng sau khi đóng gói bằng PyInstaller:
+
+        RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize
+        from ...\\_internal\\pythonnet\\runtime\\Python.Runtime.dll
+
+    Trước đây lỗi đó làm cả tiến trình chết kèm hộp thoại khó hiểu, app
+    hoàn toàn không dùng được. Giờ nó chỉ khiến app tự chuyển sang chạy
+    bằng trình duyệt — TOÀN BỘ tính năng giữ nguyên, vì app.js/recovery.js
+    vẫn gọi backend qua đúng `window.pywebview.api.*` như cũ (browser_host
+    dựng sẵn cầu nối giả lập). Người dùng chỉ thấy khác ở chỗ giao diện
+    mở trong cửa sổ trình duyệt thay vì cửa sổ riêng.
+    """
+    try:
+        import webview
+
+        window = webview.create_window(
+            title, os.path.join(RESOURCE_DIR, page), js_api=js_api,
+            width=width, height=height, min_size=min_size,
+        )
+        if hasattr(js_api, "set_window"):
+            # Cho phép các tính năng dùng hộp thoại gốc của hệ điều hành
+            # sau này (hiện chưa tính năng nào bắt buộc phải có window ref).
+            js_api.set_window(window)
+        webview.start()
+        return
+    except BaseException:
+        # Nuot MOI loai loi (ke ca khong phai Exception) roi thu cach 2 —
+        # con mot duong chay duoc van hon la chet kem stack trace.
+        sys.stderr.write(
+            "pywebview khong khoi dong duoc, chuyen sang che do trinh duyet:\n"
+            + traceback.format_exc()
+        )
+
+    browser_host.serve(js_api, RESOURCE_DIR, page)
+
+
 def main() -> None:
     db_path = resolve_db_path()
 
@@ -57,40 +103,25 @@ def main() -> None:
     # thoát với exit code 1 và KHÔNG cửa sổ nào hiện ra — đặc biệt
     # nghiêm trọng trên bản build Windows console=False (kiosk), nơi
     # không có terminal nào để người vận hành thấy lỗi (xem
-    # ke-hoach-mat-du-lieu.html, nhóm B). Thay vào đó: mở cửa sổ PHỤC HỒI
+    # ke-hoach-mat-du-lieu.html, nhóm B). Thay vào đó: mở màn hình PHỤC HỒI
     # (recovery.html/recovery.py) cho phép khôi phục từ bản sao lưu tự
     # động (xem PipelineAPI._backup_db trong api.py) hoặc bắt đầu lại
     # với DB trống.
     try:
         api = PipelineAPI(db_path)
     except Exception as e:
-        recovery_path = os.path.join(RESOURCE_DIR, "recovery.html")
-        recovery_api = RecoveryAPI(db_path, f"{e}\n\n{traceback.format_exc()}")
-        webview.create_window(
+        _show_ui(
             APP_TITLE + " — Phục hồi dữ liệu",
-            recovery_path,
-            js_api=recovery_api,
-            width=900,
-            height=700,
-            min_size=(700, 560),
+            "recovery.html",
+            RecoveryAPI(db_path, f"{e}\n\n{traceback.format_exc()}"),
+            width=900, height=700, min_size=(700, 560),
         )
-        webview.start()
         return
 
-    index_path = os.path.join(RESOURCE_DIR, "index.html")
-    window = webview.create_window(
-        APP_TITLE,
-        index_path,
-        js_api=api,
-        width=1280,
-        height=800,
-        min_size=(1024, 640),
+    _show_ui(
+        APP_TITLE, "index.html", api,
+        width=1280, height=800, min_size=(1024, 640),
     )
-    # Cho phép các tính năng dùng hộp thoại gốc của hệ điều hành sau này
-    # (hiện tại không tính năng nào bắt buộc phải có window ref).
-    api.set_window(window)
-
-    webview.start()
 
 
 if __name__ == "__main__":

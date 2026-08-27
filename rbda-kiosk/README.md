@@ -22,6 +22,8 @@ rbda-kiosk/
                   + connect_db(), pragma bền vững dùng chung mọi kết nối)
   recovery.py  -> lớp RecoveryAPI, chỉ dùng khi app.db hỏng/mất (xem mục
                   "Bền vững dữ liệu & phục hồi sự cố" bên dưới)
+  browser_host.py -> chế độ chạy DỰ PHÒNG bằng trình duyệt, tự bật khi
+                  pywebview không khởi động được (xem mục cùng tên bên dưới)
   i18n_errors.py -> catalog lỗi song ngữ (vi/en) dùng ở Python (xem "Song ngữ" bên dưới)
   index.html   -> 5 tab: Vận hành pipeline / Kết quả / Nhập dự phòng /
                   Quản lý club & dự trữ / Chấm điểm (mù)
@@ -144,6 +146,48 @@ chừng, tệp DB bị cắt cụt/hỏng, ghi đè khi có 2 tiến trình cùn
    không hề báo lỗi — giữ `journal_mode` mặc định (`DELETE`) để file
    `.db` vẫn là bản sao DUY NHẤT cần copy.
 
+## Chế độ dự phòng: chạy bằng trình duyệt
+
+Trên Windows, pywebview **bắt buộc** đi qua `pythonnet` → .NET Framework —
+đây là mắt xích hay hỏng nhất khi đóng gói bằng PyInstaller. Đã gặp lỗi
+thật trên máy người dùng khi chạy bản `.exe`:
+
+```
+RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize
+from ...\_internal\pythonnet\runtime\Python.Runtime.dll
+```
+
+(chữ "from" cho thấy tệp DLL **có mặt** — .NET tìm thấy nhưng từ chối nạp;
+nguyên nhân nằm ngoài tầm kiểm soát của mã nguồn). Trước đây lỗi này làm
+cả tiến trình chết kèm hộp thoại khó hiểu, app hoàn toàn không dùng được.
+
+Giờ `main.py` thử theo thứ tự:
+
+1. **Cửa sổ pywebview** — ưu tiên, đúng trải nghiệm kiosk (cửa sổ riêng).
+2. **Nếu pywebview hỏng vì bất kỳ lý do gì** → tự động chuyển sang
+   `browser_host.py`: dựng một máy chủ HTTP cục bộ rồi mở **trình duyệt
+   mặc định** của máy. Chế độ này **không dùng pythonnet/.NET/thư viện GUI
+   nào cả** — chỉ thư viện chuẩn của Python + trình duyệt vốn có sẵn trên
+   mọi máy Windows — nên gần như không thể hỏng vì lý do đóng gói.
+
+**Toàn bộ tính năng giữ nguyên**, và `app.js`/`recovery.js` **không phải
+sửa một dòng nào**: giao diện vẫn gọi backend qua đúng
+`window.pywebview.api.<tên_hàm>(...)` như cũ, còn `browser_host` chèn sẵn
+một đoạn JS dựng `window.pywebview.api` giả lập (bằng Proxy) vào mỗi trang
+HTML nó phục vụ — mỗi lời gọi biến thành một POST tới `/__api__/<tên_hàm>`.
+Người dùng chỉ thấy khác ở chỗ giao diện mở trong cửa sổ trình duyệt.
+
+An toàn (đây là máy chứa dữ liệu học sinh):
+
+- Chỉ lắng nghe trên `127.0.0.1` — không ra ngoài mạng LAN.
+- Mọi lời gọi API phải kèm **token ngẫu nhiên** sinh lúc khởi động, để một
+  trang web bất kỳ đang mở trong cùng trình duyệt không thể tự gọi vào.
+- **Không cho gọi phương thức nội bộ** (tên bắt đầu bằng `_`, ví dụ
+  `_backup_db`) qua HTTP.
+- Trang tự gửi tín hiệu "còn mở" mỗi 3 giây; quá 25 giây không thấy tín
+  hiệu, tiến trình **tự tắt** — để bản `console=False` không chạy ngầm mãi
+  sau khi người dùng đóng tab.
+
 ## Chạy test tự động
 
 ```bash
@@ -209,7 +253,17 @@ python3 -m pytest tests/ -v
   chạy; và — kịch bản khó nhất — nếu bản sao lưu MỚI NHẤT cũng hỏng,
   quy trình tự động lùi sang bản kế trước còn đọc được thay vì dừng lại
   ở lỗi đầu tiên, báo đúng cả tên bản đã dùng lẫn số bản đã bỏ qua.
-  **Tổng cộng cả 5 file: 77 test, tất cả pass.**
+- **Chế độ trình duyệt (`tests/test_browser_host.py`, 11 test case):** lời
+  gọi qua HTTP đi ĐÚNG vào `PipelineAPI` thật (tạo học sinh qua HTTP rồi
+  đọc lại bằng đối tượng Python thấy đúng dữ liệu, không phải backend
+  giả); thiếu token hoặc sai token → 403; phương thức nội bộ (`_backup_db`)
+  → 404, không lộ ra ngoài; phương thức không tồn tại → 404 chứ không làm
+  sập máy chủ; lỗi bên trong backend trả về `{ok: false}` để UI hiện được;
+  shim `window.pywebview` được chèn vào CẢ `index.html` lẫn `recovery.html`
+  và chèn ĐÚNG trước `</head>` (nếu chèn sau, `app.js` sẽ chạy trước khi
+  cầu nối tồn tại); `app.js`/`style.css` được phục vụ nguyên văn không bị
+  sửa; và máy chủ chỉ bind vào `127.0.0.1`.
+  **Tổng cộng cả 6 file: 88 test, tất cả pass.**
 - **Kiểm thử ngẫu nhiên diện rộng:** 400 kịch bản sinh ngẫu nhiên (đủ
   loại quy mô, sức chứa, tỉ lệ dự trữ, tỉ lệ có điểm) — cả 400 đều
   không vi phạm bất biến nào và không tồn tại cặp phá vỡ nào. Ngoài ra
@@ -241,6 +295,17 @@ python3 -m pytest tests/ -v
   nút đổi ngôn ngữ dùng nhầm class `.lang-toggle` (thiết kế cho nền tối
   của sidebar) trên nền trắng của trang phục hồi, khiến chữ trắng-trên-
   trắng vô hình — đã tách riêng class `.lang-toggle-light`.
+- **Chế độ trình duyệt chạy thật (Playwright + Chromium, backend là
+  `PipelineAPI` THẬT qua `browser_host`, dữ liệu mẫu 45 học sinh/10
+  club):** mở `index.html` qua máy chủ cục bộ, xác nhận cầu nối
+  `window.pywebview` được dựng đúng, sidebar hiện "Đã kết nối app.db",
+  4 ô thống kê nạp đúng số (45/10/45/0), bảng cảnh báo sức khoẻ dữ liệu
+  hiện 10 cảnh báo; bấm "Chạy pipeline" và chạy TRỌN 5 bước thật qua cầu
+  HTTP (vẽ + khoá STB cho 45 học sinh, RB-DA 1 vòng, ghi DB, xuất CSV),
+  toast báo "45/45 học sinh đã xếp club"; sang tab Kết quả thấy đúng 45
+  dòng đọc ngược từ DB; đổi sang tiếng Anh vẫn hoạt động. Không lỗi
+  console. Tức là chế độ dự phòng **không phải bản rút gọn** — nó chạy
+  đầy đủ y hệt bản pywebview.
 
 ## CHƯA test được — cần Trường tự chạy trên máy có màn hình
 
@@ -250,6 +315,9 @@ python3 -m pytest tests/ -v
   đúng ở bước tạo cửa sổ, không phải lỗi code — mọi logic phía sau
   `PipelineAPI`/`RecoveryAPI` đã được test độc lập với pywebview ở
   trên, kể cả nhánh main.py mở `recovery.html` khi khởi tạo lỗi).
+  **Lưu ý:** kể từ khi có chế độ dự phòng bằng trình duyệt, đây không
+  còn là rủi ro chặn đường nữa — pywebview hỏng thì app tự chuyển sang
+  trình duyệt, và nhánh đó ĐÃ được chạy thật đầy đủ (xem mục trên).
 - Toàn bộ luồng thao tác bằng chuột thật tại kiosk trên phần cứng
   thật (cảm ứng, độ trễ, responsive khi resize cửa sổ thật).
 
