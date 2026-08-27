@@ -22,6 +22,8 @@ Windows thật):
 
 import sys
 
+from PyInstaller.utils.hooks import collect_all
+
 block_cipher = None
 
 datas = [
@@ -34,13 +36,35 @@ datas = [
     ("assets/fonts", "assets/fonts"),
 ]
 
+binaries = []
 hiddenimports = ["webview"]
 
 # pywebview chọn backend GUI khác nhau theo hệ điều hành. Khai báo rõ để
 # PyInstaller không bỏ sót khi phân tích tĩnh (static analysis đôi khi
 # không thấy import động bên trong thư viện webview).
 if sys.platform.startswith("win"):
-    hiddenimports += ["webview.platforms.edgechromium", "webview.platforms.winforms", "clr"]
+    # QUAN TRỌNG: trên Windows, backend DUY NHẤT của pywebview
+    # (webview/platforms/winforms.py) LUÔN cần pythonnet để bắc cầu
+    # sang .NET/WinForms — kể cả khi hiển thị bằng EdgeChromium/WebView2
+    # (lựa chọn engine hiển thị là nội bộ bên trong winforms.py, không
+    # phải một backend "edgechromium" riêng — module đó không tồn tại,
+    # đã bỏ khỏi hiddenimports).
+    #
+    # ĐÃ GẶP LỖI THẬT khi chạy bản build:
+    #   "RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize
+    #    from ...\_internal\pythonnet\runtime\Python.Runtime.dll"
+    # Đây là lỗi đóng gói rất phổ biến (nhiều issue trên GitHub của
+    # pywebview/PyInstaller) — PyInstaller không tự gom đủ file phụ trợ
+    # của pythonnet khi chỉ khai báo hiddenimports suông. collect_all()
+    # gom đúng như một PyInstaller hook chính thức sẽ làm (data files +
+    # DLL nhị phân + sub-module), khắc phục tận gốc thay vì đoán thiếu
+    # file nào.
+    hiddenimports += ["webview.platforms.winforms", "clr"]
+    for pkg in ("pythonnet", "clr_loader"):
+        pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(pkg)
+        datas += pkg_datas
+        binaries += pkg_binaries
+        hiddenimports += pkg_hiddenimports
 elif sys.platform == "darwin":
     hiddenimports += ["webview.platforms.cocoa"]
 else:
@@ -49,7 +73,7 @@ else:
 a = Analysis(
     ["main.py"],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -73,7 +97,12 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    # UPX (nén file thực thi) đã gây ra ĐÚNG lỗi "Failed to resolve
+    # Python.Runtime.Loader.Initialize" ở lần build trước — UPX có thể
+    # làm hỏng bảng export của các DLL .NET interop như
+    # Python.Runtime.dll. Tắt hẳn UPX để đổi lấy đúng đắn (file .exe
+    # lớn hơn một chút, không đáng kể với phần mềm kiosk chạy nội bộ).
+    upx=False,
     console=False,   # False = khong hien cua so console den phia sau kiosk
     icon=None,       # co the thay bang duong dan .ico neu truong co logo
 )
@@ -84,7 +113,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name="PhanBoCauLacBo",
 )
