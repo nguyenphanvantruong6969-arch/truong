@@ -639,6 +639,14 @@ class PipelineAPI:
     @staticmethod
     def _parse_csv_rows(csv_text: str):
         """Tự nhận diện dấu phân cách (, hoặc ;) và trả về (fieldnames, rows)."""
+        # BOM (\ufeff) — Excel LUÔN thêm ký tự này vào đầu file khi lưu
+        # "CSV UTF-8", và Microsoft Forms xuất ra cũng vậy. Nó vô hình
+        # khi mở file bằng mắt, nhưng dính liền vào tên cột đầu tiên:
+        # "student_id" đọc lên thành "\ufeffstudent_id". Không cắt bỏ thì
+        # phần mềm báo THIẾU CỘT student_id trên một file hoàn toàn đúng —
+        # lỗi cực khó hiểu với giáo viên. .strip() KHÔNG cắt được BOM vì
+        # nó không phải khoảng trắng.
+        csv_text = csv_text.lstrip("\ufeff")
         sample = csv_text[:4096]
         try:
             dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")

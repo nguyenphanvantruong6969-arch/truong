@@ -1,0 +1,12 @@
+student_id,name,club_id
+HS001,Nguyen Van An,clb_bongro
+HS001,Nguyen Van An,clb_tienganh
+HS001,Nguyen Van An,clb_amnhac
+HS002,Tran Thi Binh,clb_tienganh
+HS003,Le Minh Cuong,clb_robotics
+HS003,Le Minh Cuong,clb_mythuat
+HS004,Pham Thu Dung,clb_amnhac
+HS004,Pham Thu Dung,clb_bongro
+HS004,Pham Thu Dung,clb_mythuat
+HS004,Pham Thu Dung,clb_tienganh
+HS005,Hoang Van Em,clb_mythuat

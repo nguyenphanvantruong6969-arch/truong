@@ -226,6 +226,39 @@ Tắt đúng lúc — không tắt nhầm khi thu nhỏ:
   thu nhỏ cửa sổ đi làm việc khác là **app tự tắt giữa chừng** — một ứng
   dụng thật không hành xử như vậy.
 
+## Nhập dữ liệu bằng CSV
+
+Thư mục **`mau_csv/`** chứa 4 file mẫu chạy được ngay và
+**`mau_csv/HUONG_DAN_CSV.md`** mô tả đầy đủ định dạng:
+
+| File mẫu | Loại | Dạng |
+|---|---|---|
+| `01_chon_club_thi_dang_rong.csv` | Chọn club muốn thi (Bước 1) | rộng — 1 dòng/học sinh |
+| `02_chon_club_thi_dang_dai.csv` | Chọn club muốn thi (Bước 1) | dài — 1 dòng/lựa chọn |
+| `03_nguyen_vong_dang_rong.csv` | Xếp hạng nguyện vọng (Bước 2) | rộng |
+| `04_nguyen_vong_dang_dai.csv` | Xếp hạng nguyện vọng (Bước 2) | dài |
+
+Phần mềm tự nhận diện dạng file và dấu phân cách (`,` `;` Tab), nên người
+dùng không phải chọn gì.
+
+**Hai điểm dễ sai nhất, đã ghi rõ trong hướng dẫn:**
+
+1. **`club_id` phải được tạo trước khi nhập.** Học sinh có bất kỳ `club_id`
+   nào chưa tồn tại sẽ bị **bỏ qua toàn bộ** (kèm cảnh báo) — phần mềm
+   không nhập một nửa.
+2. **CSV không gán được `reserve_group`.** Học sinh tạo bằng CSV có nhóm dự
+   trữ rỗng, phải vào màn hình *04 Quản lý club & dự trữ* gán riêng. Quên
+   bước này thì cơ chế dự trữ của RB-DA không có tác dụng, mà pipeline vẫn
+   chạy bình thường và **không báo lỗi**.
+
+Mọi quy tắc trong `HUONG_DAN_CSV.md` đều được khoá bằng test
+(`tests/test_csv_mau.py`) — tài liệu và code không thể lệch nhau mà không
+làm đỏ test.
+
+**Về Excel:** file lưu bằng *CSV UTF-8* có ký tự BOM vô hình ở đầu. Trước
+đây chính ký tự đó khiến một file hoàn toàn đúng vẫn báo "thiếu cột
+`student_id`"; nay đã được xử lý.
+
 ## Chạy test tự động
 
 ```bash

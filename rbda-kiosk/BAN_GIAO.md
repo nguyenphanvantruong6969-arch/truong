@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 98 test pass
+> Cập nhật lần cuối: 29/08/2026 · 116 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **98 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **116 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,7 +57,8 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 6 file, 88 test
+- `tests/` — 7 file, 116 test
+- `mau_csv/` — 4 file CSV mẫu + `HUONG_DAN_CSV.md` (định dạng nhập liệu)
 
 ---
 
@@ -85,7 +86,14 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
    nó không có cờ tương đương. Nếu máy không có trình duyệt Chromium nào mới
    quay về mở tab thường.
 
-7. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+7. **Nhập CSV KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
+   không phải bug: học sinh tạo bằng CSV có nhóm dự trữ rỗng, phải vào màn
+   hình 04 gán riêng (có `bulk_set_reserve_group`). Quên bước này thì cơ chế
+   dự trữ của RB-DA vô hiệu mà pipeline **không báo lỗi**. Đã ghi cảnh báo
+   ở `mau_csv/HUONG_DAN_CSV.md` và README. Nếu sau này muốn bịt hẳn, hướng
+   đúng là thêm cột `reserve_group` tuỳ chọn vào CSV nguyện vọng.
+
+8. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
