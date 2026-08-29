@@ -73,6 +73,30 @@ MESSAGES = {
         "vi": "Lỗi đọc kết quả: {detail}",
         "en": "Error reading results: {detail}",
     },
+    "error_detecting_csv_kind": {
+        "vi": "Lỗi nhận diện loại file CSV: {detail}",
+        "en": "Error detecting CSV kind: {detail}",
+    },
+    "error_importing_csv_auto": {
+        "vi": "Lỗi nhập CSV: {detail}",
+        "en": "CSV import failed: {detail}",
+    },
+    "error_importing_clubs_csv": {
+        "vi": "Lỗi nhập CSV danh sách CLB: {detail}",
+        "en": "Error importing club list CSV: {detail}",
+    },
+    "csv_kind_ambiguous": {
+        "vi": "Chưa xác định được đây là file gì. Bộ cột {fieldnames} vừa có thể là chọn CLB muốn thi, vừa có thể là xếp hạng nguyện vọng. Hãy chọn giúp loại file, hoặc thêm cột rank nếu đây là nguyện vọng.",
+        "en": "Cannot tell what this file is. The columns {fieldnames} could be either club test selection or ranked preferences. Please pick the kind, or add a rank column if these are preferences.",
+    },
+    "csv_kind_unknown": {
+        "vi": "Không nhận ra định dạng file. Xem mau_csv/HUONG_DAN_CSV.md để biết các cột phần mềm đọc được.",
+        "en": "Unrecognised file format. See mau_csv/HUONG_DAN_CSV.md for the columns the app can read.",
+    },
+    "csv_club_row_invalid": {
+        "vi": "Dòng {line}: bỏ qua vì {reason} không hợp lệ (chỉ tiêu phải lớn hơn 0 và chỉ tiêu dự trữ không được vượt quá tổng chỉ tiêu).",
+        "en": "Line {line}: skipped because {reason} is invalid (capacity must be above 0 and reserve capacity cannot exceed capacity).",
+    },
     "error_reading_club_stats": {
         "vi": "Lỗi đọc thống kê club: {detail}",
         "en": "Error reading club stats: {detail}",

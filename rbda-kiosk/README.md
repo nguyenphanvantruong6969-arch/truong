@@ -228,7 +228,7 @@ Tắt đúng lúc — không tắt nhầm khi thu nhỏ:
 
 ## Nhập dữ liệu bằng CSV
 
-Thư mục **`mau_csv/`** chứa 4 file mẫu chạy được ngay và
+Thư mục **`mau_csv/`** chứa 5 file mẫu chạy được ngay và
 **`mau_csv/HUONG_DAN_CSV.md`** mô tả đầy đủ định dạng:
 
 | File mẫu | Loại | Dạng |
@@ -237,23 +237,49 @@ Thư mục **`mau_csv/`** chứa 4 file mẫu chạy được ngay và
 | `02_chon_club_thi_dang_dai.csv` | Chọn club muốn thi (Bước 1) | dài — 1 dòng/lựa chọn |
 | `03_nguyen_vong_dang_rong.csv` | Xếp hạng nguyện vọng (Bước 2) | rộng |
 | `04_nguyen_vong_dang_dai.csv` | Xếp hạng nguyện vọng (Bước 2) | dài |
+| `05_danh_sach_club.csv` | Danh sách CLB | — |
 
-Phần mềm tự nhận diện dạng file và dấu phân cách (`,` `;` Tab), nên người
-dùng không phải chọn gì.
+### Kéo thả, không phải chọn ô
+
+Một vùng kéo-thả duy nhất nhận **mọi loại file**. `detect_csv_kind()` đọc
+dòng tiêu đề để biết đây là file gì, nên người dùng không phải chọn loại,
+cũng không phải chọn dạng "rộng"/"dài" hay dấu phân cách (`,` `;` Tab).
+
+Thả được **nhiều file cùng lúc**, và phần mềm **tự xếp thứ tự nhập**: danh
+sách CLB trước, rồi mới đến file học sinh (`THU_TU_NHAP` trong `app.js`) —
+vì học sinh tham chiếu tới `club_id`, nạp ngược thứ tự thì cả học sinh bị bỏ
+qua.
+
+**Vì sao bỏ hai ô cũ:** giao diện trước có hai ô riêng — "Bước 1" và
+"Bước 2" — và người dùng phải tự chọn đúng ô. Kéo nhầm ô **không hề báo
+lỗi**: file nguyện vọng dạng dài (`student_id, name, club_id, rank`) khớp đủ
+cột của ô "chọn CLB muốn thi", nên nó ghi thẳng vào bảng
+`club_test_selection` và báo *"thành công 5 học sinh"*. Nguyện vọng thật mất
+sạch, không một cảnh báo. Với phần mềm phân bổ học sinh, đó là lỗi làm sai
+kết quả cả trường mà không ai biết.
+
+**Không chắc thì hỏi, không đoán.** Bộ cột `student_id, name, club_id` vừa có
+thể là "chọn CLB muốn thi" dạng dài, vừa có thể là "xếp hạng nguyện vọng"
+dạng dài thiếu cột `rank`. Gặp trường hợp đó, phần mềm dừng lại và hiện ô cho
+người dùng chọn — đoán bừa ở đây là dựng lại đúng cái bug vừa chữa.
 
 **Hai điểm dễ sai nhất, đã ghi rõ trong hướng dẫn:**
 
-1. **`club_id` phải được tạo trước khi nhập.** Học sinh có bất kỳ `club_id`
+1. **`club_id` phải có trước file học sinh.** Học sinh có bất kỳ `club_id`
    nào chưa tồn tại sẽ bị **bỏ qua toàn bộ** (kèm cảnh báo) — phần mềm
-   không nhập một nửa.
-2. **CSV không gán được `reserve_group`.** Học sinh tạo bằng CSV có nhóm dự
-   trữ rỗng, phải vào màn hình *04 Quản lý club & dự trữ* gán riêng. Quên
-   bước này thì cơ chế dự trữ của RB-DA không có tác dụng, mà pipeline vẫn
-   chạy bình thường và **không báo lỗi**.
+   không nhập một nửa. Thả cả ba file cùng lúc là tránh được hoàn toàn.
+2. **CSV học sinh không gán được `reserve_group`.** Học sinh tạo bằng CSV có
+   nhóm dự trữ rỗng, phải vào màn hình *04 Quản lý club & dự trữ* gán riêng.
+   Quên bước này thì cơ chế dự trữ của RB-DA không có tác dụng, mà pipeline
+   vẫn chạy bình thường và **không báo lỗi**. (CLB thì gán được ngay trong
+   `05_danh_sach_club.csv`.)
 
 Mọi quy tắc trong `HUONG_DAN_CSV.md` đều được khoá bằng test
-(`tests/test_csv_mau.py`) — tài liệu và code không thể lệch nhau mà không
-làm đỏ test.
+(`tests/test_csv_mau.py`, `tests/test_upload_tu_nhan_dien.py`) — tài liệu và
+code không thể lệch nhau mà không làm đỏ test. Riêng giao diện kéo-thả có
+test chạy **trình duyệt thật** (`tests/test_giao_dien_upload.py`, Playwright +
+Chromium); máy không cài `playwright` thì các test đó tự bỏ qua, phần còn lại
+vẫn chạy đủ.
 
 **Về Excel:** file lưu bằng *CSV UTF-8* có ký tự BOM vô hình ở đầu. Trước
 đây chính ký tự đó khiến một file hoàn toàn đúng vẫn báo "thiếu cột

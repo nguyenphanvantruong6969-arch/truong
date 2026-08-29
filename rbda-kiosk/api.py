@@ -661,6 +661,181 @@ class PipelineAPI:
             rows.append(row)
         return fieldnames, rows
 
+    # -----------------------------------------------------------------
+    # TỰ NHẬN DIỆN LOẠI FILE
+    #
+    # Giao diện cũ có HAI ô nạp file và người dùng phải tự chọn đúng ô.
+    # Kéo nhầm ô KHÔNG hề báo lỗi: file nguyện vọng dạng dài
+    # (student_id, name, club_id, rank) nạp vào ô "chọn club thi" vẫn
+    # khớp đủ cột, nên nó ghi thẳng vào club_test_selection và báo
+    # "thành công". Nguyện vọng thật mất sạch mà không một cảnh báo —
+    # lỗi làm sai kết quả phân bổ của cả trường mà không ai biết.
+    #
+    # Nên bỏ hẳn việc bắt người dùng chọn: đọc dòng tiêu đề là biết file
+    # gì. Nhưng CHỈ kết luận khi CHẮC CHẮN — bộ cột
+    # (student_id, club_id) không kèm rank vừa có thể là chọn club thi
+    # dạng dài, vừa có thể là nguyện vọng dạng dài thiếu cột rank. Gặp
+    # trường hợp đó thì HỎI LẠI, tuyệt đối không đoán: đoán sai là đúng
+    # lại cái bug vừa chữa.
+    # -----------------------------------------------------------------
+
+    def detect_csv_kind(self, csv_text: str):
+        """Đọc dòng tiêu đề để biết đây là file gì.
+
+        Trả về {kind, format, confident, candidates, fieldnames}.
+        confident=False nghĩa là giao diện PHẢI hỏi lại người dùng.
+        """
+        try:
+            fieldnames, rows = self._parse_csv_rows(csv_text)
+            if not rows:
+                return _fail(err("csv_empty"))
+
+            co = set(fieldnames)
+
+            def ket_luan(kind, fmt):
+                return _ok({"kind": kind, "format": fmt, "confident": True,
+                            "candidates": [kind], "fieldnames": fieldnames})
+
+            # capacity chi co nghia voi file danh sach CLB.
+            if "capacity" in co and "club_id" in co:
+                return ket_luan("clubs", "")
+            if any(f.startswith("pref_") for f in fieldnames):
+                return ket_luan("preferences", "wide")
+            if any(f.startswith("test_club_") for f in fieldnames):
+                return ket_luan("test_selection", "wide")
+            # rank chi co nghia voi nguyen vong — chon club thi khong xep hang.
+            if "rank" in co and "club_id" in co and "student_id" in co:
+                return ket_luan("preferences", "long")
+
+            if "student_id" in co and "club_id" in co:
+                return _ok({
+                    "kind": "", "format": "long", "confident": False,
+                    "candidates": ["test_selection", "preferences"],
+                    "fieldnames": fieldnames,
+                })
+
+            return _ok({"kind": "unknown", "format": "", "confident": False,
+                        "candidates": [], "fieldnames": fieldnames})
+        except Exception as e:
+            return _fail(err("error_detecting_csv_kind", detail=str(e)))
+
+    def import_csv_auto(self, csv_text: str, kind: str = "",
+                        create_missing_students: bool = True):
+        """Nạp một file CSV bất kỳ — tự nhận diện loại, không cần chọn ô.
+
+        kind chỉ dùng khi tự nhận diện KHÔNG chắc: giao diện hỏi lại
+        người dùng rồi truyền câu trả lời vào đây.
+        """
+        try:
+            if not kind:
+                nhan_dien = self.detect_csv_kind(csv_text)
+                if not nhan_dien["ok"]:
+                    return nhan_dien
+                d = nhan_dien["data"]
+                if not d["confident"]:
+                    # KHONG doan. Tha khong nhap con hon nhap vao sai bang.
+                    return _fail(err(
+                        "csv_kind_ambiguous",
+                        candidates=d["candidates"], fieldnames=d["fieldnames"],
+                    ))
+                kind = d["kind"]
+
+            if kind == "clubs":
+                res = self.import_clubs_csv(csv_text)
+            elif kind == "preferences":
+                res = self.import_preferences_csv(csv_text, create_missing_students)
+            elif kind == "test_selection":
+                res = self.import_test_selection_csv(csv_text, create_missing_students)
+            else:
+                return _fail(err("csv_kind_unknown"))
+
+            if res["ok"]:
+                res["data"]["kind"] = kind
+            return res
+        except Exception as e:
+            return _fail([err("error_importing_csv_auto", detail=str(e)),
+                          traceback.format_exc()])
+
+    def import_clubs_csv(self, csv_text: str):
+        """Nhập danh sách CLB bằng CSV.
+
+        Đây là nút thắt ĐẦU TIÊN người dùng gặp: mẫu CSV học sinh bắt
+        buộc club phải tồn tại trước (không thì cả học sinh bị bỏ qua),
+        mà club lại chỉ tạo được bằng cách gõ form từng cái.
+
+        Cột: club_id, name, capacity — bắt buộc.
+             reserve_capacity, reserve_group — tuỳ chọn (trường không
+             dùng dự trữ thì bỏ trống cả hai).
+        """
+        try:
+            fieldnames, rows = self._parse_csv_rows(csv_text)
+            if not rows:
+                return _fail(err("csv_empty"))
+            for bat_buoc in ("club_id", "name", "capacity"):
+                if bat_buoc not in fieldnames:
+                    return _fail(err("csv_missing_columns", fieldnames=fieldnames))
+
+            conn = connect_db(self.db_path)
+            cur = conn.cursor()
+            da_co = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+
+            n_tao, n_sua, n_bo = 0, 0, 0
+            canh_bao = []
+            for i, row in enumerate(rows, start=2):   # dong 1 la tieu de
+                club_id = (row.get("club_id") or "").strip()
+                if not club_id:
+                    canh_bao.append(err("csv_club_row_invalid", line=i,
+                                        reason="club_id"))
+                    n_bo += 1
+                    continue
+                try:
+                    capacity = int(row.get("capacity") or 0)
+                    reserve_capacity = int(row.get("reserve_capacity") or 0)
+                except ValueError:
+                    canh_bao.append(err("csv_club_row_invalid", line=i,
+                                        reason="capacity"))
+                    n_bo += 1
+                    continue
+                # Cung dung dieu kien nhu create_or_update_club — khong de
+                # duong CSV lot qua thu duong UI da chan.
+                if capacity <= 0 or reserve_capacity > capacity:
+                    canh_bao.append(err("csv_club_row_invalid", line=i,
+                                        reason="capacity"))
+                    n_bo += 1
+                    continue
+
+                cur.execute(
+                    """
+                    INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(club_id) DO UPDATE SET
+                        name=excluded.name,
+                        capacity=excluded.capacity,
+                        reserve_capacity=excluded.reserve_capacity,
+                        reserve_group=excluded.reserve_group
+                    """,
+                    (club_id, (row.get("name") or "").strip(), capacity,
+                     reserve_capacity,
+                     (row.get("reserve_group") or "").strip() or None),
+                )
+                if club_id in da_co:
+                    n_sua += 1
+                else:
+                    n_tao += 1
+                    da_co.add(club_id)
+
+            conn.commit()
+            conn.close()
+            return _ok({
+                "n_clubs_created": n_tao,
+                "n_clubs_updated": n_sua,
+                "n_rows_skipped": n_bo,
+                "warnings": canh_bao,
+            })
+        except Exception as e:
+            return _fail([err("error_importing_clubs_csv", detail=str(e)),
+                          traceback.format_exc()])
+
     def preview_import_csv(self, csv_text: str, kind: str):
         """
         Xem trước trước khi nhập thật (không ghi DB) — cho UI hiện
@@ -1196,8 +1371,26 @@ class PipelineAPI:
     # -----------------------------------------------------------------
 
     def list_clubs_admin(self):
-        """Giống list_clubs nhưng bao gồm cả reserve_group, dùng cho form sửa."""
-        return self.list_clubs()
+        """Giống list_clubs nhưng KÈM reserve_group, cho màn hình quản lý.
+
+        Trước đây hàm này chỉ `return self.list_clubs()`, mà list_clubs
+        không chọn cột reserve_group — nên bảng quản lý club luôn hiện
+        "—" ở cột nhóm dự trữ dù DB có đủ dữ liệu. Nhóm dự trữ là cơ chế
+        cốt lõi của RB-DA, hiển thị sai ở đây dễ khiến người vận hành
+        tưởng chưa gán gì và đi cấu hình lại nhầm.
+        """
+        try:
+            conn = connect_db(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = cur.execute(
+                "SELECT club_id, name, capacity, reserve_capacity, reserve_group "
+                "FROM clubs ORDER BY club_id"
+            ).fetchall()
+            conn.close()
+            return _ok([dict(r) for r in rows])
+        except Exception as e:
+            return _fail(err("error_reading_club_list", detail=str(e)))
 
     def create_or_update_club(
         self, club_id: str, name: str, capacity: int,

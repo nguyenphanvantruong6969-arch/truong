@@ -1,2 +1,6 @@
 -r requirements.txt
 pytest>=8.0
+# Tuỳ chọn: chỉ dùng cho tests/test_giao_dien_upload.py (chạy giao diện
+# thật bằng Chromium). Thiếu gói này thì các test đó TỰ BỎ QUA, phần
+# còn lại của bộ test vẫn chạy đủ.
+playwright>=1.40

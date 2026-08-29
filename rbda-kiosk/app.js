@@ -180,10 +180,9 @@
    * 3. TAB 1 — VẬN HÀNH PIPELINE
    * ------------------------------------------------------------------ */
 
-  let importState = {
-    testSelection: null, // { text, kind }
-    preferences: null,
-  };
+  /* Hang doi file da tha, cho nhap. Moi phan tu:
+     { ten, text, kind, format, confident, candidates, xong, ketQua, loi } */
+  let importQueue = [];
 
   // Bộ nhớ lần render gần nhất của stepper/log — dùng để dịch lại đúng
   // nội dung khi người dùng đổi ngôn ngữ giữa chừng (không gọi lại API).
@@ -466,96 +465,221 @@
     });
   }
 
-  /* ---- Nhập CSV Microsoft Forms ---- */
+  /* ---- Nạp CSV: một vùng kéo-thả, tự nhận diện loại file ----
+   *
+   * Giao diện cũ có HAI ô riêng và bắt người dùng tự chọn đúng ô. Kéo
+   * nhầm ô KHÔNG báo lỗi: file nguyện vọng dạng dài khớp đủ cột của ô
+   * "chọn CLB muốn thi", nên nó ghi vào sai bảng và vẫn báo thành công.
+   * Giờ backend tự đọc dòng tiêu đề (detect_csv_kind). Chỉ khi tiêu đề
+   * KHÔNG đủ kết luận thì mới hỏi lại — không bao giờ đoán.
+   */
+
+  /* Thứ tự nhập BẮT BUỘC: CLB trước. Học sinh tham chiếu tới club_id,
+     nạp học sinh khi CLB chưa có thì cả học sinh bị bỏ qua. Người dùng
+     thả một lúc cả ba file thì phần mềm tự xếp đúng thứ tự này. */
+  const THU_TU_NHAP = { clubs: 0, test_selection: 1, preferences: 2 };
 
   function initCsvImportHandlers() {
-    wireCsvInput("fileTestSelection", "previewTestSelection", "btnImportTestSelection", "test_selection");
-    wireCsvInput("filePreferences", "previewPreferences", "btnImportPreferences", "preferences");
+    const zone = el("dropZone");
+    const input = el("fileAny");
+    if (!zone || !input) return;
 
-    el("btnImportTestSelection").addEventListener("click", () => {
-      doImport("test_selection", "import_test_selection_csv", el("feedbackImportTestSelection"));
+    zone.addEventListener("click", () => input.click());
+    zone.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); input.click(); }
     });
-    el("btnImportPreferences").addEventListener("click", () => {
-      doImport("preferences", "import_preferences_csv", el("feedbackImportPreferences"));
+    input.addEventListener("change", (ev) => {
+      themFileVaoHangDoi(ev.target.files);
+      input.value = ""; // cho phep tha lai dung file do
+    });
+
+    ["dragenter", "dragover"].forEach((e) =>
+      zone.addEventListener(e, (ev) => {
+        ev.preventDefault();
+        zone.classList.add("is-dragover");
+      })
+    );
+    ["dragleave", "drop"].forEach((e) =>
+      zone.addEventListener(e, (ev) => {
+        ev.preventDefault();
+        zone.classList.remove("is-dragover");
+      })
+    );
+    zone.addEventListener("drop", (ev) => {
+      themFileVaoHangDoi(ev.dataTransfer && ev.dataTransfer.files);
+    });
+
+    el("btnImportAll").addEventListener("click", nhapTatCa);
+    el("btnClearQueue").addEventListener("click", () => {
+      importQueue = [];
+      /* Xoa luon phan hoi va canh bao cua lan nhap truoc — de lai thi
+         nguoi dung tuong ket qua do la cua danh sach dang co. */
+      feedback(el("feedbackImportAll"), "", false);
+      clear(el("importWarnings"));
+      el("importWarnings").hidden = true;
+      veHangDoi();
     });
   }
 
-  function wireCsvInput(inputId, previewId, btnId, kind) {
-    el(inputId).addEventListener("change", (ev) => {
-      const file = ev.target.files && ev.target.files[0];
-      const previewBox = el(previewId);
-      const btn = el(btnId);
-      if (!file) {
-        previewBox.hidden = true;
-        btn.disabled = true;
-        return;
-      }
+  function themFileVaoHangDoi(fileList) {
+    const files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
         const text = String(reader.result || "");
-        callApi("preview_import_csv", text, kind).then((res) => {
+        callApi("detect_csv_kind", text).then((res) => {
           if (!res.ok) {
-            previewBox.hidden = false;
-            previewBox.textContent = t("toast_csv_read_error_prefix", { errors: trErrs(res.errors).join("; ") });
-            btn.disabled = true;
-            return;
+            importQueue.push({
+              ten: file.name, text: text, kind: "", confident: false,
+              candidates: [], loi: trErrs(res.errors).join("; "),
+            });
+          } else {
+            const d = res.data;
+            importQueue.push({
+              ten: file.name, text: text, kind: d.kind, format: d.format,
+              confident: d.confident, candidates: d.candidates || [],
+            });
           }
-          const d = res.data;
-          previewBox.hidden = false;
-          previewBox.innerHTML = t("csv_preview_summary", {
-            format: d.format === "wide" ? t("csv_format_wide") : t("csv_format_long"),
-            n_rows: d.n_rows,
-            n_students_detected: d.n_students_detected,
-            n_new_students: d.n_new_students,
-          });
-          btn.disabled = false;
-          if (kind === "test_selection") importState.testSelection = text;
-          else importState.preferences = text;
+          veHangDoi();
         });
       };
+      /* UTF-8 doc duoc ca file co BOM cua Excel — backend cat BOM. */
       reader.readAsText(file, "UTF-8");
     });
   }
 
-  function doImport(kind, apiFn, feedbackNode) {
-    const text = kind === "test_selection" ? importState.testSelection : importState.preferences;
-    if (!text) {
-      feedback(feedbackNode, t("feedback_no_file_selected"), true);
+  function tenLoai(kind) {
+    return {
+      clubs: t("csv_kind_clubs"),
+      test_selection: t("csv_kind_test_selection"),
+      preferences: t("csv_kind_preferences"),
+    }[kind] || t("csv_kind_unknown_label");
+  }
+
+  function veHangDoi() {
+    const box = el("importQueue");
+    const actions = el("importActions");
+    clear(box);
+    box.hidden = importQueue.length === 0;
+    actions.hidden = importQueue.length === 0;
+    if (!importQueue.length) return;
+
+    importQueue.forEach((muc, idx) => {
+      const row = document.createElement("div");
+      row.className = "queue-row";
+      if (muc.xong) row.classList.add("is-done");
+      else if (muc.loi || muc.kind === "unknown") row.classList.add("is-unknown");
+      else if (!muc.confident) row.classList.add("is-ambiguous");
+
+      const trai = document.createElement("div");
+      const ten = document.createElement("div");
+      ten.className = "queue-file";
+      ten.textContent = muc.ten;
+      const chiTiet = document.createElement("div");
+      chiTiet.className = "queue-detail";
+      if (muc.xong) chiTiet.textContent = muc.ketQua;
+      else if (muc.loi) chiTiet.textContent = muc.loi;
+      else if (muc.kind === "unknown") chiTiet.textContent = t("queue_unknown");
+      else if (!muc.confident) chiTiet.textContent = t("queue_ambiguous");
+      else chiTiet.textContent = t("queue_detected", { kind: tenLoai(muc.kind) });
+      trai.appendChild(ten);
+      trai.appendChild(chiTiet);
+      row.appendChild(trai);
+
+      /* Mo ho -> cho chon, KHONG tu doan giup. */
+      if (!muc.xong && !muc.confident && muc.candidates && muc.candidates.length) {
+        const sel = document.createElement("select");
+        sel.className = "queue-kind-select";
+        const rong = document.createElement("option");
+        rong.value = "";
+        rong.textContent = t("queue_pick_kind");
+        sel.appendChild(rong);
+        muc.candidates.forEach((c) => {
+          const o = document.createElement("option");
+          o.value = c;
+          o.textContent = tenLoai(c);
+          sel.appendChild(o);
+        });
+        sel.value = muc.kind || "";
+        sel.addEventListener("change", () => {
+          importQueue[idx].kind = sel.value;
+          importQueue[idx].confident = !!sel.value;
+          veHangDoi();
+        });
+        row.appendChild(sel);
+      }
+      box.appendChild(row);
+    });
+  }
+
+  function nhapTatCa() {
+    const canNhap = importQueue.filter(
+      (m) => !m.xong && !m.loi && m.kind && m.kind !== "unknown"
+    );
+    if (!canNhap.length) {
+      feedback(el("feedbackImportAll"), t("feedback_no_file_selected"), true);
       return;
     }
-    const btn = kind === "test_selection" ? el("btnImportTestSelection") : el("btnImportPreferences");
-    btn.disabled = true;
-    callApi(apiFn, text, true).then((res) => {
-      btn.disabled = false;
-      if (!res.ok) {
-        feedback(feedbackNode, t("feedback_import_failed"), true);
-        showLog(Array.isArray(res.errors) ? res.errors : [String(res.errors)]);
-        return;
-      }
-      const d = res.data;
-      const nWritten = d.n_students_with_preferences_written ?? d.n_students_with_selection_written ?? 0;
-      feedback(
-        feedbackNode,
-        t("feedback_import_success", { n_written: nWritten, n_created: d.n_students_created, n_skipped: d.n_students_skipped }),
-        false
-      );
-      showToast(t("toast_csv_import_success", { n_written: nWritten }), "success");
+    /* CLB truoc, roi moi den hoc sinh — xem THU_TU_NHAP. */
+    canNhap.sort((a, b) => (THU_TU_NHAP[a.kind] ?? 9) - (THU_TU_NHAP[b.kind] ?? 9));
 
-      const warnBox = el("importWarnings");
-      if (d.warnings && d.warnings.length) {
-        warnBox.hidden = false;
-        clear(warnBox);
-        d.warnings.forEach((w) => {
-          const div = document.createElement("div");
-          div.textContent = "• " + trErr(w);
-          warnBox.appendChild(div);
-        });
-      } else {
-        warnBox.hidden = true;
-      }
-      refreshDashboardStats();
-      loadHealthReport(); // dữ liệu vừa đổi -> cảnh báo có thể đã khác
-    });
+    const btn = el("btnImportAll");
+    btn.disabled = true;
+    clear(el("importWarnings"));
+    el("importWarnings").hidden = true;
+    const canhBao = [];
+
+    /* Nhap TUAN TU, khong song song: file CLB phai ghi xong truoc khi
+       file hoc sinh doc bang clubs de kiem tra club_id. */
+    canNhap
+      .reduce(
+        (chuoi, muc) =>
+          chuoi.then(() =>
+            callApi("import_csv_auto", muc.text, muc.kind).then((res) => {
+              if (!res.ok) {
+                muc.loi = trErrs(res.errors).join("; ");
+                return;
+              }
+              const d = res.data;
+              muc.xong = true;
+              muc.ketQua =
+                d.kind === "clubs"
+                  ? t("queue_result_clubs", {
+                      n_created: d.n_clubs_created, n_updated: d.n_clubs_updated,
+                      n_skipped: d.n_rows_skipped,
+                    })
+                  : t("queue_result_students", {
+                      n_written:
+                        d.n_students_with_preferences_written ??
+                        d.n_students_with_selection_written ?? 0,
+                      n_created: d.n_students_created,
+                      n_skipped: d.n_students_skipped,
+                    });
+              (d.warnings || []).forEach((w) => canhBao.push(w));
+            })
+          ),
+        Promise.resolve()
+      )
+      .then(() => {
+        btn.disabled = false;
+        veHangDoi();
+        const soXong = importQueue.filter((m) => m.xong).length;
+        feedback(el("feedbackImportAll"), t("feedback_import_done", { n: soXong }), false);
+        showToast(t("feedback_import_done", { n: soXong }), "success");
+
+        const warnBox = el("importWarnings");
+        if (canhBao.length) {
+          warnBox.hidden = false;
+          canhBao.forEach((w) => {
+            const div = document.createElement("div");
+            div.textContent = "• " + trErr(w);
+            warnBox.appendChild(div);
+          });
+        }
+        refreshDashboardStats();
+        loadHealthReport(); // du lieu vua doi -> canh bao co the da khac
+      });
   }
 
   /* ------------------------------------------------------------------ *

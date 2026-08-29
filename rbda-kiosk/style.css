@@ -1219,3 +1219,71 @@ button, input {
 .recovery-status.is-success { background: var(--moss-soft); color: var(--moss); }
 .recovery-status.is-error { background: var(--rust-soft); color: var(--rust); }
 .recovery-status.is-pending { background: var(--gold-soft); color: var(--gold); }
+
+/* ---- Vung keo-tha nap CSV -------------------------------------------- */
+/* Mot vung duy nhat thay cho hai o rieng. Nguoi dung khong con phai chon
+   dung o nua — chon nham o truoc day khien du lieu vao SAI BANG ma khong
+   bao loi (xem detect_csv_kind trong api.py). */
+.drop-zone {
+  border: 2px dashed var(--hairline);
+  border-radius: var(--radius-md);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--paper);
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+.drop-zone:hover,
+.drop-zone:focus-visible {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  outline: none;
+}
+.drop-zone.is-dragover {
+  border-color: var(--moss);
+  background: var(--moss-soft);
+}
+.drop-zone-main {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.drop-zone-sub { color: var(--slate); font-size: 13px; }
+
+.import-queue {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.queue-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+}
+.queue-file { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.queue-detail { font-size: 13px; color: var(--slate); margin-top: 2px; }
+.queue-row.is-ambiguous { border-color: var(--gold); background: var(--gold-soft); }
+.queue-row.is-unknown   { border-color: var(--rust); background: var(--rust-soft); }
+.queue-row.is-done      { border-color: var(--moss); background: var(--moss-soft); }
+.queue-kind-select {
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+}
+.import-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}

@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 127 test pass
+> Cập nhật lần cuối: 29/08/2026 · 152 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **127 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **152 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,8 +57,8 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 8 file, 127 test
-- `mau_csv/` — 4 file CSV mẫu + `HUONG_DAN_CSV.md` (định dạng nhập liệu)
+- `tests/` — 10 file, 152 test (có 1 file chạy giao diện thật bằng Playwright)
+- `mau_csv/` — 5 file CSV mẫu + `HUONG_DAN_CSV.md` (định dạng nhập liệu)
 
 ---
 
@@ -86,21 +86,33 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
    nó không có cờ tương đương. Nếu máy không có trình duyệt Chromium nào mới
    quay về mở tab thường.
 
-7. **File xuất kết quả đặt CẠNH `app.db`, không dùng đường dẫn tương đối.**
+7. **KHÔNG bao giờ đoán loại file CSV khi dòng tiêu đề không đủ kết luận.**
+   Giao diện cũ có hai ô nạp file và bắt người dùng tự chọn; chọn nhầm thì dữ
+   liệu vào SAI BẢNG mà vẫn báo "thành công" (file nguyện vọng dạng dài khớp
+   đủ cột của ô chọn-CLB-thi). Nay `detect_csv_kind()` tự nhận diện, và khi
+   bộ cột là `student_id, club_id` không kèm `rank` — hợp với cả hai loại —
+   thì DỪNG LẠI hỏi người dùng. Đoán bừa ở đây là dựng lại đúng cái bug đó.
+
+8. **Thứ tự nhập bắt buộc: CLB trước, học sinh sau** (`THU_TU_NHAP` trong
+   `app.js`). Học sinh tham chiếu `club_id`; nạp ngược thứ tự thì CẢ học sinh
+   bị bỏ qua. Giao diện tự sắp xếp nên người dùng thả file thứ tự nào cũng
+   được, nhưng đừng bỏ cơ chế sắp xếp này đi.
+
+9. **File xuất kết quả đặt CẠNH `app.db`, không dùng đường dẫn tương đối.**
    Đường dẫn tương đối rơi vào thư mục làm việc của tiến trình — trên máy
    Windows chạy `.exe` qua shortcut, thư mục đó có thể là bất kỳ đâu và
    người dùng không tìm ra file. `export_csv` luôn trả về đường dẫn ĐẦY ĐỦ
    để giao diện hiện đúng chỗ. Cũng phải giữ `utf-8-sig` (BOM) khi ghi,
    nếu không Excel hỏng font tên tiếng Việt.
 
-8. **Nhập CSV KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
+10. **CSV học sinh KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
    không phải bug: học sinh tạo bằng CSV có nhóm dự trữ rỗng, phải vào màn
    hình 04 gán riêng (có `bulk_set_reserve_group`). Quên bước này thì cơ chế
    dự trữ của RB-DA vô hiệu mà pipeline **không báo lỗi**. Đã ghi cảnh báo
    ở `mau_csv/HUONG_DAN_CSV.md` và README. Nếu sau này muốn bịt hẳn, hướng
    đúng là thêm cột `reserve_group` tuỳ chọn vào CSV nguyện vọng.
 
-9. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+11. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
@@ -140,10 +152,10 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   hoặc đặt `PYTHONNET_RUNTIME=coreclr` (nhưng đòi máy cài sẵn .NET Core).
 
 **Việc tiện lợi CÒN LẠI đã khảo sát nhưng chưa làm** (xem lại nếu học sinh hỏi):
-- **Club phải tạo tay từng cái** — chưa có CSV nhập danh sách club. Trường
-  có 15–20 CLB thì phải gõ form 15–20 lần, mỗi lần 5 trường. Đây lại đúng
-  là nút thắt ĐẦU TIÊN, vì mẫu CSV học sinh bắt buộc club phải có trước.
-- **`reserve_group` chưa nhập được bằng CSV** (xem mục 4.8).
+- ~~Club phải tạo tay từng cái~~ — ĐÃ XONG: `import_clubs_csv` +
+  `mau_csv/05_danh_sach_club.csv`.
+- **`reserve_group` của HỌC SINH chưa nhập được bằng CSV** (xem mục 4.10).
+  Của CLB thì đã có trong file danh sách CLB.
 - **Chưa có nút "Sao lưu ngay" / "Khôi phục"** trong app thường; hiện chỉ
   tự sao lưu trước mỗi lần chạy pipeline, còn khôi phục thì chỉ xuất hiện
   ở màn hình recovery — tức là SAU KHI DB đã hỏng. Quy trình sao lưu đã

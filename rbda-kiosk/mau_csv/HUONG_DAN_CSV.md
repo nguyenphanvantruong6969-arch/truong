@@ -8,16 +8,39 @@ kèm 4 file mẫu chạy thử được ngay trong cùng thư mục.
 
 ---
 
-## 1. Có hai loại file cần nhập
+## 0. Cách nhập: kéo thả, không phải chọn ô
+
+Ở màn hình **01 Vận hành pipeline**, kéo file CSV vào ô lớn — hoặc bấm vào ô
+đó để chọn file. **Không phải chọn loại file:** phần mềm đọc dòng tiêu đề là
+biết đây là danh sách CLB, file chọn CLB muốn thi, hay file xếp hạng nguyện
+vọng.
+
+Thả được **nhiều file một lúc**. Phần mềm tự nhập theo **đúng thứ tự**: danh
+sách CLB trước, rồi mới đến file học sinh — vì học sinh tham chiếu tới
+`club_id`, nạp ngược thứ tự thì cả học sinh bị bỏ qua.
+
+Khi dòng tiêu đề **không đủ để kết luận**, phần mềm nói thẳng là chưa chắc và
+hiện ô cho bạn chọn — nó không bao giờ tự đoán. Trường hợp này xảy ra với bộ
+cột `student_id, name, club_id`: đúng bộ cột đó vừa có thể là "chọn CLB muốn
+thi" dạng dài, vừa có thể là "xếp hạng nguyện vọng" dạng dài thiếu cột `rank`.
+
+> Muốn phần mềm nhận ra chắc chắn ngay: thêm cột `rank` nếu là nguyện vọng,
+> hoặc dùng dạng rộng (`pref_1…` / `test_club_1…`).
+
+---
+
+## 1. Có ba loại file nhập được
 
 Phần mềm chia quy trình đăng ký làm hai bước tách biệt, mỗi bước một file:
 
-| Bước | Loại file | Nội dung | Nhập ở màn hình |
-|---|---|---|---|
-| **Bước 1** | Chọn club muốn thi/xét | Học sinh **tick** những club muốn dự tuyển (không xếp thứ tự) | 01 Vận hành pipeline |
-| **Bước 2** | Xếp hạng nguyện vọng | Học sinh **xếp thứ tự** club theo mức độ mong muốn | 01 Vận hành pipeline |
+| Thứ tự | Loại file | Nội dung |
+|---|---|---|
+| **Trước tiên** | Danh sách CLB | Mã CLB, tên, chỉ tiêu, chỉ tiêu dự trữ |
+| **Bước 1** | Chọn club muốn thi/xét | Học sinh **tick** những club muốn dự tuyển (không xếp thứ tự) |
+| **Bước 2** | Xếp hạng nguyện vọng | Học sinh **xếp thứ tự** club theo mức độ mong muốn |
 
-Hai file độc lập nhau. Nhập file nào trước cũng được.
+Hai file học sinh độc lập nhau, nhập file nào trước cũng được — nhưng **danh
+sách CLB phải có trước cả hai**.
 
 ---
 
@@ -103,16 +126,39 @@ HS001,Nguyen Van An,clb_amnhac,2
 
 ---
 
+### 3.5. Danh sách CLB
+**File mẫu: `05_danh_sach_club.csv`**
+
+| Cột | Bắt buộc | Ý nghĩa |
+|---|---|---|
+| `club_id` | ✅ | Mã CLB. Chính là mã dùng trong hai file học sinh — phải khớp từng ký tự. |
+| `name` | ✅ | Tên đầy đủ để hiển thị và in ra file kết quả. |
+| `capacity` | ✅ | Tổng chỉ tiêu. Phải **lớn hơn 0**. |
+| `reserve_capacity` | Không | Số suất dành cho nhóm dự trữ. Bỏ trống = 0. Không được lớn hơn `capacity`. |
+| `reserve_group` | Không | Tên nhóm được ưu tiên (vd `chinh_sach`). Bỏ trống = CLB không có dự trữ. |
+
+```csv
+club_id,name,capacity,reserve_capacity,reserve_group
+clb_bongro,CLB Bóng rổ,20,0,
+clb_tienganh,CLB Tiếng Anh,25,5,chinh_sach
+```
+
+Nhập lại file này là **cập nhật** CLB đã có (theo `club_id`), không tạo trùng.
+Dòng nào có chỉ tiêu sai (bằng 0, hoặc dự trữ lớn hơn tổng chỉ tiêu) thì
+**bỏ qua riêng dòng đó** kèm cảnh báo ghi rõ số dòng — các dòng còn lại vẫn
+nhập bình thường.
+
+---
+
 ## 4. Quy tắc phải biết trước khi nhập
 
-### ⚠️ Tạo club TRƯỚC khi nhập
-`club_id` trong file **phải đã tồn tại** trong phần mềm (màn hình
-**04 Quản lý club & dự trữ**). Nếu một học sinh có bất kỳ `club_id` nào
-sai, **cả học sinh đó bị bỏ qua** — phần mềm không nhập một nửa. Có cảnh
-báo ghi rõ mã nào sai.
+### ⚠️ CLB phải có TRƯỚC file học sinh
+`club_id` trong file học sinh **phải đã tồn tại**. Nếu một học sinh có bất kỳ
+`club_id` nào chưa có, **cả học sinh đó bị bỏ qua** — phần mềm không nhập một
+nửa. Có cảnh báo ghi rõ mã nào sai.
 
-Đây là lỗi hay gặp nhất. Hãy dùng nút **Xem trước** rồi đọc số
-"sẽ bị bỏ qua" trước khi bấm nhập thật.
+Cách chắc chắn nhất: thả **cả ba file cùng lúc** rồi bấm *Nhập tất cả*. Phần
+mềm tự nhập danh sách CLB trước, nên không bao giờ rơi vào tình huống này.
 
 ### Nhập lại là GHI ĐÈ, không cộng dồn
 Nhập lần hai **xoá sạch** nguyện vọng cũ của những học sinh có trong file,
@@ -169,12 +215,15 @@ ký tự đó khiến file đúng vẫn báo "thiếu cột `student_id`".)
 | Tên tiếng Việt thành ký tự lạ | Lưu sai bảng mã | Lưu lại bằng **CSV UTF-8** |
 | Nguyện vọng sai thứ tự | Dạng dài thiếu cột `rank` | Bổ sung cột `rank`, hoặc sắp đúng thứ tự dòng |
 | Nhập xong nhưng dự trữ không chạy | Chưa gán `reserve_group` | Xem mục 4, phần ❗ |
+| Phần mềm hỏi "chưa chắc đây là file gì" | Bộ cột hợp với cả hai loại | Chọn loại ở ô bên phải, hoặc thêm cột `rank` nếu là nguyện vọng |
+| Học sinh bị bỏ qua hàng loạt ngay lần nhập đầu | Chưa nhập danh sách CLB | Thả cả file CLB vào cùng lúc, phần mềm tự xếp thứ tự |
 
 ---
 
 ## 7. Bộ club dùng trong file mẫu
 
-Muốn chạy thử 4 file mẫu, tạo trước 5 club sau (màn hình 04):
+Không phải tạo tay nữa — **thả `05_danh_sach_club.csv` vào cùng lúc** là xong.
+Nội dung file đó đúng bằng bảng dưới:
 
 | club_id | Tên | Chỉ tiêu | Chỉ tiêu dự trữ | Nhóm dự trữ |
 |---|---|---|---|---|

@@ -70,28 +70,29 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h2 data-i18n="import_panel_title">Nhập dữ liệu từ Microsoft Forms</h2>
+          <h2 data-i18n="import_panel_title">Nhập dữ liệu</h2>
         </div>
-        <p class="hint-text" data-i18n-html="import_hint_html">
-          Nhận file CSV đã chuẩn hoá bởi <code>06_ms_forms_transform.py</code>.
-          Hệ thống tự nhận diện định dạng "dài" hoặc "rộng" — không cần chọn.
+        <p class="hint-text" data-i18n="import_hint">
+          Kéo thả file CSV vào ô dưới — phần mềm tự biết đó là danh sách CLB,
+          file chọn CLB muốn thi hay file xếp hạng nguyện vọng. Thả được nhiều
+          file một lúc, và tự nhập theo đúng thứ tự.
         </p>
-        <div class="import-grid">
-          <div class="import-col">
-            <div class="import-col-title" data-i18n="import_col_test_title">CSV chọn club muốn thi/xét (Bước 1)</div>
-            <input type="file" id="fileTestSelection" accept=".csv" class="file-input">
-            <div class="import-preview" id="previewTestSelection" hidden></div>
-            <button class="btn btn-secondary" id="btnImportTestSelection" disabled data-i18n="btn_import_confirm">Nhập vào hệ thống</button>
-            <span class="save-feedback" id="feedbackImportTestSelection"></span>
-          </div>
-          <div class="import-col">
-            <div class="import-col-title" data-i18n="import_col_pref_title">CSV xếp hạng nguyện vọng (Bước 2)</div>
-            <input type="file" id="filePreferences" accept=".csv" class="file-input">
-            <div class="import-preview" id="previewPreferences" hidden></div>
-            <button class="btn btn-secondary" id="btnImportPreferences" disabled data-i18n="btn_import_confirm">Nhập vào hệ thống</button>
-            <span class="save-feedback" id="feedbackImportPreferences"></span>
-          </div>
+
+        <div class="drop-zone" id="dropZone" tabindex="0" role="button"
+             aria-describedby="dropZoneHint">
+          <input type="file" id="fileAny" accept=".csv" multiple hidden>
+          <div class="drop-zone-main" data-i18n="drop_zone_main">Kéo file CSV vào đây</div>
+          <div class="drop-zone-sub" id="dropZoneHint" data-i18n="drop_zone_sub">hoặc bấm để chọn file — có thể chọn nhiều file</div>
         </div>
+
+        <div class="import-queue" id="importQueue" hidden></div>
+
+        <div class="import-actions" id="importActions" hidden>
+          <button class="btn btn-primary" id="btnImportAll" data-i18n="btn_import_all">Nhập tất cả</button>
+          <button class="btn btn-ghost" id="btnClearQueue" data-i18n="btn_clear_queue">Bỏ danh sách</button>
+          <span class="save-feedback" id="feedbackImportAll"></span>
+        </div>
+
         <div class="import-warnings" id="importWarnings" hidden></div>
       </div>
 
