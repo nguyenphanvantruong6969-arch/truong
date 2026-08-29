@@ -679,6 +679,95 @@ class PipelineAPI:
     # lại cái bug vừa chữa.
     # -----------------------------------------------------------------
 
+    # -----------------------------------------------------------------
+    # ĐỌC THẲNG FILE EXCEL (.xlsx)
+    #
+    # Microsoft Forms xuất kết quả ra .xlsx. Trước đây người vận hành
+    # phải mở Excel -> File -> Save As -> chọn đúng "CSV UTF-8" -> rồi
+    # mới nạp được. Bước thừa đó lại là bước dễ sai nhất: chọn nhầm
+    # "CSV (Comma delimited)" thì tên tiếng Việt hỏng hết dấu, mà chọn
+    # đúng thì Excel chèn BOM (bản cũ báo thiếu cột student_id vì thế).
+    # Đọc thẳng .xlsx là bỏ được cả lớp lỗi đó.
+    #
+    # openpyxl là Python thuần, không cần .NET hay thư viện hệ thống —
+    # khác hẳn pythonnet, nên không kéo theo rủi ro đóng gói đã gặp.
+    # -----------------------------------------------------------------
+
+    @staticmethod
+    def _o_excel_thanh_chu(gia_tri) -> str:
+        """Đưa một ô Excel về đúng chuỗi mà phần CSV đang chờ.
+
+        Quan trọng nhất là số: Excel lưu chỉ tiêu 20 dưới dạng số thực,
+        đọc thô ra thành "20.0" và int("20.0") ném ValueError — cả dòng
+        CLB sẽ bị bỏ qua dù file hoàn toàn đúng.
+        """
+        if gia_tri is None:
+            return ""
+        if isinstance(gia_tri, bool):
+            return "1" if gia_tri else ""
+        if isinstance(gia_tri, float) and gia_tri.is_integer():
+            return str(int(gia_tri))
+        return str(gia_tri).strip()
+
+    def xlsx_to_csv_text(self, file_base64: str, sheet_name: str = ""):
+        """Đọc file .xlsx (gửi lên dạng base64) và trả về text CSV.
+
+        Phần còn lại của luồng nhập giữ nguyên: detect_csv_kind và
+        import_csv_auto vẫn làm việc trên text, không cần biết dữ liệu
+        đến từ .csv hay .xlsx.
+        """
+        try:
+            import base64 as _b64
+            import csv as _csv
+            import io as _io
+
+            try:
+                import openpyxl
+            except ImportError:
+                return _fail(err("xlsx_support_missing"))
+
+            try:
+                du_lieu = _b64.b64decode(file_base64 or "", validate=False)
+                wb = openpyxl.load_workbook(
+                    _io.BytesIO(du_lieu), read_only=True, data_only=True
+                )
+            except Exception as e:
+                return _fail(err("xlsx_read_failed", detail=str(e)))
+
+            ten_cac_sheet = list(wb.sheetnames)
+            if not ten_cac_sheet:
+                return _fail(err("xlsx_empty"))
+            if sheet_name and sheet_name in ten_cac_sheet:
+                ws = wb[sheet_name]
+            else:
+                # Sheet DAU TIEN, khong phai sheet dang active: file Forms
+                # xuat ra luon de du lieu o sheet dau, con active co the la
+                # sheet nguoi dung xem cuoi cung truoc khi luu.
+                ws = wb[ten_cac_sheet[0]]
+
+            dong = []
+            for hang in ws.iter_rows(values_only=True):
+                o = [self._o_excel_thanh_chu(v) for v in hang]
+                # Excel hay de lai vai hang rong o cuoi bang.
+                if any(x for x in o):
+                    dong.append(o)
+            wb.close()
+
+            if not dong:
+                return _fail(err("xlsx_empty"))
+
+            buf = _io.StringIO()
+            _csv.writer(buf, lineterminator="\n").writerows(dong)
+            return _ok({
+                "csv_text": buf.getvalue(),
+                "sheet_name": ws.title,
+                "sheet_names": ten_cac_sheet,
+                "n_rows": len(dong),
+            })
+        except Exception as e:
+            return _fail([err("xlsx_read_failed", detail=str(e)),
+                          traceback.format_exc()])
+
     def detect_csv_kind(self, csv_text: str):
         """Đọc dòng tiêu đề để biết đây là file gì.
 
@@ -870,6 +959,26 @@ class PipelineAPI:
         except Exception as e:
             return _fail(err("error_reading_csv_preview", detail=str(e)))
 
+    # Cot reserve_group la TUY CHON trong ca hai file hoc sinh. Truoc day
+    # hoc sinh tao bang CSV luon co nhom du tru rong, phai vao man hinh 04
+    # gan tay tung em — ma nhom du tru CHINH LA co che uu tien cua RB-DA,
+    # quen buoc do thi phan du tru vo hieu hoan toan va pipeline van chay
+    # tron tru khong bao gi.
+    #
+    # Quy tac (ghi ca trong HUONG_DAN_CSV.md):
+    #   o co gia tri -> GHI DE nhom hien co (nguoi nhap chu dong dua vao)
+    #   o trong      -> GIU NGUYEN, khong xoa (file thieu cot khong duoc
+    #                   lam mat du lieu da gan truoc do)
+    @staticmethod
+    def _ghi_nhom_du_tru(cur, student_id: str, reserve_group: str) -> None:
+        nhom = (reserve_group or "").strip()
+        if not nhom:
+            return
+        cur.execute(
+            "UPDATE students SET reserve_group = ? WHERE student_id = ?",
+            (nhom, student_id),
+        )
+
     def import_preferences_csv(self, csv_text: str, create_missing_students: bool = True):
         """
         Nhập CSV nguyện vọng (Bước 2 — xếp hạng) từ Microsoft Forms.
@@ -896,7 +1005,8 @@ class PipelineAPI:
                     if not sid:
                         continue
                     ordered = [row[c] for c in pref_cols if row.get(c)]
-                    grouped[sid] = (row.get("name", ""), ordered)
+                    grouped[sid] = (row.get("name", ""), ordered,
+                                    row.get("reserve_group", ""))
             else:
                 if "student_id" not in fieldnames or "club_id" not in fieldnames:
                     return _fail(err("csv_missing_columns", fieldnames=fieldnames))
@@ -911,7 +1021,9 @@ class PipelineAPI:
                     if has_rank:
                         sid_rows.sort(key=lambda r: int(r["rank"]) if r.get("rank", "").isdigit() else 999)
                     name = next((r.get("name") for r in sid_rows if r.get("name")), "")
-                    grouped[sid] = (name, [r["club_id"] for r in sid_rows])
+                    nhom = next((r.get("reserve_group") for r in sid_rows
+                                 if r.get("reserve_group")), "")
+                    grouped[sid] = (name, [r["club_id"] for r in sid_rows], nhom)
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
@@ -921,7 +1033,7 @@ class PipelineAPI:
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = []
 
-            for sid, (name, ordered_clubs) in grouped.items():
+            for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
                 # loai bo trung lap giu thu tu xuat hien dau tien
                 seen = set()
                 deduped = []
@@ -960,6 +1072,8 @@ class PipelineAPI:
                         "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
                         (name, sid),
                     )
+
+                self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
 
                 cur.execute("DELETE FROM preferences WHERE student_id = ?", (sid,))
                 cur.executemany(
@@ -1001,7 +1115,8 @@ class PipelineAPI:
                     if not sid:
                         continue
                     selected = [row[c] for c in test_cols if row.get(c)]
-                    grouped[sid] = (row.get("name", ""), selected)
+                    grouped[sid] = (row.get("name", ""), selected,
+                                    row.get("reserve_group", ""))
             else:
                 if "student_id" not in fieldnames or "club_id" not in fieldnames:
                     return _fail(err("csv_missing_columns", fieldnames=fieldnames))
@@ -1009,8 +1124,10 @@ class PipelineAPI:
                     sid = row.get("student_id")
                     if not sid or not row.get("club_id"):
                         continue
-                    name, clubs_list = grouped.get(sid, ("", []))
-                    grouped[sid] = (row.get("name") or name, clubs_list + [row["club_id"]])
+                    name, clubs_list, nhom = grouped.get(sid, ("", [], ""))
+                    grouped[sid] = (row.get("name") or name,
+                                    clubs_list + [row["club_id"]],
+                                    row.get("reserve_group") or nhom)
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
@@ -1020,7 +1137,7 @@ class PipelineAPI:
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = []
 
-            for sid, (name, club_ids) in grouped.items():
+            for sid, (name, club_ids, nhom_du_tru) in grouped.items():
                 deduped = sorted(set(club_ids), key=club_ids.index)
                 invalid_clubs = [c for c in deduped if c not in valid_club_ids]
                 if invalid_clubs:
@@ -1045,6 +1162,8 @@ class PipelineAPI:
                         "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
                         (name, sid),
                     )
+
+                self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
 
                 cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (sid,))
                 cur.executemany(

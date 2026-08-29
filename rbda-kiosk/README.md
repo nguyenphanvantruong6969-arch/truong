@@ -239,6 +239,36 @@ Thư mục **`mau_csv/`** chứa 5 file mẫu chạy được ngay và
 | `04_nguyen_vong_dang_dai.csv` | Xếp hạng nguyện vọng (Bước 2) | dài |
 | `05_danh_sach_club.csv` | Danh sách CLB | — |
 
+### Đọc thẳng file Excel
+
+Microsoft Forms xuất kết quả ra `.xlsx`. Trước đây người vận hành phải mở
+Excel → *Save As* → chọn đúng *CSV UTF-8* rồi mới nạp được — và chính bước
+thừa đó là bước dễ sai nhất: chọn nhầm *CSV (Comma delimited)* thì tên tiếng
+Việt hỏng hết dấu, còn chọn đúng thì Excel chèn BOM (bản cũ báo thiếu cột
+`student_id` vì thế). Bỏ hẳn bước chuyển đổi là bỏ được cả lớp lỗi đó.
+
+`xlsx_to_csv_text()` đọc file bằng `openpyxl` rồi trả về text CSV, nên phần
+còn lại của luồng (`detect_csv_kind`, `import_csv_auto`) không cần biết dữ
+liệu đến từ `.csv` hay `.xlsx`. Trộn hai định dạng trong cùng một lần thả
+cũng chạy.
+
+Ba chỗ `.xlsx` khác CSV, đều đã xử lý và có test: Excel lưu chỉ tiêu `20`
+dưới dạng số thực nên đọc thô ra `"20.0"` và `int("20.0")` ném lỗi làm **cả
+dòng CLB bị bỏ qua**; ô trống là `None` chứ không phải `""`; và sổ tính
+thường có nhiều sheet — phần mềm lấy **sheet đầu tiên**, không phải sheet
+đang active (sheet active chỉ là sheet người dùng xem cuối cùng trước khi
+lưu).
+
+`openpyxl` là Python thuần, không cần .NET hay thư viện hệ thống — khác hẳn
+`pythonnet`, nên không kéo theo rủi ro đóng gói đã gặp với bản `.exe`.
+
+**File mẫu Excel:** `MAU_01_danh_sach_CLB.xlsx`,
+`MAU_02_chon_CLB_muon_thi.xlsx`, `MAU_03_xep_hang_nguyen_vong.xlsx`. Mỗi file
+có sheet đầu là dữ liệu và sheet sau là hướng dẫn từng cột; phần mềm chỉ đọc
+sheet đầu nên ghi chú không lẫn vào dữ liệu. Sinh lại bằng
+`./.venv/bin/python mau_csv/tao_mau_excel.py` sau khi sửa file CSV mẫu — có
+test bắt hai bộ không được lệch nhau.
+
 ### Kéo thả, không phải chọn ô
 
 Một vùng kéo-thả duy nhất nhận **mọi loại file**. `detect_csv_kind()` đọc
@@ -268,11 +298,12 @@ người dùng chọn — đoán bừa ở đây là dựng lại đúng cái bu
 1. **`club_id` phải có trước file học sinh.** Học sinh có bất kỳ `club_id`
    nào chưa tồn tại sẽ bị **bỏ qua toàn bộ** (kèm cảnh báo) — phần mềm
    không nhập một nửa. Thả cả ba file cùng lúc là tránh được hoàn toàn.
-2. **CSV học sinh không gán được `reserve_group`.** Học sinh tạo bằng CSV có
-   nhóm dự trữ rỗng, phải vào màn hình *04 Quản lý club & dự trữ* gán riêng.
-   Quên bước này thì cơ chế dự trữ của RB-DA không có tác dụng, mà pipeline
-   vẫn chạy bình thường và **không báo lỗi**. (CLB thì gán được ngay trong
-   `05_danh_sach_club.csv`.)
+2. **Tên nhóm dự trữ phải khớp giữa hai file.** `reserve_group` giờ điền
+   được thẳng trong file học sinh (ô có giá trị thì ghi đè, ô trống thì giữ
+   nguyên — file thiếu cột không làm mất dữ liệu đã gán). Nhưng tên nhóm ở
+   file học sinh phải **khớp từng ký tự** với `reserve_group` khai trong file
+   danh sách CLB; lệch một chữ là hai bên không nhận nhau và phần dự trữ lặng
+   lẽ vô hiệu, pipeline vẫn chạy và **không báo lỗi**.
 
 Mọi quy tắc trong `HUONG_DAN_CSV.md` đều được khoá bằng test
 (`tests/test_csv_mau.py`, `tests/test_upload_tu_nhan_dien.py`) — tài liệu và

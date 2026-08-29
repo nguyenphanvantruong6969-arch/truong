@@ -97,6 +97,18 @@ MESSAGES = {
         "vi": "Dòng {line}: bỏ qua vì {reason} không hợp lệ (chỉ tiêu phải lớn hơn 0 và chỉ tiêu dự trữ không được vượt quá tổng chỉ tiêu).",
         "en": "Line {line}: skipped because {reason} is invalid (capacity must be above 0 and reserve capacity cannot exceed capacity).",
     },
+    "xlsx_read_failed": {
+        "vi": "Không đọc được file Excel: {detail}. Kiểm tra lại xem đúng là file .xlsx không, hoặc lưu lại rồi thử lần nữa.",
+        "en": "Could not read the Excel file: {detail}. Check it really is an .xlsx file, or re-save it and try again.",
+    },
+    "xlsx_empty": {
+        "vi": "File Excel không có dữ liệu nào.",
+        "en": "The Excel file has no data.",
+    },
+    "xlsx_support_missing": {
+        "vi": "Bản cài này thiếu thư viện đọc Excel (openpyxl). Hãy lưu file sang định dạng CSV UTF-8 rồi nạp lại.",
+        "en": "This build is missing the Excel reader (openpyxl). Save the file as CSV UTF-8 and try again.",
+    },
     "error_reading_club_stats": {
         "vi": "Lỗi đọc thống kê club: {detail}",
         "en": "Error reading club stats: {detail}",

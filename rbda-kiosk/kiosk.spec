@@ -37,7 +37,15 @@ datas = [
 ]
 
 binaries = []
-hiddenimports = ["webview"]
+hiddenimports = ["webview", "openpyxl"]
+
+# openpyxl doc file .xlsx nguoi dung tha vao. No import dong mot so
+# module con (reader/writer theo dinh dang), nen khai bao ro de
+# PyInstaller khong bo sot khi phan tich tinh.
+pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all("openpyxl")
+datas += pkg_datas
+binaries += pkg_binaries
+hiddenimports += pkg_hiddenimports
 
 # pywebview chọn backend GUI khác nhau theo hệ điều hành. Khai báo rõ để
 # PyInstaller không bỏ sót khi phân tích tĩnh (static analysis đôi khi

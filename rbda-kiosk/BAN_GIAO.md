@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 152 test pass
+> Cập nhật lần cuối: 29/08/2026 · 181 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **152 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **181 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,8 +57,9 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 10 file, 152 test (có 1 file chạy giao diện thật bằng Playwright)
-- `mau_csv/` — 5 file CSV mẫu + `HUONG_DAN_CSV.md` (định dạng nhập liệu)
+- `tests/` — 12 file test, 181 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
+  + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 
 ---
 
@@ -105,14 +106,22 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
    để giao diện hiện đúng chỗ. Cũng phải giữ `utf-8-sig` (BOM) khi ghi,
    nếu không Excel hỏng font tên tiếng Việt.
 
-10. **CSV học sinh KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
-   không phải bug: học sinh tạo bằng CSV có nhóm dự trữ rỗng, phải vào màn
-   hình 04 gán riêng (có `bulk_set_reserve_group`). Quên bước này thì cơ chế
-   dự trữ của RB-DA vô hiệu mà pipeline **không báo lỗi**. Đã ghi cảnh báo
-   ở `mau_csv/HUONG_DAN_CSV.md` và README. Nếu sau này muốn bịt hẳn, hướng
-   đúng là thêm cột `reserve_group` tuỳ chọn vào CSV nguyện vọng.
+10. **`openpyxl` đọc thẳng .xlsx — KHÔNG bỏ đi.** Microsoft Forms xuất ra
+   `.xlsx`; bắt người dùng tự Save As CSV là bước thừa và là chỗ hỏng dấu
+   tiếng Việt nhiều nhất. Ba chỗ .xlsx khác CSV đã xử lý, đừng làm hỏng:
+   số thực `20.0` phải đưa về `20` (không thì `int()` ném lỗi và **cả dòng
+   CLB bị bỏ qua**), ô trống `None` phải về chuỗi rỗng, và lấy **sheet đầu
+   tiên** chứ không phải sheet đang active. `openpyxl` là Python thuần,
+   không dính .NET như pythonnet nên không thêm rủi ro đóng gói.
 
-11. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+11. **`reserve_group` của học sinh: ô có giá trị GHI ĐÈ, ô trống GIỮ NGUYÊN.**
+   Điền được thẳng trong cả hai file học sinh. Ô trống tuyệt đối không được
+   xoá nhóm đã gán — file nhập lại mà thiếu giá trị sẽ làm mất dữ liệu.
+   Rủi ro CÒN LẠI: tên nhóm ở file học sinh phải KHỚP TỪNG KÝ TỰ với
+   `reserve_group` khai trong file CLB; lệch một chữ là dự trữ lặng lẽ vô
+   hiệu mà pipeline **không báo lỗi**.
+
+12. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
@@ -154,8 +163,13 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
 **Việc tiện lợi CÒN LẠI đã khảo sát nhưng chưa làm** (xem lại nếu học sinh hỏi):
 - ~~Club phải tạo tay từng cái~~ — ĐÃ XONG: `import_clubs_csv` +
   `mau_csv/05_danh_sach_club.csv`.
-- **`reserve_group` của HỌC SINH chưa nhập được bằng CSV** (xem mục 4.10).
-  Của CLB thì đã có trong file danh sách CLB.
+- ~~`reserve_group` của HỌC SINH~~ — ĐÃ XONG: cột `reserve_group` trong cả
+  hai file học sinh (xem mục 4.11).
+- ~~Phải tự chuyển Excel sang CSV~~ — ĐÃ XONG: `xlsx_to_csv_text` đọc thẳng
+  `.xlsx`, kèm 3 file Excel mẫu có sheet hướng dẫn.
+- **CHƯA có kiểm tra chéo tên nhóm dự trữ** giữa file học sinh và file CLB.
+  Lệch tên là dự trữ vô hiệu mà không báo gì — đây là ứng viên tốt cho mục
+  "Cảnh báo dữ liệu" (`get_data_health_report`).
 - **Chưa có nút "Sao lưu ngay" / "Khôi phục"** trong app thường; hiện chỉ
   tự sao lưu trước mỗi lần chạy pipeline, còn khôi phục thì chỉ xuất hiện
   ở màn hình recovery — tức là SAU KHI DB đã hỏng. Quy trình sao lưu đã

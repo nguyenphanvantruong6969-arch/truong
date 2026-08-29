@@ -73,16 +73,16 @@
           <h2 data-i18n="import_panel_title">Nhập dữ liệu</h2>
         </div>
         <p class="hint-text" data-i18n="import_hint">
-          Kéo thả file CSV vào ô dưới — phần mềm tự biết đó là danh sách CLB,
+          Kéo thả file Excel (.xlsx) hoặc CSV vào ô dưới — phần mềm tự biết đó là danh sách CLB,
           file chọn CLB muốn thi hay file xếp hạng nguyện vọng. Thả được nhiều
           file một lúc, và tự nhập theo đúng thứ tự.
         </p>
 
         <div class="drop-zone" id="dropZone" tabindex="0" role="button"
              aria-describedby="dropZoneHint">
-          <input type="file" id="fileAny" accept=".csv" multiple hidden>
-          <div class="drop-zone-main" data-i18n="drop_zone_main">Kéo file CSV vào đây</div>
-          <div class="drop-zone-sub" id="dropZoneHint" data-i18n="drop_zone_sub">hoặc bấm để chọn file — có thể chọn nhiều file</div>
+          <input type="file" id="fileAny" accept=".csv,.xlsx,.xlsm" multiple hidden>
+          <div class="drop-zone-main" data-i18n="drop_zone_main">Kéo file Excel hoặc CSV vào đây</div>
+          <div class="drop-zone-sub" id="dropZoneHint" data-i18n="drop_zone_sub">nhận .xlsx và .csv — bấm để chọn, có thể chọn nhiều file</div>
         </div>
 
         <div class="import-queue" id="importQueue" hidden></div>

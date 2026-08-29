@@ -146,3 +146,52 @@ def test_bo_danh_sach_xoa_luon_phan_hoi_cua_lan_nhap_truoc(trang):
     )
     assert page.locator("#importQueue").is_hidden()
     assert not loi, loi
+
+
+# ------------------------------------------------------------------ #
+# THẢ THẲNG FILE EXCEL
+#
+# Microsoft Forms xuất ra .xlsx. Đây là phép thử end-to-end của đường
+# đi mới: trình duyệt đọc file nhị phân -> base64 -> Python đọc bằng
+# openpyxl -> quay lại luồng nhận diện như file CSV thường.
+# ------------------------------------------------------------------ #
+
+
+def test_tha_file_excel_duoc_nhan_dien_nhu_file_csv(trang):
+    page, loi = trang
+    page.locator("#fileAny").set_input_files([mau("MAU_01_danh_sach_CLB.xlsx")])
+    page.wait_for_function("document.querySelectorAll('.queue-row').length === 1")
+    chi_tiet = page.locator(".queue-row .queue-detail").inner_text()
+    assert "Danh sách CLB" in chi_tiet
+    assert not loi, loi
+
+
+def test_tha_ca_excel_lan_csv_cung_luc_va_nhap_het(trang, api):
+    """Trường có thể có file này .xlsx, file kia .csv — phải trộn được."""
+    page, loi = trang
+    page.locator("#fileAny").set_input_files([
+        mau("MAU_03_xep_hang_nguyen_vong.xlsx"),
+        mau("05_danh_sach_club.csv"),
+        mau("MAU_02_chon_CLB_muon_thi.xlsx"),
+    ])
+    page.wait_for_function("document.querySelectorAll('.queue-row').length === 3")
+    page.locator("#btnImportAll").click()
+    page.wait_for_function(
+        "document.querySelectorAll('.queue-row.is-done').length === 3", timeout=20000
+    )
+
+    st = api.get_student_entry_state("HS001")["data"]
+    assert st["ranked_clubs"] == ["clb_bongro", "clb_amnhac", "clb_tienganh"]
+    assert sorted(st["tested_clubs"]) == ["clb_amnhac", "clb_bongro", "clb_tienganh"]
+    assert len(api.list_clubs_admin()["data"]) == 5
+    assert not loi, loi
+
+
+def test_file_excel_hong_bao_loi_chu_khong_sap_giao_dien(trang, tmp_path):
+    hong = tmp_path / "khong_phai_excel.xlsx"
+    hong.write_bytes(b"day khong phai file excel")
+    page, loi = trang
+    page.locator("#fileAny").set_input_files([str(hong)])
+    page.wait_for_selector(".queue-row.is-unknown")
+    assert page.locator(".queue-row .queue-detail").inner_text().strip()
+    assert not loi, loi

@@ -1,2 +1,5 @@
 pywebview>=5.0
 pyinstaller>=6.0
+# Doc thang file .xlsx (Microsoft Forms xuat ra dinh dang nay).
+# Python thuan, khong can .NET — khong keo theo rui ro dong goi nhu pythonnet.
+openpyxl>=3.1

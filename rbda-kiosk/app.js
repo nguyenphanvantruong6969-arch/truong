@@ -521,31 +521,79 @@
     });
   }
 
+  /* Chuyen ArrayBuffer -> base64 de gui file nhi phan qua cau noi JS/Python.
+     Phai cat khuc: String.fromCharCode.apply co gioi han so doi so, file
+     vai tram KB la tran ngan xep. */
+  function bufferSangBase64(buf) {
+    const bytes = new Uint8Array(buf);
+    const KHUC = 0x8000;
+    let chuoi = "";
+    for (let i = 0; i < bytes.length; i += KHUC) {
+      chuoi += String.fromCharCode.apply(null, bytes.subarray(i, i + KHUC));
+    }
+    return btoa(chuoi);
+  }
+
+  function laFileExcel(ten) {
+    return /\.(xlsx|xlsm)$/i.test(ten || "");
+  }
+
+  /* Doc mot file thanh TEXT CSV, du no la .csv hay .xlsx.
+     Microsoft Forms xuat ra .xlsx — truoc day nguoi dung phai tu mo Excel
+     va Save As CSV UTF-8, ma do lai la buoc de sai nhat (chon nham dinh
+     dang thi hong het dau tieng Viet). */
+  function docFileThanhCsv(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      if (laFileExcel(file.name)) {
+        reader.onload = () => {
+          callApi("xlsx_to_csv_text", bufferSangBase64(reader.result), "").then(
+            (res) => {
+              if (!res.ok) resolve({ loi: trErrs(res.errors).join("; ") });
+              else resolve({ text: res.data.csv_text });
+            }
+          );
+        };
+        reader.onerror = () => resolve({ loi: String(reader.error || "") });
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.onload = () => resolve({ text: String(reader.result || "") });
+        reader.onerror = () => resolve({ loi: String(reader.error || "") });
+        /* UTF-8 doc duoc ca file co BOM cua Excel — backend cat BOM. */
+        reader.readAsText(file, "UTF-8");
+      }
+    });
+  }
+
   function themFileVaoHangDoi(fileList) {
     const files = Array.prototype.slice.call(fileList || []);
     if (!files.length) return;
     files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = String(reader.result || "");
-        callApi("detect_csv_kind", text).then((res) => {
+      docFileThanhCsv(file).then((doc) => {
+        if (doc.loi) {
+          importQueue.push({
+            ten: file.name, text: "", kind: "", confident: false,
+            candidates: [], loi: doc.loi,
+          });
+          veHangDoi();
+          return;
+        }
+        callApi("detect_csv_kind", doc.text).then((res) => {
           if (!res.ok) {
             importQueue.push({
-              ten: file.name, text: text, kind: "", confident: false,
+              ten: file.name, text: doc.text, kind: "", confident: false,
               candidates: [], loi: trErrs(res.errors).join("; "),
             });
           } else {
             const d = res.data;
             importQueue.push({
-              ten: file.name, text: text, kind: d.kind, format: d.format,
+              ten: file.name, text: doc.text, kind: d.kind, format: d.format,
               confident: d.confident, candidates: d.candidates || [],
             });
           }
           veHangDoi();
         });
-      };
-      /* UTF-8 doc duoc ca file co BOM cua Excel — backend cat BOM. */
-      reader.readAsText(file, "UTF-8");
+      });
     });
   }
 

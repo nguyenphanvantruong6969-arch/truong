@@ -8,12 +8,32 @@ kèm 4 file mẫu chạy thử được ngay trong cùng thư mục.
 
 ---
 
-## 0. Cách nhập: kéo thả, không phải chọn ô
+## 0. Cách nhập: kéo thả file Excel hoặc CSV
 
-Ở màn hình **01 Vận hành pipeline**, kéo file CSV vào ô lớn — hoặc bấm vào ô
-đó để chọn file. **Không phải chọn loại file:** phần mềm đọc dòng tiêu đề là
-biết đây là danh sách CLB, file chọn CLB muốn thi, hay file xếp hạng nguyện
-vọng.
+**Không cần chuyển file sang CSV nữa.** Phần mềm đọc thẳng `.xlsx` — đúng
+định dạng Microsoft Forms xuất ra. Trước đây phải mở Excel → *Save As* →
+chọn đúng *CSV UTF-8*; chính bước đó hay làm hỏng dấu tiếng Việt.
+
+### File mẫu Excel — điền rồi thả vào là xong
+
+| File | Dùng cho |
+|---|---|
+| `MAU_01_danh_sach_CLB.xlsx` | Danh sách CLB (nhập **trước tiên**) |
+| `MAU_02_chon_CLB_muon_thi.xlsx` | Bước 1 — tick chọn CLB muốn dự tuyển |
+| `MAU_03_xep_hang_nguyen_vong.xlsx` | Bước 2 — xếp thứ tự nguyện vọng |
+
+Mỗi file có **hai sheet**: sheet đầu là bảng dữ liệu để điền, sheet sau là
+hướng dẫn từng cột. Phần mềm **chỉ đọc sheet đầu**, nên ghi chú không bao giờ
+lẫn vào dữ liệu. Cứ xoá 5 dòng mẫu rồi điền dữ liệu thật của trường.
+
+Trộn định dạng cũng được: file này `.xlsx`, file kia `.csv` — thả chung một
+lượt vẫn chạy.
+
+## 0b. Không phải chọn loại file
+
+Ở màn hình **01 Vận hành pipeline**, kéo file vào ô lớn — hoặc bấm vào ô đó
+để chọn. **Không phải chọn loại file:** phần mềm đọc dòng tiêu đề là biết đây
+là danh sách CLB, file chọn CLB muốn thi, hay file xếp hạng nguyện vọng.
 
 Thả được **nhiều file một lúc**. Phần mềm tự nhập theo **đúng thứ tự**: danh
 sách CLB trước, rồi mới đến file học sinh — vì học sinh tham chiếu tới
@@ -67,6 +87,7 @@ Phần mềm nhận ra dạng rộng khi thấy cột tên bắt đầu bằng `
 |---|---|---|
 | `student_id` | ✅ | Mã học sinh. Là **khoá chính** — phải duy nhất, không đổi giữa hai file. |
 | `name` | Không | Họ tên. Chỉ dùng khi **tạo mới** học sinh; học sinh đã có tên thì không bị ghi đè. |
+| `reserve_group` | Không | **Nhóm dự trữ của học sinh** (vd `chinh_sach`). Xem mục 4. |
 | `test_club_1`, `test_club_2`, … | ✅ ít nhất một | `club_id` của club muốn dự tuyển. **Ô trống được bỏ qua**, không cần điền kín. |
 
 ```csv
@@ -100,6 +121,7 @@ HS002,Tran Thi Binh,clb_tienganh
 |---|---|---|
 | `student_id` | ✅ | Mã học sinh. |
 | `name` | Không | Họ tên. |
+| `reserve_group` | Không | **Nhóm dự trữ của học sinh** (vd `chinh_sach`). Xem mục 4. |
 | `pref_1`, `pref_2`, … `pref_10` | ✅ ít nhất một | **Thứ tự cột chính là thứ tự nguyện vọng.** `pref_1` = nguyện vọng 1. |
 
 ```csv
@@ -177,13 +199,23 @@ Cùng một club xuất hiện nhiều lần thì chỉ giữ **lần đầu ti�
 Mã học sinh chưa tồn tại thì phần mềm tạo mới, lấy `name` làm tên (không
 có `name` thì lấy chính mã học sinh).
 
-### ❗ CSV KHÔNG gán được nhóm dự trữ
-Học sinh tạo bằng CSV có `reserve_group` **rỗng**. Mà nhóm dự trữ chính là
-cơ chế ưu tiên của thuật toán RB-DA — **quên bước này thì toàn bộ phần dự
-trữ không có tác dụng**, pipeline vẫn chạy bình thường và không báo lỗi.
+### Nhóm dự trữ điền thẳng trong file
+Thêm cột `reserve_group` vào file học sinh là xong — không phải vào màn hình
+04 gán tay từng em nữa.
 
-Sau khi nhập CSV, vào màn hình **04 Quản lý club & dự trữ** để gán nhóm
-(có chức năng gán hàng loạt cho nhiều học sinh cùng lúc).
+| Ô | Kết quả |
+|---|---|
+| Có giá trị | **Ghi đè** nhóm hiện có (người nhập chủ động đưa vào) |
+| Để trống | **Giữ nguyên**, không xoá nhóm đã gán trước đó |
+| Không có cột này | Cũng giữ nguyên — file thiếu cột không làm mất dữ liệu |
+
+Tên nhóm là chuỗi tự do do trường tự đặt (`chinh_sach`, `khoi10`…), nhưng
+phải **khớp từng ký tự** với `reserve_group` khai trong file danh sách CLB —
+lệch một chữ là hai bên không nhận nhau và phần dự trữ lặng lẽ vô hiệu.
+
+> Nhóm dự trữ chính là cơ chế ưu tiên của RB-DA. Bỏ trống hết thì thuật toán
+> vẫn chạy trơn tru và **không báo lỗi gì** — chỉ là không em nào vào được
+> theo diện dự trữ. Kiểm tra lại ở màn hình *04 Quản lý club & dự trữ*.
 
 ---
 
@@ -214,7 +246,8 @@ ký tự đó khiến file đúng vẫn báo "thiếu cột `student_id`".)
 | Nhiều học sinh "bị bỏ qua" | `club_id` chưa được tạo trong phần mềm | Kiểm tra lại danh sách club ở màn hình 04 |
 | Tên tiếng Việt thành ký tự lạ | Lưu sai bảng mã | Lưu lại bằng **CSV UTF-8** |
 | Nguyện vọng sai thứ tự | Dạng dài thiếu cột `rank` | Bổ sung cột `rank`, hoặc sắp đúng thứ tự dòng |
-| Nhập xong nhưng dự trữ không chạy | Chưa gán `reserve_group` | Xem mục 4, phần ❗ |
+| Nhập xong nhưng dự trữ không chạy | Chưa điền `reserve_group`, hoặc tên nhóm ở file học sinh lệch với file CLB | Xem mục 4 |
+| Chỉ tiêu CLB từ Excel bị bỏ qua | (đã xử lý) Excel lưu số dạng `20.0`; phần mềm tự đưa về `20` |
 | Phần mềm hỏi "chưa chắc đây là file gì" | Bộ cột hợp với cả hai loại | Chọn loại ở ô bên phải, hoặc thêm cột `rank` nếu là nguyện vọng |
 | Học sinh bị bỏ qua hàng loạt ngay lần nhập đầu | Chưa nhập danh sách CLB | Thả cả file CLB vào cùng lúc, phần mềm tự xếp thứ tự |
 
