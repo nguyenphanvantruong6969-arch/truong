@@ -174,6 +174,28 @@ nhập bình thường.
 
 ## 4. Quy tắc phải biết trước khi nhập
 
+### Mã học sinh: viết thống nhất một kiểu
+
+`student_id` là **khoá chính**, và phần mềm phân biệt chữ hoa với chữ thường:
+`hs001` và `HS001` là **hai học sinh khác nhau**. File tick chọn viết kiểu
+này, file nguyện vọng viết kiểu kia, là thành hai hồ sơ rời rạc mỗi cái thiếu
+một nửa.
+
+Phần mềm **cảnh báo** khi gặp hai mã chỉ khác hoa/thường, nhưng **không tự
+gộp** — gộp nhầm hai em có thật thì hỏng nặng hơn nhiều. Người nhập tự quyết.
+
+> Riêng **mã CLB** thì được tha: `CLB_BongRo` khớp với `clb_bongro` như
+> thường. Khác biệt là mã CLB có danh sách gốc để đối chiếu, còn mã học sinh
+> thì không.
+
+### ⚠️ Excel và mã có số 0 đứng đầu
+
+Mã như `0012345` mà để Excel tự nhận định dạng thì nó biến thành số `12345`,
+**mất số 0**. Phần mềm nhận đúng những gì Excel lưu, nên không cứu được.
+
+Cách tránh: bôi đen cột mã → định dạng ô → chọn **Text**, rồi mới nhập. Trong
+file mẫu, cột `student_id` đã ở dạng text sẵn.
+
 ### ⚠️ CLB phải có TRƯỚC file học sinh
 `club_id` trong file học sinh **phải đã tồn tại**. Nếu một học sinh có bất kỳ
 `club_id` nào chưa có, **cả học sinh đó bị bỏ qua** — phần mềm không nhập một
@@ -278,6 +300,9 @@ ký tự đó khiến file đúng vẫn báo "thiếu cột `student_id`".)
 | Chỉ tiêu CLB từ Excel bị bỏ qua | (đã xử lý) Excel lưu số dạng `20.0`; phần mềm tự đưa về `20` |
 | Phần mềm hỏi "chưa chắc đây là file gì" | Bộ cột hợp với cả hai loại | Chọn loại ở ô bên phải, hoặc thêm cột `rank` nếu là nguyện vọng |
 | Học sinh bị bỏ qua hàng loạt ngay lần nhập đầu | Chưa nhập danh sách CLB | Thả cả file CLB vào cùng lúc, phần mềm tự xếp thứ tự |
+| Báo "mã X xuất hiện N lần" | Một học sinh có nhiều dòng trong file dạng rộng | Chỉ dòng **cuối** được giữ. Xoá dòng thừa nếu đó là nhầm lẫn |
+| Báo "chỉ khác chữ hoa/thường" | Hai file viết mã học sinh khác kiểu (`hs001` vs `HS001`) | Sửa cho hai file cùng kiểu — phần mềm **không tự gộp**, vì gộp nhầm hai em có thật thì hỏng nặng hơn |
+| Mã CLB viết hoa/thường khác file CLB | Không sao — phần mềm tự khớp | Không phải sửa |
 
 ---
 

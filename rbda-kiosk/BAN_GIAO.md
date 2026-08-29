@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 206 test pass
+> Cập nhật lần cuối: 29/08/2026 · 217 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **206 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **217 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,7 +57,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 13 file test, 206 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 14 file test, 217 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 
@@ -134,7 +134,15 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
    Dữ liệu nhập từ TRƯỚC bản này có thể còn nhãn chưa chuẩn; nhập lại file
    CLB và file học sinh là tự quy về mã chuẩn.
 
-13. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+13. **`student_id` PHÂN BIỆT hoa/thường, `club_id` thì KHÔNG.** Có chủ ý:
+   `club_id` có danh sách gốc trong bảng `clubs` để đối chiếu nên khớp
+   hoa/thường an toàn (`_khop_club_id`, thử khớp chính xác TRƯỚC rồi mới bỏ
+   qua hoa/thường — trường tạo cả `clb_a` lẫn `CLB_A` thì mã chính xác vẫn
+   thắng). `student_id` không có gì để đối chiếu, nên chỉ CẢNH BÁO khi hai mã
+   khác nhau mỗi hoa/thường, tuyệt đối KHÔNG tự gộp: gộp nhầm hai em có thật
+   là hỏng nặng hơn nhiều so với để người nhập tự sửa.
+
+14. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
@@ -190,6 +198,16 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   ở màn hình recovery — tức là SAU KHI DB đã hỏng. Quy trình sao lưu đã
   chốt là copy tay file `.db` qua USB (mục 4.1), nên một nút "Xuất bản sao
   lưu ra USB" sẽ khớp đúng quy trình đó.
+
+**Đã soát thủ công luồng nạp (29/08), các ca CÒN LẠI chưa xử lý:**
+- **Excel làm mất số 0 đứng đầu mã học sinh** (`0012345` -> `12345`) nếu ô
+  không được đặt định dạng Text. Phần mềm nhận đúng thứ Excel lưu nên không
+  cứu được — chỉ ghi cảnh báo trong `HUONG_DAN_CSV.md`. Nếu muốn bịt: cảnh
+  báo khi `student_id` toàn số và độ dài lệch với các mã khác trong file.
+- **File .xlsx chứa CÔNG THỨC chưa được Excel tính sẵn** đọc ra ô rỗng
+  (`data_only=True` lấy giá trị đã lưu, file do openpyxl tạo thì không có).
+  File Excel thật do Excel lưu luôn có giá trị nên thực tế hiếm gặp; dòng
+  hỏng vẫn bị bỏ qua kèm cảnh báo `csv_club_row_invalid`.
 
 **Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên máy kiosk thật.
 

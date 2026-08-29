@@ -293,6 +293,18 @@ thể là "chọn CLB muốn thi" dạng dài, vừa có thể là "xếp hạng
 dạng dài thiếu cột `rank`. Gặp trường hợp đó, phần mềm dừng lại và hiện ô cho
 người dùng chọn — đoán bừa ở đây là dựng lại đúng cái bug vừa chữa.
 
+**Ba lớp bảo vệ khi nạp, tìm ra bằng cách soát thủ công từng ca:**
+
+| Ca | Trước | Nay |
+|---|---|---|
+| Cùng `student_id` hai dòng trong file dạng rộng | Dòng sau ghi đè dòng trước, **không cảnh báo** | Vẫn giữ dòng cuối, nhưng cảnh báo rõ mã nào lặp mấy lần |
+| `hs001` và `HS001` | Thành **hai học sinh** khác nhau, không cảnh báo | Cảnh báo; **không** tự gộp, vì gộp nhầm hai em có thật hỏng nặng hơn |
+| `CLB_BongRo` vs `clb_bongro` | Cả học sinh bị bỏ qua | Tự khớp về mã gốc trong DB; mã sai hẳn vẫn bị bỏ qua kèm cảnh báo |
+
+Khớp `club_id` thử **chính xác trước**, chỉ khi không thấy mới bỏ qua
+hoa/thường — nên nếu trường thật sự tạo cả `clb_a` lẫn `CLB_A` thì mã khớp
+chính xác vẫn thắng, phần mềm không đoán hộ.
+
 **Hai điểm dễ sai nhất, đã ghi rõ trong hướng dẫn:**
 
 1. **`club_id` phải có trước file học sinh.** Học sinh có bất kỳ `club_id`

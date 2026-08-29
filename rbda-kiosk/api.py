@@ -1008,6 +1008,82 @@ class PipelineAPI:
     #   o trong      -> GIU NGUYEN, khong xoa (file thieu cot khong duoc
     #                   lam mat du lieu da gan truoc do)
     @staticmethod
+    def _soat_dong_trung(rows, is_wide: bool) -> list:
+        """Cảnh báo khi một student_id xuất hiện nhiều lần trong file DẠNG RỘNG.
+
+        Dạng rộng là mỗi học sinh một dòng, nên dòng thứ hai của cùng một
+        mã sẽ âm thầm ghi đè dòng đầu — học sinh điền form hai lần, hoặc
+        người nhập dán nhầm, là mất nguyện vọng của một dòng mà không ai
+        biết. Dạng DÀI thì nhiều dòng mỗi học sinh là bình thường, không
+        cảnh báo gì.
+        """
+        if not is_wide:
+            return []
+        dem: dict = {}
+        for row in rows:
+            sid = (row.get("student_id") or "").strip()
+            if sid:
+                dem[sid] = dem.get(sid, 0) + 1
+        return [
+            err("csv_duplicate_student_rows", student_id=sid, n=n)
+            for sid, n in sorted(dem.items()) if n > 1
+        ]
+
+    @staticmethod
+    def _soat_ma_trung_hoa_thuong(cur, ma_trong_file) -> list:
+        """Cảnh báo khi mã học sinh mới chỉ khác hoa/thường với mã đã có.
+
+        `hs001` và `HS001` tạo ra HAI học sinh riêng biệt: file tick chọn
+        dùng kiểu này, file nguyện vọng dùng kiểu kia, thế là hai hồ sơ
+        rời rạc mỗi cái thiếu một nửa, và pipeline xử lý như hai người.
+
+        KHÔNG tự gộp — gộp nhầm hai em có thật là hỏng nặng hơn nhiều.
+        Chỉ báo để người nhập tự quyết.
+        """
+        da_co = {
+            r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
+        }
+        theo_thuong = {}
+        for m in da_co:
+            theo_thuong.setdefault(m.lower(), m)
+
+        canh_bao = []
+        for m in sorted(set(ma_trong_file)):
+            if m in da_co:
+                continue
+            cu = theo_thuong.get(m.lower())
+            if cu:
+                canh_bao.append(
+                    err("csv_student_id_case_conflict", student_id=m, da_co=cu)
+                )
+        return canh_bao
+
+    @staticmethod
+    def _khop_club_id(cur):
+        """Trả về hàm đưa club_id người dùng gõ về đúng mã gốc trong DB.
+
+        Khớp CHÍNH XÁC trước; chỉ khi không thấy mới thử bỏ qua hoa/thường.
+        Nếu trường thật sự tạo cả `clb_a` lẫn `CLB_A` thì mã khớp chính
+        xác vẫn thắng — phần mềm không tự đoán hộ.
+
+        Tha thứ hoa/thường KHÔNG phải tha thứ mọi thứ: mã sai hẳn vẫn bị
+        bỏ qua kèm cảnh báo như cũ.
+        """
+        that = [r[0] for r in cur.execute("SELECT club_id FROM clubs").fetchall()]
+        chinh_xac = set(that)
+        theo_thuong = {}
+        for m in that:
+            theo_thuong.setdefault(m.lower(), m)
+
+        def khop(cid: str):
+            cid = (cid or "").strip()
+            if cid in chinh_xac:
+                return cid
+            return theo_thuong.get(cid.lower())
+
+        return khop
+
+    @staticmethod
     def _soat_nhom_du_tru_la(cur, nhom_da_ghi: dict) -> list:
         """Cảnh báo NGAY LÚC NHẬP nếu nhãn nhóm không CLB nào nhận.
 
@@ -1102,11 +1178,12 @@ class PipelineAPI:
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
-            valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+            khop_club = self._khop_club_id(cur)
             existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
             n_created, n_updated, n_skipped = 0, 0, 0
-            row_errors = []
+            row_errors = self._soat_dong_trung(rows, is_wide)
+            row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
             nhom_da_ghi: dict = {}
 
             for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
@@ -1125,11 +1202,15 @@ class PipelineAPI:
                     n_skipped += 1
                     continue
 
-                invalid_clubs = [c for c in deduped if c not in valid_club_ids]
+                # Doi ma nguoi dung go ve dung ma GOC trong DB (chap nhan
+                # khac hoa/thuong) truoc khi kiem tra ton tai.
+                da_khop = [(c, khop_club(c)) for c in deduped]
+                invalid_clubs = [c for c, that in da_khop if that is None]
                 if invalid_clubs:
                     row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
                     n_skipped += 1
                     continue
+                deduped = [that for _, that in da_khop]
 
                 if sid not in existing_students:
                     if not create_missing_students:
@@ -1211,20 +1292,23 @@ class PipelineAPI:
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
-            valid_club_ids = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+            khop_club = self._khop_club_id(cur)
             existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
             n_created, n_updated, n_skipped = 0, 0, 0
-            row_errors = []
+            row_errors = self._soat_dong_trung(rows, is_wide)
+            row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
             nhom_da_ghi: dict = {}
 
             for sid, (name, club_ids, nhom_du_tru) in grouped.items():
                 deduped = sorted(set(club_ids), key=club_ids.index)
-                invalid_clubs = [c for c in deduped if c not in valid_club_ids]
+                da_khop = [(c, khop_club(c)) for c in deduped]
+                invalid_clubs = [c for c, that in da_khop if that is None]
                 if invalid_clubs:
                     row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
                     n_skipped += 1
                     continue
+                deduped = [that for _, that in da_khop]
 
                 if sid not in existing_students:
                     if not create_missing_students:

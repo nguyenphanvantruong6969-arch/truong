@@ -113,6 +113,14 @@ MESSAGES = {
         "vi": "Nhãn dự trữ {reserve_group} ({n} học sinh) không CLB nào nhận — các em này sẽ KHÔNG được xét diện dự trữ. Có phải bạn định ghi {goi_y}?",
         "en": "Reserve label {reserve_group} ({n} student(s)) is not used by any club — they will NOT be considered for reserve places. Did you mean {goi_y}?",
     },
+    "csv_duplicate_student_rows": {
+        "vi": "Mã {student_id} xuất hiện {n} lần trong file — chỉ dòng CUỐI được giữ, các dòng trước bị ghi đè. Kiểm tra lại nếu đó không phải ý bạn.",
+        "en": "Student {student_id} appears {n} times in the file — only the LAST row is kept and the earlier ones are overwritten. Check this is intended.",
+    },
+    "csv_student_id_case_conflict": {
+        "vi": "Mã {student_id} chỉ khác chữ hoa/thường so với mã {da_co} đã có — phần mềm đang coi đây là HAI học sinh khác nhau. Nếu là một người, hãy sửa cho hai file dùng cùng một kiểu viết.",
+        "en": "Student id {student_id} differs from the existing {da_co} only in case — these are being treated as TWO different students. If they are the same person, make both files use the same spelling.",
+    },
     "error_reading_club_stats": {
         "vi": "Lỗi đọc thống kê club: {detail}",
         "en": "Error reading club stats: {detail}",
