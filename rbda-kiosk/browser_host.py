@@ -34,15 +34,30 @@ import http.server
 import json
 import os
 import secrets
+import shutil
+import subprocess
+import sys
+import tempfile
 import threading
 import time
 import webbrowser
 
-# Không có ping trong ngần này giây -> coi như người dùng đã đóng tab và tự
-# tắt tiến trình. Nếu không có cơ chế này, bản đóng gói console=False sẽ
-# chạy ngầm mãi sau khi người dùng đóng trình duyệt (không có cửa sổ nào để
-# tắt, phải vào Task Manager).
-_PING_TIMEOUT_SECONDS = 25
+# Không có ping trong ngần này giây -> coi như người dùng đã đóng cửa sổ và
+# tự tắt tiến trình. Nếu không có cơ chế này, bản đóng gói console=False sẽ
+# chạy ngầm mãi sau khi người dùng đóng cửa sổ (không có cửa sổ nào để tắt,
+# phải vào Task Manager).
+#
+# VÌ SAO 120 GIÂY CHỨ KHÔNG PHẢI 25: trình duyệt BÓP THẮT (throttle)
+# setInterval của trang đang bị ẩn — cửa sổ thu nhỏ lâu thì ping tụt xuống
+# khoảng 1 lần/phút. Với ngưỡng 25 giây, người vận hành chỉ cần thu nhỏ cửa
+# sổ đi làm việc khác là app TỰ TẮT giữa chừng. Một ứng dụng thật không
+# hành xử như vậy.
+#
+# Nới ngưỡng KHÔNG làm chậm việc tắt khi đóng thật: trang gọi
+# navigator.sendBeacon("/__closed__") ngay trong sự kiện `pagehide`, nên
+# đóng cửa sổ là máy chủ tắt tức khắc. Ngưỡng này chỉ còn là lưới an toàn
+# cho trường hợp trình duyệt bị kill cứng, không kịp gửi beacon.
+_PING_TIMEOUT_SECONDS = 120
 _PING_INTERVAL_MS = 3000
 
 _SHIM_TEMPLATE = """
@@ -75,10 +90,20 @@ _SHIM_TEMPLATE = """
     }),
   };
 
-  /* Bao cho may chu biet tab van dang mo. */
+  /* Bao cho may chu biet cua so van dang mo. */
   function ping() { fetch("/__ping__", { method: "POST" }).catch(function () {}); }
   ping();
   setInterval(ping, __PING_INTERVAL__);
+
+  /* Dong cua so -> bao NGAY, khong de tien trinh chay ngam.
+     Dung `pagehide` (khong phai `unload`) vi day la su kien duy nhat
+     trinh duyet bao dam ban ra khi trang bi dong, va sendBeacon van gui
+     duoc trong luc trang dang bi huy. */
+  window.addEventListener("pagehide", function () {
+    try {
+      navigator.sendBeacon("/__closed__?t=" + encodeURIComponent(TOKEN));
+    } catch (e) { /* dong duoc la tot, khong dong duoc thi da co nguong cho */ }
+  });
 })();
 </script>
 """
@@ -89,6 +114,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     api = None
     token = ""
     on_ping = None
+    on_closed = None
 
     def log_message(self, *args):
         """Im lang — ban dong goi console=False khong co stderr de ghi."""
@@ -113,6 +139,21 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             if callable(self.on_ping):
                 self.on_ping()
             self._send_json({"ok": True})
+            return
+
+        if self.path.split("?", 1)[0] == "/__closed__":
+            # Cua so da dong -> tat may chu ngay, khong cho het nguong.
+            # Bat buoc co token: khong de mot trang web khac dang mo trong
+            # cung may do trung cong roi tat app dang chay do.
+            from urllib.parse import parse_qs, urlparse
+
+            sent = parse_qs(urlparse(self.path).query).get("t", [""])[0]
+            if not secrets.compare_digest(sent, self.token):
+                self._send_json({"ok": False, "errors": ["forbidden"]}, 403)
+                return
+            self._send_json({"ok": True})
+            if callable(self.on_closed):
+                self.on_closed()
             return
 
         if not self.path.startswith("/__api__/"):
@@ -189,8 +230,142 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
 
+# ------------------------------------------------------------------ #
+# MỞ GIAO DIỆN NHƯ MỘT ỨNG DỤNG RIÊNG (KHÔNG PHẢI TAB TRÌNH DUYỆT)
+#
+# Mọi trình duyệt nhân Chromium (Edge, Chrome, Brave, Chromium) đều hiểu
+# cờ `--app=<url>`: mở MỘT CỬA SỔ RIÊNG — không thanh địa chỉ, không
+# thanh tab, không nút Back/Refresh — và có mục riêng trên thanh tác vụ.
+# Nhìn và dùng y như một ứng dụng desktop.
+#
+# VÌ SAO QUAN TRỌNG VỚI KIOSK: máy đặt ở trường, học sinh tự thao tác.
+# Có thanh địa chỉ nghĩa là gõ được sang trang khác, đóng nhầm tab của
+# app, hoặc thấy cả token trong URL. Chế độ --app bỏ hết những thứ đó.
+#
+# VÌ SAO KHÔNG DÙNG FIREFOX: Firefox không có cờ tương đương. `-kiosk`
+# của nó chiếm trọn màn hình và không có nút đóng — quá tay cho phòng
+# máy dùng chung. Nên chỉ tìm nhóm Chromium; nếu máy không có con nào,
+# mới quay về mở tab thường (vẫn dùng được, chỉ kém đẹp).
+#
+# Windows 10/11 LUÔN có sẵn Microsoft Edge, nên trên máy trường gần như
+# chắc chắn tìm được. Đường dẫn Edge cũng được thử TRƯỚC Chrome.
+# ------------------------------------------------------------------ #
+
+# CREATE_NO_WINDOW — không để nháy cửa sổ console đen khi khởi chạy
+# trình duyệt từ bản đóng gói console=False.
+_CREATE_NO_WINDOW = 0x08000000
+
+_APP_WINDOW_EXE_NAMES = (
+    "msedge", "chrome", "google-chrome", "chromium", "chromium-browser",
+    "brave", "brave-browser",
+)
+
+_APP_WINDOW_RELATIVE_PATHS_WINDOWS = (
+    r"Microsoft\Edge\Application\msedge.exe",
+    r"Google\Chrome\Application\chrome.exe",
+    r"BraveSoftware\Brave-Browser\Application\brave.exe",
+)
+
+
+def _windows_candidates():
+    """Đường dẫn cài đặt tiêu chuẩn trên Windows, Edge trước tiên."""
+    roots = [
+        os.environ.get("ProgramFiles", r"C:\Program Files"),
+        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+        os.environ.get("LOCALAPPDATA", ""),
+    ]
+    return [
+        os.path.join(root, rel)
+        for rel in _APP_WINDOW_RELATIVE_PATHS_WINDOWS
+        for root in roots
+        if root
+    ]
+
+
+def find_app_window_browser():
+    """Tìm một trình duyệt nhân Chromium để mở cửa sổ riêng.
+
+    Trả về đường dẫn, hoặc None nếu máy không có con nào (lúc đó
+    open_ui sẽ quay về mở tab trình duyệt mặc định).
+
+    Biến môi trường RBDA_BROWSER cho phép người vận hành chỉ định thẳng
+    trình duyệt khi máy trường cài ở đường dẫn không tiêu chuẩn. Nếu
+    giá trị đó sai/không tồn tại thì BỎ QUA và tìm tiếp như bình thường
+    — không được để một biến gõ nhầm làm app không mở lên được.
+    """
+    override = os.environ.get("RBDA_BROWSER", "").strip()
+    if override:
+        if os.path.isfile(override):
+            return override
+        found = shutil.which(override)
+        if found:
+            return found
+
+    if sys.platform.startswith("win"):
+        for path in _windows_candidates():
+            if os.path.isfile(path):
+                return path
+
+    for name in _APP_WINDOW_EXE_NAMES:
+        found = shutil.which(name)
+        if found:
+            return found
+
+    return None
+
+
+def app_window_profile_dir():
+    """Hồ sơ trình duyệt RIÊNG của app.
+
+    Không dùng chung hồ sơ của người dùng: tránh extension, lịch sử,
+    hộp thoại "khôi phục tab" và mọi thứ có thể chen vào giao diện
+    kiosk. Đặt trong thư mục tạm của hệ điều hành — mất cũng không sao,
+    dữ liệu thật nằm hết trong app.db.
+    """
+    return os.path.join(tempfile.gettempdir(), "rbda-kiosk-ui-profile")
+
+
+def build_app_window_command(browser, url, profile_dir, width, height):
+    return [
+        browser,
+        f"--app={url}",
+        f"--user-data-dir={profile_dir}",
+        f"--window-size={width},{height}",
+        # Bỏ mấy hộp thoại chào mừng/hỏi han của lần chạy đầu — kiosk
+        # phải vào thẳng giao diện.
+        "--no-first-run",
+        "--no-default-browser-check",
+        # Trang tiếng Việt hay bị Chrome/Edge mời "Dịch trang này?".
+        "--disable-features=Translate,TranslateUI",
+    ]
+
+
+def open_ui(url, width, height):
+    """Mở giao diện: ưu tiên CỬA SỔ RIÊNG, cùng lắm mới mở tab thường."""
+    browser = find_app_window_browser()
+    if browser:
+        kwargs = {}
+        if sys.platform.startswith("win"):
+            kwargs["creationflags"] = _CREATE_NO_WINDOW
+        try:
+            subprocess.Popen(
+                build_app_window_command(
+                    browser, url, app_window_profile_dir(), width, height
+                ),
+                **kwargs,
+            )
+            return
+        except OSError:
+            # Trình duyệt tìm thấy nhưng không chạy được (thiếu quyền,
+            # file hỏng). Vẫn còn đường mở tab thường.
+            pass
+
+    webbrowser.open(url)
+
+
 def serve(api, resource_dir: str, start_page: str = "index.html",
-          open_browser: bool = True) -> str:
+          open_browser: bool = True, width: int = 1280,
+          height: int = 800) -> str:
     """
     Khởi động máy chủ cục bộ và mở trình duyệt. Hàm này CHẶN (blocking)
     cho tới khi người dùng đóng tab (không còn ping) — giống webview.start().
@@ -202,10 +377,16 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
     def on_ping():
         state["last_ping"] = time.time()
 
+    def on_closed():
+        # shutdown() phai chay o thread KHAC, khong the goi tu trong
+        # chinh handler dang phuc vu request nay (se treo).
+        threading.Thread(target=lambda: httpd.shutdown(), daemon=True).start()
+
     bound = type("_BoundHandler", (_Handler,), {
         "api": api,
         "token": token,
         "on_ping": staticmethod(on_ping),
+        "on_closed": staticmethod(on_closed),
     })
     # SimpleHTTPRequestHandler dat self.directory TRONG __init__, nen gan
     # o cap lop se bi ghi de -> phai truyen qua tham so khoi tao.
@@ -228,7 +409,7 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
     threading.Thread(target=watchdog, daemon=True).start()
 
     if open_browser:
-        threading.Timer(0.3, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.3, lambda: open_ui(url, width, height)).start()
         httpd.serve_forever()
         httpd.server_close()
     else:

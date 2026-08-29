@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · commit `b39e426` · 88 test pass
+> Cập nhật lần cuối: 29/08/2026 · 98 test pass
 
 ---
 
@@ -25,16 +25,22 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Commit | `b39e426` — đã push, local = remote |
-| Test | **88 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
-| Bản `.exe` | Build qua GitHub Actions, run mới nhất `33124799256` |
+| Test | **98 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
 ```bash
 cd rbda-kiosk
-./.venv/bin/python -m pytest -q          # chạy test
-./.venv/bin/python main.py               # chạy app (sandbox không có GUI → tự sang chế độ trình duyệt)
+python3 -m venv .venv                        # XEM LƯU Ý bên dưới
+./.venv/bin/pip install -r requirements-dev.txt
+./.venv/bin/python -m pytest -q              # chạy test
+./.venv/bin/python main.py                   # chạy app
 ```
+
+> **LƯU Ý cho phiên làm việc mới:** `.venv/` nằm trong `.gitignore` nên KHÔNG
+> theo repo. Máy chạy phiên Claude là container mới, clone lại từ đầu mỗi lần
+> — nên **luôn phải dựng lại `.venv` trước khi chạy test**. Đừng tưởng dự án
+> hỏng khi thấy `./.venv/bin/python: No such file or directory`.
 
 ---
 
@@ -72,6 +78,19 @@ cd rbda-kiosk
 
 5. **Không thêm hệ thống đăng nhập.** Đúng thiết kế "offline-first" đã chốt.
 
+6. **Chế độ dự phòng mở CỬA SỔ ỨNG DỤNG RIÊNG, không phải tab trình duyệt.**
+   Dùng cờ `--app=<url>` của trình duyệt nhân Chromium (Edge có sẵn trên mọi
+   máy Windows 10/11) → cửa sổ riêng, không thanh địa chỉ, không tab. Đã kiểm
+   chứng chạy thật bằng Chromium + Xvfb trong sandbox. Không dùng Firefox vì
+   nó không có cờ tương đương. Nếu máy không có trình duyệt Chromium nào mới
+   quay về mở tab thường.
+
+7. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+   `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
+   app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
+   thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
+   do ngưỡng này.
+
 ---
 
 ## 5. Vấn đề chưa giải quyết
@@ -86,9 +105,24 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   thiếu file pythonnet (hook chính thức của pythonnet đã chạy sẵn ở bản lỗi).
 - **Bằng chứng quan trọng:** thông báo ghi *"from &lt;đường dẫn&gt;"* → file DLL **có mặt**,
   .NET tìm thấy nhưng từ chối nạp. Nên hướng "gom thêm file" là **sai hướng**.
-- **Đã xử lý tạm:** thêm chế độ chạy bằng trình duyệt để app vẫn dùng được.
-- **Chưa xác nhận:** học sinh chưa báo lại bản mới nhất chạy ra cửa sổ riêng hay tab trình duyệt.
-- **Phương án chưa thử:** khoá phiên bản cụ thể của `pythonnet`/`clr_loader`.
+- **Đã xử lý:** chế độ dự phòng giờ mở **cửa sổ ứng dụng riêng** (`--app=`),
+  nên kể cả khi pywebview vẫn hỏng, người dùng vẫn thấy một ứng dụng riêng
+  chứ không phải tab trình duyệt. Đã kiểm chứng chạy thật (xem mục 4.6).
+- **Đã đọc log build run `33124799256`** (commit `b39e426`): build THÀNH CÔNG,
+  không lỗi. Phiên bản thực tế được cài: `pythonnet 3.1.0`, `clr_loader 0.3.1`,
+  `pywebview 6.2.1`, PyInstaller 6.22.2, Python 3.11.9. Hook chính thức
+  `pythonnet/_pyinstaller/hook-clr.py` VÀ `hook-clr_loader.py` đều đã chạy.
+  Nghĩa là lỗi hoàn toàn nằm ở lúc CHẠY, không phải lúc đóng gói.
+- **Đã truy được chỗ ném lỗi:** `clr_loader/netfx.py` dòng 46-49 — `netfx`
+  nghĩa là .NET **Framework** (không phải .NET Core). Trên Windows,
+  `pythonnet/__init__.py` mặc định chọn `netfx`. Lỗi xảy ra khi
+  `pyclr_get_function` trả NULL, tức .NET Framework nạp được DLL nhưng không
+  resolve được hàm `Python.Runtime.Loader.Initialize` trong đó.
+- **CHƯA KIỂM CHỨNG ĐƯỢC:** vì sao .NET Framework từ chối. Sandbox là Linux,
+  không có .NET Framework để thử. Mọi giả thuyết về nguyên nhân gốc lúc này
+  đều là PHỎNG ĐOÁN — đúng thứ đã sai 2 lần trước.
+- **Phương án chưa thử:** khoá phiên bản cụ thể của `pythonnet`/`clr_loader`;
+  hoặc đặt `PYTHONNET_RUNTIME=coreclr` (nhưng đòi máy cài sẵn .NET Core).
 
 **Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên máy kiosk thật.
 

@@ -52,9 +52,12 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
     """
     Hiện giao diện `page` với backend `js_api`, THỬ HAI CÁCH theo thứ tự:
 
-      1. Cửa sổ pywebview (ưu tiên — đúng trải nghiệm kiosk, cửa sổ riêng).
-      2. NẾU pywebview hỏng: máy chủ cục bộ + TRÌNH DUYỆT MẶC ĐỊNH của máy
-         (xem browser_host.py).
+      1. Cửa sổ pywebview (ưu tiên — cửa sổ gốc của hệ điều hành).
+      2. NẾU pywebview hỏng: máy chủ cục bộ + một CỬA SỔ RIÊNG của trình
+         duyệt nhân Chromium (Edge/Chrome), mở bằng cờ `--app=` nên KHÔNG
+         có thanh địa chỉ, KHÔNG có tab — nhìn và dùng như ứng dụng
+         desktop. Chỉ khi máy không có trình duyệt Chromium nào thì mới
+         đành mở tab thường (xem browser_host.py).
 
     VÌ SAO CẦN CÁCH 2: trên Windows, pywebview bắt buộc đi qua
     pythonnet -> .NET Framework, và mắt xích này đã hỏng thật trên máy
@@ -64,11 +67,11 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
         from ...\\_internal\\pythonnet\\runtime\\Python.Runtime.dll
 
     Trước đây lỗi đó làm cả tiến trình chết kèm hộp thoại khó hiểu, app
-    hoàn toàn không dùng được. Giờ nó chỉ khiến app tự chuyển sang chạy
-    bằng trình duyệt — TOÀN BỘ tính năng giữ nguyên, vì app.js/recovery.js
-    vẫn gọi backend qua đúng `window.pywebview.api.*` như cũ (browser_host
-    dựng sẵn cầu nối giả lập). Người dùng chỉ thấy khác ở chỗ giao diện
-    mở trong cửa sổ trình duyệt thay vì cửa sổ riêng.
+    hoàn toàn không dùng được. Giờ nó chỉ khiến app đổi cách vẽ cửa sổ —
+    TOÀN BỘ tính năng giữ nguyên, vì app.js/recovery.js vẫn gọi backend
+    qua đúng `window.pywebview.api.*` như cũ (browser_host dựng sẵn cầu
+    nối giả lập). Với cờ `--app=`, người dùng vẫn thấy MỘT CỬA SỔ ỨNG
+    DỤNG RIÊNG, không phải một tab lẫn trong trình duyệt.
     """
     try:
         import webview
@@ -91,7 +94,7 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
             + traceback.format_exc()
         )
 
-    browser_host.serve(js_api, RESOURCE_DIR, page)
+    browser_host.serve(js_api, RESOURCE_DIR, page, width=width, height=height)
 
 
 def main() -> None:

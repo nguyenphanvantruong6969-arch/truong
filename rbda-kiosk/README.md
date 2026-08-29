@@ -146,7 +146,7 @@ chừng, tệp DB bị cắt cụt/hỏng, ghi đè khi có 2 tiến trình cùn
    không hề báo lỗi — giữ `journal_mode` mặc định (`DELETE`) để file
    `.db` vẫn là bản sao DUY NHẤT cần copy.
 
-## Chế độ dự phòng: chạy bằng trình duyệt
+## Chế độ dự phòng: cửa sổ ứng dụng riêng dựng bằng trình duyệt
 
 Trên Windows, pywebview **bắt buộc** đi qua `pythonnet` → .NET Framework —
 đây là mắt xích hay hỏng nhất khi đóng gói bằng PyInstaller. Đã gặp lỗi
@@ -165,17 +165,43 @@ Giờ `main.py` thử theo thứ tự:
 
 1. **Cửa sổ pywebview** — ưu tiên, đúng trải nghiệm kiosk (cửa sổ riêng).
 2. **Nếu pywebview hỏng vì bất kỳ lý do gì** → tự động chuyển sang
-   `browser_host.py`: dựng một máy chủ HTTP cục bộ rồi mở **trình duyệt
-   mặc định** của máy. Chế độ này **không dùng pythonnet/.NET/thư viện GUI
+   `browser_host.py`: dựng một máy chủ HTTP cục bộ rồi mở **một CỬA SỔ
+   ỨNG DỤNG RIÊNG**. Chế độ này **không dùng pythonnet/.NET/thư viện GUI
    nào cả** — chỉ thư viện chuẩn của Python + trình duyệt vốn có sẵn trên
    mọi máy Windows — nên gần như không thể hỏng vì lý do đóng gói.
+
+### Vì sao vẫn là "ứng dụng riêng", không phải tab trình duyệt
+
+Mọi trình duyệt nhân Chromium (Edge, Chrome, Brave, Chromium) đều hiểu cờ
+`--app=<url>`: mở **một cửa sổ riêng, không thanh địa chỉ, không thanh
+tab, không nút Back/Refresh**, có mục riêng trên thanh tác vụ. Nhìn và
+dùng y như một ứng dụng desktop.
+
+Điều này quan trọng với máy kiosk đặt ở trường: có thanh địa chỉ nghĩa là
+học sinh gõ được sang trang khác, đóng nhầm tab của app, hoặc nhìn thấy cả
+token trong URL.
+
+`browser_host.find_app_window_browser()` tìm theo thứ tự: biến môi trường
+`RBDA_BROWSER` (nếu người vận hành muốn chỉ định thẳng) → đường dẫn cài
+đặt tiêu chuẩn của **Edge** rồi Chrome/Brave trên Windows → cuối cùng mới
+tra `PATH`. **Windows 10/11 luôn có sẵn Edge**, nên trên máy trường gần
+như chắc chắn tìm được.
+
+Cửa sổ chạy bằng **hồ sơ trình duyệt riêng** (`--user-data-dir` trong thư
+mục tạm): không dính extension, lịch sử, hay hộp thoại "khôi phục tab" của
+người dùng. Mất hồ sơ đó cũng không sao — dữ liệu thật nằm hết trong
+`app.db`.
+
+Firefox không có cờ tương đương (`-kiosk` chiếm trọn màn hình, không có
+nút đóng — quá tay cho phòng máy dùng chung), nên chỉ tìm nhóm Chromium.
+Máy nào không có trình duyệt Chromium nào thì mới đành mở tab thường —
+vẫn dùng được đủ tính năng, chỉ kém gọn.
 
 **Toàn bộ tính năng giữ nguyên**, và `app.js`/`recovery.js` **không phải
 sửa một dòng nào**: giao diện vẫn gọi backend qua đúng
 `window.pywebview.api.<tên_hàm>(...)` như cũ, còn `browser_host` chèn sẵn
 một đoạn JS dựng `window.pywebview.api` giả lập (bằng Proxy) vào mỗi trang
 HTML nó phục vụ — mỗi lời gọi biến thành một POST tới `/__api__/<tên_hàm>`.
-Người dùng chỉ thấy khác ở chỗ giao diện mở trong cửa sổ trình duyệt.
 
 An toàn (đây là máy chứa dữ liệu học sinh):
 
@@ -184,9 +210,21 @@ An toàn (đây là máy chứa dữ liệu học sinh):
   trang web bất kỳ đang mở trong cùng trình duyệt không thể tự gọi vào.
 - **Không cho gọi phương thức nội bộ** (tên bắt đầu bằng `_`, ví dụ
   `_backup_db`) qua HTTP.
-- Trang tự gửi tín hiệu "còn mở" mỗi 3 giây; quá 25 giây không thấy tín
-  hiệu, tiến trình **tự tắt** — để bản `console=False` không chạy ngầm mãi
-  sau khi người dùng đóng tab.
+- Endpoint tắt máy chủ (`/__closed__`) cũng **bắt buộc có token**, để một
+  trang web khác dò trúng cổng không tắt được app đang chạy dở.
+
+Tắt đúng lúc — không tắt nhầm khi thu nhỏ:
+
+- Đóng cửa sổ → trang gửi `navigator.sendBeacon("/__closed__")` trong sự
+  kiện `pagehide`, máy chủ **tắt ngay** (đo thực tế: ~3 giây).
+- Ngoài ra trang vẫn gửi tín hiệu "còn mở" mỗi 3 giây; quá **120 giây**
+  không thấy tín hiệu thì tiến trình tự tắt — lưới an toàn cho trường hợp
+  trình duyệt bị kill cứng, không kịp gửi beacon.
+- **Vì sao 120 giây chứ không phải 25:** trình duyệt bóp thắt (throttle)
+  `setInterval` của trang đang bị ẩn, cửa sổ thu nhỏ lâu thì tín hiệu tụt
+  xuống khoảng 1 lần/phút. Với ngưỡng 25 giây cũ, người vận hành chỉ cần
+  thu nhỏ cửa sổ đi làm việc khác là **app tự tắt giữa chừng** — một ứng
+  dụng thật không hành xử như vậy.
 
 ## Chạy test tự động
 
@@ -253,7 +291,7 @@ python3 -m pytest tests/ -v
   chạy; và — kịch bản khó nhất — nếu bản sao lưu MỚI NHẤT cũng hỏng,
   quy trình tự động lùi sang bản kế trước còn đọc được thay vì dừng lại
   ở lỗi đầu tiên, báo đúng cả tên bản đã dùng lẫn số bản đã bỏ qua.
-- **Chế độ trình duyệt (`tests/test_browser_host.py`, 11 test case):** lời
+- **Chế độ trình duyệt (`tests/test_browser_host.py`, 21 test case):** lời
   gọi qua HTTP đi ĐÚNG vào `PipelineAPI` thật (tạo học sinh qua HTTP rồi
   đọc lại bằng đối tượng Python thấy đúng dữ liệu, không phải backend
   giả); thiếu token hoặc sai token → 403; phương thức nội bộ (`_backup_db`)
