@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 181 test pass
+> Cập nhật lần cuối: 29/08/2026 · 206 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **181 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **206 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,7 +57,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 12 file test, 181 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 13 file test, 206 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 
@@ -117,11 +117,24 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
 11. **`reserve_group` của học sinh: ô có giá trị GHI ĐÈ, ô trống GIỮ NGUYÊN.**
    Điền được thẳng trong cả hai file học sinh. Ô trống tuyệt đối không được
    xoá nhóm đã gán — file nhập lại mà thiếu giá trị sẽ làm mất dữ liệu.
-   Rủi ro CÒN LẠI: tên nhóm ở file học sinh phải KHỚP TỪNG KÝ TỰ với
-   `reserve_group` khai trong file CLB; lệch một chữ là dự trữ lặng lẽ vô
-   hiệu mà pipeline **không báo lỗi**.
 
-12. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+12. **Mọi nhãn `reserve_group` phải đi qua `chuan_hoa_nhom_du_tru()` TRƯỚC
+   khi ghi.** Nhãn gõ ở hai nơi (file CLB và file học sinh) và phải khớp thì
+   dự trữ mới chạy; trước đây `chinh_sach` vs `Chính sách` là hai nhóm khác
+   nhau và học sinh diện ưu tiên vào theo diện `general`, pipeline vẫn chạy
+   hết không báo lỗi. Đã áp dụng ở 5 đường ghi: `create_or_update_club`,
+   `import_clubs_csv`, `_ghi_nhom_du_tru` (2 đường CSV học sinh),
+   `set_student_reserve_group`, `bulk_set_reserve_group`. Thêm đường ghi mới
+   thì PHẢI gọi hàm này.
+
+   Chuẩn hoá lúc GHI chứ không phải lúc SO SÁNH là chủ ý —
+   `rbda_priority_pipeline.py` vẫn so khớp chuỗi chính xác, phần thuật toán
+   không bị đụng tới.
+
+   Dữ liệu nhập từ TRƯỚC bản này có thể còn nhãn chưa chuẩn; nhập lại file
+   CLB và file học sinh là tự quy về mã chuẩn.
+
+13. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
@@ -167,9 +180,11 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   hai file học sinh (xem mục 4.11).
 - ~~Phải tự chuyển Excel sang CSV~~ — ĐÃ XONG: `xlsx_to_csv_text` đọc thẳng
   `.xlsx`, kèm 3 file Excel mẫu có sheet hướng dẫn.
-- **CHƯA có kiểm tra chéo tên nhóm dự trữ** giữa file học sinh và file CLB.
-  Lệch tên là dự trữ vô hiệu mà không báo gì — đây là ứng viên tốt cho mục
-  "Cảnh báo dữ liệu" (`get_data_health_report`).
+- ~~Lệch tên nhóm dự trữ~~ — ĐÃ XONG: chuẩn hoá nhãn (mục 4.12) + cảnh báo
+  `csv_reserve_group_unknown` hiện NGAY lúc nhập, kèm gợi ý nhóm gần giống
+  nhất (`difflib.get_close_matches`). Mục Cảnh báo dữ liệu vốn ĐÃ bắt được
+  ca này từ trước (mục 4 và 6 của `get_data_health_report`), nhưng nằm ở
+  panel khác nên rất dễ lướt qua.
 - **Chưa có nút "Sao lưu ngay" / "Khôi phục"** trong app thường; hiện chỉ
   tự sao lưu trước mỗi lần chạy pipeline, còn khôi phục thì chỉ xuất hiện
   ở màn hình recovery — tức là SAU KHI DB đã hỏng. Quy trình sao lưu đã

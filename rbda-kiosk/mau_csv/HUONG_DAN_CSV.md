@@ -209,9 +209,36 @@ Thêm cột `reserve_group` vào file học sinh là xong — không phải vào
 | Để trống | **Giữ nguyên**, không xoá nhóm đã gán trước đó |
 | Không có cột này | Cũng giữ nguyên — file thiếu cột không làm mất dữ liệu |
 
-Tên nhóm là chuỗi tự do do trường tự đặt (`chinh_sach`, `khoi10`…), nhưng
-phải **khớp từng ký tự** với `reserve_group` khai trong file danh sách CLB —
-lệch một chữ là hai bên không nhận nhau và phần dự trữ lặng lẽ vô hiệu.
+### Không phải lo gõ khác kiểu
+
+Phần mềm **tự quy mọi cách viết về một mã**: bỏ dấu tiếng Việt, chuyển chữ
+thường, thay khoảng trắng và dấu nối bằng gạch dưới.
+
+| Bạn gõ | Phần mềm lưu |
+|---|---|
+| `chinh_sach` | `chinh_sach` |
+| `Chính sách` | `chinh_sach` |
+| `CHÍNH SÁCH` | `chinh_sach` |
+| `Chính-Sách` | `chinh_sach` |
+| `Đội tuyển` | `doi_tuyen` |
+| `Khối 10` | `khoi_10` |
+
+Nên file CLB ghi `chinh_sach` còn file học sinh gõ `Chính sách` vẫn nhận
+nhau. Trước đây đó là hai nhóm khác nhau và học sinh diện chính sách **mất
+suất dự trữ** mà không ai biết.
+
+Chuẩn hoá chỉ gộp các cách viết **cùng một chữ**. `Khối 10` và `Khối 11` vẫn
+là hai nhóm khác nhau, đúng như phải thế.
+
+### Gõ sai hẳn thì được báo ngay
+
+Nếu nhãn không CLB nào nhận — ví dụ gõ thiếu chữ thành `chinh_sac` — phần mềm
+báo **ngay khi vừa nạp file**, kèm gợi ý:
+
+> Nhãn dự trữ `chinh_sac` (1 học sinh) không CLB nào nhận — các em này sẽ
+> KHÔNG được xét diện dự trữ. Có phải bạn định ghi `chinh_sach`?
+
+Không phải chờ mở mục *Cảnh báo dữ liệu* mới thấy.
 
 > Nhóm dự trữ chính là cơ chế ưu tiên của RB-DA. Bỏ trống hết thì thuật toán
 > vẫn chạy trơn tru và **không báo lỗi gì** — chỉ là không em nào vào được
@@ -246,7 +273,8 @@ ký tự đó khiến file đúng vẫn báo "thiếu cột `student_id`".)
 | Nhiều học sinh "bị bỏ qua" | `club_id` chưa được tạo trong phần mềm | Kiểm tra lại danh sách club ở màn hình 04 |
 | Tên tiếng Việt thành ký tự lạ | Lưu sai bảng mã | Lưu lại bằng **CSV UTF-8** |
 | Nguyện vọng sai thứ tự | Dạng dài thiếu cột `rank` | Bổ sung cột `rank`, hoặc sắp đúng thứ tự dòng |
-| Nhập xong nhưng dự trữ không chạy | Chưa điền `reserve_group`, hoặc tên nhóm ở file học sinh lệch với file CLB | Xem mục 4 |
+| Nhập xong nhưng dự trữ không chạy | Chưa điền `reserve_group`, hoặc gõ sai hẳn tên nhóm | Đọc cảnh báo hiện ngay sau khi nhập — nó gợi ý đúng nhóm bạn định ghi |
+| Nhãn hiện ra khác lúc gõ (`Chính sách` thành `chinh_sach`) | Đúng thiết kế — phần mềm quy về một mã để hai file luôn khớp | Không phải sửa gì |
 | Chỉ tiêu CLB từ Excel bị bỏ qua | (đã xử lý) Excel lưu số dạng `20.0`; phần mềm tự đưa về `20` |
 | Phần mềm hỏi "chưa chắc đây là file gì" | Bộ cột hợp với cả hai loại | Chọn loại ở ô bên phải, hoặc thêm cột `rank` nếu là nguyện vọng |
 | Học sinh bị bỏ qua hàng loạt ngay lần nhập đầu | Chưa nhập danh sách CLB | Thả cả file CLB vào cùng lúc, phần mềm tự xếp thứ tự |

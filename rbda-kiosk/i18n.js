@@ -107,6 +107,10 @@
       vi: "Bản cài này thiếu thư viện đọc Excel (openpyxl). Hãy lưu file sang định dạng CSV UTF-8 rồi nạp lại.",
       en: "This build is missing the Excel reader (openpyxl). Save the file as CSV UTF-8 and try again.",
     },
+    csv_reserve_group_unknown: {
+      vi: "Nhãn dự trữ {reserve_group} ({n} học sinh) không CLB nào nhận — các em này sẽ KHÔNG được xét diện dự trữ. Có phải bạn định ghi {goi_y}?",
+      en: "Reserve label {reserve_group} ({n} student(s)) is not used by any club — they will NOT be considered for reserve places. Did you mean {goi_y}?",
+    },
     error_reading_club_stats: {
       vi: "Lỗi đọc thống kê club: {detail}",
       en: "Error reading club stats: {detail}",

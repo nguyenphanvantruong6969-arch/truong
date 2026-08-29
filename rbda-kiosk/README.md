@@ -298,12 +298,26 @@ người dùng chọn — đoán bừa ở đây là dựng lại đúng cái bu
 1. **`club_id` phải có trước file học sinh.** Học sinh có bất kỳ `club_id`
    nào chưa tồn tại sẽ bị **bỏ qua toàn bộ** (kèm cảnh báo) — phần mềm
    không nhập một nửa. Thả cả ba file cùng lúc là tránh được hoàn toàn.
-2. **Tên nhóm dự trữ phải khớp giữa hai file.** `reserve_group` giờ điền
-   được thẳng trong file học sinh (ô có giá trị thì ghi đè, ô trống thì giữ
-   nguyên — file thiếu cột không làm mất dữ liệu đã gán). Nhưng tên nhóm ở
-   file học sinh phải **khớp từng ký tự** với `reserve_group` khai trong file
-   danh sách CLB; lệch một chữ là hai bên không nhận nhau và phần dự trữ lặng
-   lẽ vô hiệu, pipeline vẫn chạy và **không báo lỗi**.
+2. **Nhãn nhóm dự trữ được chuẩn hoá về một mã.** `reserve_group` là chuỗi
+   tự do gõ ở **hai nơi** — file CLB và file học sinh — và phải khớp nhau thì
+   cơ chế dự trữ mới chạy. Trước đây so khớp chuỗi chính xác, nên CLB khai
+   `chinh_sach` còn giáo viên gõ `Chính sách` là hai nhóm khác nhau: học sinh
+   diện ưu tiên vào theo diện `general`, mất suất dự trữ, mà pipeline vẫn
+   chạy hết và không báo lỗi.
+
+   `chuan_hoa_nhom_du_tru()` bỏ dấu tiếng Việt, hạ chữ thường và thay mọi ký
+   tự không phải chữ/số bằng gạch dưới, áp dụng ở **mọi đường ghi** (form
+   CLB, CSV CLB, CSV học sinh, gán tay, gán hàng loạt). Chuẩn hoá lúc **ghi**
+   chứ không phải lúc so sánh là chủ ý: `rbda_priority_pipeline.py` vẫn so
+   khớp chuỗi chính xác như cũ nên phần thuật toán không bị đụng tới.
+
+   Chuẩn hoá chỉ gộp các cách viết cùng một chữ — `Khối 10` và `Khối 11` vẫn
+   khác nhau. Gõ sai hẳn (`chinh_sac`) thì được cảnh báo **ngay khi nạp file**
+   kèm gợi ý nhóm gần giống nhất, thay vì chỉ nằm im trong mục *Cảnh báo dữ
+   liệu*.
+
+   **Dữ liệu nhập từ trước bản này** có thể còn nhãn chưa chuẩn hoá; nhập lại
+   file CLB và file học sinh là tự quy về mã chuẩn.
 
 Mọi quy tắc trong `HUONG_DAN_CSV.md` đều được khoá bằng test
 (`tests/test_csv_mau.py`, `tests/test_upload_tu_nhan_dien.py`) — tài liệu và

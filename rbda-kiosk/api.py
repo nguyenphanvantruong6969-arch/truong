@@ -905,7 +905,7 @@ class PipelineAPI:
                     """,
                     (club_id, (row.get("name") or "").strip(), capacity,
                      reserve_capacity,
-                     (row.get("reserve_group") or "").strip() or None),
+                     self.chuan_hoa_nhom_du_tru(row.get("reserve_group")) or None),
                 )
                 if club_id in da_co:
                     n_sua += 1
@@ -959,6 +959,44 @@ class PipelineAPI:
         except Exception as e:
             return _fail(err("error_reading_csv_preview", detail=str(e)))
 
+    # -----------------------------------------------------------------
+    # CHUAN HOA NHAN NHOM DU TRU
+    #
+    # reserve_group la chuoi TU DO, go o HAI noi (file danh sach CLB va
+    # file hoc sinh) va phai khop nhau thi co che du tru moi chay. Truoc
+    # day so khop bang chuoi chinh xac, nen CLB khai "chinh_sach" con
+    # giao vien go "Chinh sach" la HAI NHOM KHAC NHAU: hoc sinh dien
+    # chinh sach vao theo dien general, mat suat du tru. Pipeline chay
+    # het va khong bao loi — chi co hai dong trong muc Canh bao du lieu,
+    # rat de luot qua.
+    #
+    # Nay moi nhan deu di qua day TRUOC KHI ghi vao DB, nen hai ben go
+    # kieu nao cung quy ve cung mot ma.
+    #
+    # Chuan hoa luc GHI chu khong phai luc SO SANH la co y:
+    # rbda_priority_pipeline.py van so khop chuoi chinh xac nhu cu, khong
+    # phai sua gi — cho nhay cam nhat cua du an khong bi dung toi.
+    # -----------------------------------------------------------------
+
+    @staticmethod
+    def chuan_hoa_nhom_du_tru(raw) -> str:
+        """"Chinh sach", "CHINH SACH", "Chinh-Sach" -> "chinh_sach"."""
+        import re
+        import unicodedata
+
+        chu = (raw or "").strip()
+        if not chu:
+            return ""
+        # NFD tach dau ra khoi nguyen am roi loc bo — nhung KHONG tach
+        # duoc chu D gach ngang, phai thay tay truoc.
+        chu = chu.replace("Đ", "D").replace("đ", "d")
+        chu = "".join(
+            c for c in unicodedata.normalize("NFD", chu)
+            if not unicodedata.combining(c)
+        )
+        chu = re.sub(r"[^0-9a-zA-Z]+", "_", chu.lower())
+        return chu.strip("_")
+
     # Cot reserve_group la TUY CHON trong ca hai file hoc sinh. Truoc day
     # hoc sinh tao bang CSV luon co nhom du tru rong, phai vao man hinh 04
     # gan tay tung em — ma nhom du tru CHINH LA co che uu tien cua RB-DA,
@@ -970,14 +1008,51 @@ class PipelineAPI:
     #   o trong      -> GIU NGUYEN, khong xoa (file thieu cot khong duoc
     #                   lam mat du lieu da gan truoc do)
     @staticmethod
-    def _ghi_nhom_du_tru(cur, student_id: str, reserve_group: str) -> None:
-        nhom = (reserve_group or "").strip()
+    def _soat_nhom_du_tru_la(cur, nhom_da_ghi: dict) -> list:
+        """Cảnh báo NGAY LÚC NHẬP nếu nhãn nhóm không CLB nào nhận.
+
+        Mục "Cảnh báo dữ liệu" cũng bắt được ca này, nhưng nằm ở panel
+        khác và rất dễ lướt qua. Sai ở đây thì học sinh diện ưu tiên mất
+        suất dự trữ mà pipeline vẫn chạy trơn, nên phải đập vào mắt ngay
+        khi vừa nạp file.
+
+        nhom_da_ghi: { nhãn đã chuẩn hoá: số học sinh mang nhãn đó }
+        """
+        import difflib
+
+        if not nhom_da_ghi:
+            return []
+        nhom_clb = {
+            r[0] for r in cur.execute(
+                "SELECT DISTINCT reserve_group FROM clubs "
+                "WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''"
+            ).fetchall()
+        }
+        canh_bao = []
+        for nhan, n in sorted(nhom_da_ghi.items()):
+            if nhan in nhom_clb:
+                continue
+            # Go nham mot hai ky tu la ca gap nhat — chi thang nhom dinh go.
+            gan_giong = difflib.get_close_matches(nhan, sorted(nhom_clb), n=1, cutoff=0.6)
+            canh_bao.append(err(
+                "csv_reserve_group_unknown",
+                reserve_group=nhan, n=n,
+                goi_y=gan_giong[0] if gan_giong else "",
+            ))
+        return canh_bao
+
+    @staticmethod
+    def _ghi_nhom_du_tru(cur, student_id: str, reserve_group: str) -> str:
+        """Trả về nhãn đã chuẩn hoá (chuỗi rỗng nếu không ghi gì) để bên
+        gọi đếm được từng nhãn phục vụ _soat_nhom_du_tru_la."""
+        nhom = PipelineAPI.chuan_hoa_nhom_du_tru(reserve_group)
         if not nhom:
-            return
+            return ""
         cur.execute(
             "UPDATE students SET reserve_group = ? WHERE student_id = ?",
             (nhom, student_id),
         )
+        return nhom
 
     def import_preferences_csv(self, csv_text: str, create_missing_students: bool = True):
         """
@@ -1032,6 +1107,7 @@ class PipelineAPI:
 
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = []
+            nhom_da_ghi: dict = {}
 
             for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
                 # loai bo trung lap giu thu tu xuat hien dau tien
@@ -1073,7 +1149,9 @@ class PipelineAPI:
                         (name, sid),
                     )
 
-                self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                if nhan:
+                    nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
 
                 cur.execute("DELETE FROM preferences WHERE student_id = ?", (sid,))
                 cur.executemany(
@@ -1081,6 +1159,8 @@ class PipelineAPI:
                     [(sid, cid, i + 1) for i, cid in enumerate(deduped)],
                 )
                 n_updated += 1
+
+            row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
 
             conn.commit()
             conn.close()
@@ -1136,6 +1216,7 @@ class PipelineAPI:
 
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = []
+            nhom_da_ghi: dict = {}
 
             for sid, (name, club_ids, nhom_du_tru) in grouped.items():
                 deduped = sorted(set(club_ids), key=club_ids.index)
@@ -1163,7 +1244,9 @@ class PipelineAPI:
                         (name, sid),
                     )
 
-                self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                if nhan:
+                    nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
 
                 cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (sid,))
                 cur.executemany(
@@ -1171,6 +1254,8 @@ class PipelineAPI:
                     [(sid, cid) for cid in deduped],
                 )
                 n_updated += 1
+
+            row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
 
             conn.commit()
             conn.close()
@@ -1530,7 +1615,7 @@ class PipelineAPI:
             if not club_id.strip():
                 return _fail(err("club_id_required"))
 
-            reserve_group_value = reserve_group.strip() or None
+            reserve_group_value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
@@ -1607,7 +1692,7 @@ class PipelineAPI:
             if not exists:
                 conn.close()
                 return _fail(err("student_not_found", student_id=student_id))
-            value = reserve_group.strip() or None
+            value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
             cur.execute(
                 "UPDATE students SET reserve_group = ? WHERE student_id = ?",
                 (value, student_id),
@@ -1623,7 +1708,7 @@ class PipelineAPI:
         try:
             if not isinstance(student_ids, list) or not student_ids:
                 return _fail(err("student_ids_must_be_nonempty_list"))
-            value = reserve_group.strip() or None
+            value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
             conn = connect_db(self.db_path)
             cur = conn.cursor()
             existing_ids = {
