@@ -259,6 +259,36 @@ làm đỏ test.
 đây chính ký tự đó khiến một file hoàn toàn đúng vẫn báo "thiếu cột
 `student_id`"; nay đã được xử lý.
 
+## Xuất kết quả cho nhà trường
+
+Nút **Xuất CSV** (màn hình *02 Kết quả*) tạo ra hai thứ cùng lúc:
+
+**1. Một file tổng** — `ket_qua_phan_bo.csv`, đặt **cạnh `app.db`**:
+
+```csv
+Mã học sinh,Họ tên,Mã CLB,Tên CLB,Nguyện vọng thứ,Diện trúng tuyển,Nhóm dự trữ
+HS001,Nguyễn Văn An,clb_bongro,CLB Bóng rổ,1,Thường,
+HS002,Trần Thị Bình,clb_tienganh,CLB Tiếng Anh,1,Dự trữ,chinh_sach
+```
+
+**2. Một thư mục theo CLB** — `ket_qua_phan_bo_theo_club/`, mỗi CLB một
+file để phát cho giáo viên phụ trách, kèm `_chua_duoc_xep.csv` liệt kê các
+em chưa vào CLB nào (nhóm nhà trường cần xử lý tiếp).
+
+Ba điều đã sửa so với bản trước, đều là thứ cản người dùng dùng file:
+
+| Trước | Nay |
+|---|---|
+| Chỉ 2 cột mã `student_id,club_id` — không biết em nào tên gì, đỗ nguyện vọng thứ mấy | Đủ tên học sinh, tên CLB, nguyện vọng thứ mấy, diện thường/dự trữ |
+| `reserve`/`general` là mã nội bộ | Ghi thẳng **Thường** / **Dự trữ** |
+| Đường dẫn tương đối → file rơi vào thư mục làm việc của tiến trình, người dùng không tìm ra | Đặt **cạnh `app.db`**, thông báo hiện **đường dẫn đầy đủ** |
+| Không có BOM → thêm cột tiếng Việt là Excel hỏng font | `utf-8-sig`, Excel mở đúng dấu tiếng Việt |
+
+`club_id` do trường tự đặt và không bị giới hạn ký tự, nên tên file theo
+CLB được làm sạch trước khi ghi — một mã như `../ngoai` không thể làm file
+rơi ra ngoài thư mục kết quả, và hai mã khác nhau cho ra cùng tên sau khi
+làm sạch cũng không ghi đè lên nhau.
+
 ## Chạy test tự động
 
 ```bash

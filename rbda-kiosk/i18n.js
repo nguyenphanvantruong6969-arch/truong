@@ -532,7 +532,7 @@
       feedback_import_failed: "Nhập thất bại.",
       feedback_import_success: "Đã nhập: {n_written} học sinh ({n_created} mới, {n_skipped} bị bỏ qua).",
       toast_csv_import_success: "Nhập CSV thành công — {n_written} học sinh.",
-      toast_export_success: "Đã xuất {n_rows} dòng ra {path}",
+      toast_export_success: "Đã xuất {n_rows} dòng ra {path} (kèm {n_club_files} file theo CLB)",
       toast_export_failed: "Xuất CSV thất bại: {errors}",
 
       recovery_title: "Phục hồi dữ liệu",
@@ -724,7 +724,7 @@
       feedback_import_failed: "Import failed.",
       feedback_import_success: "Imported: {n_written} student(s) ({n_created} new, {n_skipped} skipped).",
       toast_csv_import_success: "CSV import succeeded — {n_written} student(s).",
-      toast_export_success: "Exported {n_rows} row(s) to {path}",
+      toast_export_success: "Exported {n_rows} row(s) to {path} ({n_club_files} per-club file(s))",
       toast_export_failed: "CSV export failed: {errors}",
 
       recovery_title: "Data Recovery",

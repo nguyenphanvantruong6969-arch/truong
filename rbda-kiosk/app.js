@@ -640,8 +640,13 @@
       debounce((ev) => loadMatchResults(ev.target.value), 250)
     );
     el("btnExport").addEventListener("click", () => {
-      callApi("export_csv", "match_results_export.csv").then((res) => {
-        if (res.ok) showToast(t("toast_export_success", { n_rows: res.data.n_rows, path: res.data.path }), "success");
+      /* Khong truyen ten file -> backend tu dat CANH app.db va tra ve
+         duong dan DAY DU, de nguoi dung biet file nam o dau. */
+      callApi("export_csv", "").then((res) => {
+        if (res.ok) showToast(t("toast_export_success", {
+          n_rows: res.data.n_rows, path: res.data.path,
+          n_club_files: res.data.n_club_files,
+        }), "success");
         else showToast(t("toast_export_failed", { errors: trErrs(res.errors).join("; ") }), "error");
       });
     });

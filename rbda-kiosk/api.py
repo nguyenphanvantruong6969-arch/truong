@@ -1058,20 +1058,136 @@ class PipelineAPI:
         except Exception as e:
             return _fail(err("error_reading_club_stats", detail=str(e)))
 
-    def export_csv(self, output_path: str):
+    # -----------------------------------------------------------------
+    # XUẤT KẾT QUẢ
+    #
+    # File này là SẢN PHẨM CUỐI của cả quy trình — nhà trường dán bảng,
+    # gửi phụ huynh, phát cho giáo viên phụ trách từng CLB. Bản cũ chỉ
+    # xuất hai cột mã (student_id,club_id): nhìn vào không biết em nào
+    # tên gì, đỗ CLB nào, đỗ nguyện vọng thứ mấy. Toàn bộ dữ liệu đó ĐÃ
+    # có sẵn trong DB, chỉ là câu lệnh xuất không lấy.
+    # -----------------------------------------------------------------
+
+    # Ký tự KHÔNG được phép có trong tên file trên Windows, cộng thêm
+    # dấu phân cách đường dẫn. club_id do trường tự đặt và
+    # create_or_update_club KHÔNG giới hạn ký tự, nên một mã như
+    # "../ngoai" hay "khoi 10/11" sẽ làm file rơi ra ngoài thư mục kết
+    # quả (hoặc ghi đè file khác) nếu ghép thẳng vào tên file.
+    _KY_TU_CAM_TRONG_TEN_FILE = '<>:"/\\|?*'
+
+    @staticmethod
+    def _ten_file_an_toan(raw: str, mac_dinh: str = "club") -> str:
+        ten = "".join(
+            "_" if (c in PipelineAPI._KY_TU_CAM_TRONG_TEN_FILE or ord(c) < 32) else c
+            for c in (raw or "")
+        ).strip(" .")
+        # "..", "." và chuỗi rỗng đều không dùng làm tên file được
+        return ten if ten and ten not in (".", "..") else mac_dinh
+
+    def export_csv(self, output_path: str = ""):
+        """
+        Xuất kết quả phân bổ ra CSV cho nhà trường:
+
+          1. MỘT FILE TỔNG — mọi học sinh, đủ tên và diện trúng tuyển.
+          2. MỘT THƯ MỤC theo CLB — mỗi CLB một file để phát cho giáo
+             viên phụ trách, kèm file `_chua_duoc_xep.csv` liệt kê các
+             em chưa vào CLB nào (nhóm nhà trường cần xử lý tiếp).
+
+        output_path rỗng hoặc là đường dẫn TƯƠNG ĐỐI thì file được đặt
+        CẠNH app.db. Đường dẫn tương đối vốn rơi vào thư mục làm việc
+        của tiến trình — trên máy Windows chạy .exe qua shortcut, thư
+        mục đó có thể là bất kỳ đâu, người dùng không tìm ra file. Luôn
+        trả về đường dẫn ĐẦY ĐỦ để giao diện hiện đúng chỗ file nằm.
+        """
         try:
+            import csv
+
+            output_path = (output_path or "").strip() or "ket_qua_phan_bo.csv"
+            if not os.path.isabs(output_path):
+                output_path = os.path.join(
+                    os.path.dirname(os.path.abspath(self.db_path)),
+                    os.path.basename(output_path),
+                )
+
             conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
-            rows = cur.execute("SELECT student_id, club_id FROM match_results ORDER BY student_id").fetchall()
+            rows = cur.execute("""
+                SELECT m.student_id, s.name AS ho_ten, m.club_id,
+                       c.name AS ten_club, m.rank_in_student_pref, m.matched_tier,
+                       s.reserve_group
+                FROM match_results m
+                LEFT JOIN students s ON s.student_id = m.student_id
+                LEFT JOIN clubs   c ON c.club_id   = m.club_id
+                ORDER BY m.student_id
+            """).fetchall()
             conn.close()
-            import csv
-            with open(output_path, "w", newline="", encoding="utf-8") as f:
-                w = csv.writer(f)
-                w.writerow(["student_id", "club_id"])
-                for r in rows:
-                    w.writerow([r["student_id"], r["club_id"] or ""])
-            return _ok({"path": output_path, "n_rows": len(rows)})
+
+            def dien(tier):
+                # 'reserve'/'general' la ma noi bo — giao vien khong phai doan.
+                return {"reserve": "Dự trữ", "general": "Thường"}.get(tier or "", "")
+
+            COT_TONG = ["Mã học sinh", "Họ tên", "Mã CLB", "Tên CLB",
+                        "Nguyện vọng thứ", "Diện trúng tuyển", "Nhóm dự trữ"]
+            COT_CLB = ["Mã học sinh", "Họ tên", "Nguyện vọng thứ",
+                       "Diện trúng tuyển", "Nhóm dự trữ"]
+
+            def dong_tong(r):
+                return [
+                    r["student_id"], r["ho_ten"] or "", r["club_id"] or "",
+                    r["ten_club"] or ("" if r["club_id"] else "(chưa được xếp)"),
+                    r["rank_in_student_pref"] if r["rank_in_student_pref"] else "",
+                    dien(r["matched_tier"]), r["reserve_group"] or "",
+                ]
+
+            # encoding="utf-8-sig" = UTF-8 CÓ BOM. Không có BOM thì Excel
+            # đọc tên tiếng Việt thành "Nguyá»…n VÄƒn An". Đây đúng là lỗi
+            # đã gặp ở chiều NHẬP, chỉ ngược chiều.
+            def ghi(path, header, cac_dong):
+                with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                    w = csv.writer(f)
+                    w.writerow(header)
+                    w.writerows(cac_dong)
+
+            ghi(output_path, COT_TONG, [dong_tong(r) for r in rows])
+
+            goc, _ = os.path.splitext(output_path)
+            per_club_dir = goc + "_theo_club"
+            os.makedirs(per_club_dir, exist_ok=True)
+
+            theo_club: dict = {}
+            for r in rows:
+                theo_club.setdefault(r["club_id"] or None, []).append(r)
+
+            n_file = 0
+            ten_da_dung: dict = {}
+            for club_id, ds in theo_club.items():
+                if club_id is None:
+                    ten = "_chua_duoc_xep"
+                else:
+                    ten = self._ten_file_an_toan(club_id)
+                    # Hai club_id khac nhau co the ra cung ten sau khi lam
+                    # sach ("a/b" va "a\b") -> khong duoc de ghi de nhau.
+                    if ten in ten_da_dung:
+                        ten_da_dung[ten] += 1
+                        ten = f"{ten}_{ten_da_dung[ten]}"
+                    else:
+                        ten_da_dung[ten] = 1
+                ghi(
+                    os.path.join(per_club_dir, ten + ".csv"),
+                    COT_CLB,
+                    [[r["student_id"], r["ho_ten"] or "",
+                      r["rank_in_student_pref"] if r["rank_in_student_pref"] else "",
+                      dien(r["matched_tier"]), r["reserve_group"] or ""] for r in ds],
+                )
+                n_file += 1
+
+            return _ok({
+                "path": output_path,
+                "n_rows": len(rows),
+                "per_club_dir": per_club_dir,
+                "n_club_files": n_file,
+            })
         except Exception as e:
             return _fail(err("error_exporting_csv", detail=str(e)))
 

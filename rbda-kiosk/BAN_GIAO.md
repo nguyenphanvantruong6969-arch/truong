@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 116 test pass
+> Cập nhật lần cuối: 29/08/2026 · 127 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **116 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **127 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,7 +57,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 7 file, 116 test
+- `tests/` — 8 file, 127 test
 - `mau_csv/` — 4 file CSV mẫu + `HUONG_DAN_CSV.md` (định dạng nhập liệu)
 
 ---
@@ -86,14 +86,21 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
    nó không có cờ tương đương. Nếu máy không có trình duyệt Chromium nào mới
    quay về mở tab thường.
 
-7. **Nhập CSV KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
+7. **File xuất kết quả đặt CẠNH `app.db`, không dùng đường dẫn tương đối.**
+   Đường dẫn tương đối rơi vào thư mục làm việc của tiến trình — trên máy
+   Windows chạy `.exe` qua shortcut, thư mục đó có thể là bất kỳ đâu và
+   người dùng không tìm ra file. `export_csv` luôn trả về đường dẫn ĐẦY ĐỦ
+   để giao diện hiện đúng chỗ. Cũng phải giữ `utf-8-sig` (BOM) khi ghi,
+   nếu không Excel hỏng font tên tiếng Việt.
+
+8. **Nhập CSV KHÔNG gán được `reserve_group`.** Đây là khoảng trống đã biết,
    không phải bug: học sinh tạo bằng CSV có nhóm dự trữ rỗng, phải vào màn
    hình 04 gán riêng (có `bulk_set_reserve_group`). Quên bước này thì cơ chế
    dự trữ của RB-DA vô hiệu mà pipeline **không báo lỗi**. Đã ghi cảnh báo
    ở `mau_csv/HUONG_DAN_CSV.md` và README. Nếu sau này muốn bịt hẳn, hướng
    đúng là thêm cột `reserve_group` tuỳ chọn vào CSV nguyện vọng.
 
-8. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
+9. **Ngưỡng tự tắt là 120 giây, KHÔNG được hạ xuống.** Trình duyệt bóp thắt
    `setInterval` của trang bị ẩn xuống ~1 lần/phút; ngưỡng 25 giây cũ khiến
    app tự tắt khi người vận hành chỉ thu nhỏ cửa sổ. Việc tắt nhanh khi đóng
    thật do `sendBeacon` trong `pagehide` lo (đo thực tế ~3 giây), không phải
@@ -131,6 +138,17 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   đều là PHỎNG ĐOÁN — đúng thứ đã sai 2 lần trước.
 - **Phương án chưa thử:** khoá phiên bản cụ thể của `pythonnet`/`clr_loader`;
   hoặc đặt `PYTHONNET_RUNTIME=coreclr` (nhưng đòi máy cài sẵn .NET Core).
+
+**Việc tiện lợi CÒN LẠI đã khảo sát nhưng chưa làm** (xem lại nếu học sinh hỏi):
+- **Club phải tạo tay từng cái** — chưa có CSV nhập danh sách club. Trường
+  có 15–20 CLB thì phải gõ form 15–20 lần, mỗi lần 5 trường. Đây lại đúng
+  là nút thắt ĐẦU TIÊN, vì mẫu CSV học sinh bắt buộc club phải có trước.
+- **`reserve_group` chưa nhập được bằng CSV** (xem mục 4.8).
+- **Chưa có nút "Sao lưu ngay" / "Khôi phục"** trong app thường; hiện chỉ
+  tự sao lưu trước mỗi lần chạy pipeline, còn khôi phục thì chỉ xuất hiện
+  ở màn hình recovery — tức là SAU KHI DB đã hỏng. Quy trình sao lưu đã
+  chốt là copy tay file `.db` qua USB (mục 4.1), nên một nút "Xuất bản sao
+  lưu ra USB" sẽ khớp đúng quy trình đó.
 
 **Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên máy kiosk thật.
 

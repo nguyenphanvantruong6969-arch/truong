@@ -1,6 +1,6 @@
 student_id,name,test_club_1,test_club_2,test_club_3,test_club_4
-HS001,Nguyen Van An,clb_bongro,clb_tienganh,clb_amnhac,
-HS002,Tran Thi Binh,clb_tienganh,,,
-HS003,Le Minh Cuong,clb_robotics,clb_mythuat,,
-HS004,Pham Thu Dung,clb_amnhac,clb_bongro,clb_mythuat,clb_tienganh
-HS005,Hoang Van Em,clb_mythuat,,,
+HS001,Nguyễn Văn An,clb_bongro,clb_tienganh,clb_amnhac,
+HS002,Trần Thị Bình,clb_tienganh,,,
+HS003,Lê Minh Cường,clb_robotics,clb_mythuat,,
+HS004,Phạm Thu Dung,clb_amnhac,clb_bongro,clb_mythuat,clb_tienganh
+HS005,Hoàng Văn Em,clb_mythuat,,,
