@@ -3,6 +3,11 @@ __pycache__/
 *.pyc
 .pytest_cache/
 app.db
+# File ket qua xuat ra — la DU LIEU HOC SINH, khong bao gio duoc vao git.
+# Ten mac dinh cua export_csv la ket_qua_phan_bo.csv, kem thu muc
+# ket_qua_phan_bo_theo_club/. Chan rong de bat ca cac ten khac.
 match_results.csv
+ket_qua*.csv
+ket_qua*_theo_club/
 build/
 dist/
