@@ -264,12 +264,22 @@ Học sinh báo **không gặp lỗi nào**. 11 cảnh báo trên màn hình là
 nhãn `chinh_sac` — chính là lỗi cố ý trong `TEST_04`, bị bắt lần thứ hai bởi một
 cơ chế khác với lúc nhập tệp.
 
-**CÒN MƠ HỒ — đừng ghi vào báo cáo trước khi làm rõ:** "cửa sổ ứng dụng riêng"
-KHÔNG phân biệt được hai đường. Cả pywebview lẫn chế độ dự phòng `--app=` đều cho
-ra cửa sổ không thanh địa chỉ, không thanh tab, có mục riêng trên thanh tác vụ.
-Nên **chưa kết luận được lỗi pythonnet đã hết hay chỉ là đường dự phòng đang gánh**.
-Muốn biết: mở Task Manager, nếu thấy tiến trình `msedge.exe` (hoặc `chrome.exe`)
-xuất hiện lúc mở app thì đó là đường dự phòng.
+**ĐÃ LÀM RÕ (30/08, ảnh Task Manager):** đang chạy bằng **chế độ dự phòng nhân
+Chromium**, KHÔNG phải pywebview. Bằng chứng: nhóm tiến trình *Microsoft Edge (8)*
+với một tab tên *"Phân bổ Câu lạc bộ"*, mọi tiến trình con là `msedge.exe`.
+
+Nghĩa là **lỗi pythonnet VẪN CÒN, chỉ bị đi vòng**. Đường dự phòng đang gánh toàn
+bộ và gánh tốt: cửa sổ riêng, thanh tác vụ riêng, sống qua 3–5 phút thu nhỏ.
+
+Hệ quả phải nhớ:
+- Máy demo **bắt buộc có Edge hoặc Chrome**. Mọi máy Windows 10/11 đều có Edge sẵn,
+  nên trên thực tế không phải rủi ro — nhưng đừng viết trong báo cáo là "không phụ
+  thuộc trình duyệt".
+- Trong báo cáo phải mô tả **đúng** kiến trúc: có hai đường hiển thị, đường chính
+  (pywebview) hiện lỗi trên bản đóng gói, đường dự phòng đang chạy. **KHÔNG được
+  viết "đã sửa lỗi đóng gói".**
+- Nguyên nhân gốc của lỗi pythonnet vẫn CHƯA biết (xem đầu mục 5). Đang đóng băng
+  tính năng nên KHÔNG đào tiếp trước 05/09.
 
 **Điều kiện dùng thật, học sinh xác nhận 30/08:** dùng **chuột**, không phải màn
 hình cảm ứng → mọi lo ngại về kích thước nút cho ngón tay là **không còn liên quan**.
