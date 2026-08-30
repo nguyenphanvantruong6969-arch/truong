@@ -167,3 +167,116 @@ def test_hai_club_chi_khac_hoa_thuong_thi_KHONG_tu_doan(api):
     api.create_or_update_club("CLB_A", "CLB hoa", 10, 0, "")
     api.import_preferences_csv("student_id,name,pref_1\nHS001,An,CLB_A\n")
     assert api.get_student_entry_state("HS001")["data"]["ranked_clubs"] == ["CLB_A"]
+
+
+# ------------------------------------------------------------------ #
+# 4. EXCEL CẮT MẤT SỐ 0 ĐỨNG ĐẦU MÃ HỌC SINH
+#
+# Mã `0012345` mà để Excel tự nhận định dạng thì thành số `12345` — mất
+# hai số 0. Phần mềm nhận đúng thứ Excel đã lưu nên KHÔNG cứu được,
+# nhưng PHÁT HIỆN được: trong cùng một file, mã toàn chữ số mà ngắn hơn
+# hẳn những mã còn lại gần như chắc chắn là đã bị cắt.
+#
+# Chỉ CẢNH BÁO, không chặn nhập — phần mềm không có cách nào biết chắc
+# mã gốc là gì, và đoán thêm số 0 vào là tự bịa dữ liệu.
+# ------------------------------------------------------------------ #
+
+
+def test_ma_toan_so_ngan_hon_da_so_thi_canh_bao(api_co_club):
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "0012345,An,clb_bongro\n"
+        "0012346,Bình,clb_bongro\n"
+        "0012347,Cường,clb_bongro\n"
+        "12348,Dung,clb_bongro\n"          # <- nghi bị Excel cắt mất số 0
+    )
+    assert res["ok"] is True
+    assert "csv_student_id_maybe_truncated" in ma_canh_bao(res)
+    w = next(w for w in res["data"]["warnings"]
+             if w["code"] == "csv_student_id_maybe_truncated")
+    assert w["params"]["student_id"] == "12348"
+    assert w["params"]["do_dai"] == 5
+    assert w["params"]["do_dai_pho_bien"] == 7
+
+
+def test_moi_ma_cung_do_dai_thi_khong_canh_bao(api_co_club):
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "0012345,An,clb_bongro\n"
+        "0012346,Bình,clb_bongro\n"
+        "0012347,Cường,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" not in ma_canh_bao(res)
+
+
+def test_ma_co_chu_KHONG_bi_dung_toi(api_co_club):
+    """HS001 và HS0001 khác độ dài nhưng có chữ — Excel không đụng tới
+    những mã này, nên cảnh báo ở đây chỉ là nhiễu."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "HS001,An,clb_bongro\n"
+        "HS002,Bình,clb_bongro\n"
+        "HS0003,Cường,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" not in ma_canh_bao(res)
+
+
+def test_ma_DAI_hon_da_so_thi_khong_canh_bao(api_co_club):
+    """Excel chỉ cắt NGẮN đi. Mã dài hơn là chuyện khác, không phải ca này."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "12345,An,clb_bongro\n"
+        "12346,Bình,clb_bongro\n"
+        "12347,Cường,clb_bongro\n"
+        "123480,Dung,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" not in ma_canh_bao(res)
+
+
+def test_qua_it_ma_de_ket_luan_thi_khong_doan_bua(api_co_club):
+    """Hai mã thì không đủ cơ sở nói cái nào bất thường."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "0012345,An,clb_bongro\n"
+        "12348,Bình,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" not in ma_canh_bao(res)
+
+
+def test_ma_ngan_chiem_DA_SO_thi_khong_canh_bao(api_co_club):
+    """Nếu phần lớn mã đều ngắn thì đó là quy ước của trường, không phải
+    lỗi Excel — báo cả loạt chỉ tổ gây nhiễu."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "12345,An,clb_bongro\n"
+        "12346,Bình,clb_bongro\n"
+        "12347,Cường,clb_bongro\n"
+        "0012348,Dung,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" not in ma_canh_bao(res)
+
+
+def test_canh_bao_ca_o_file_chon_club_thi(api_co_club):
+    res = api_co_club.import_test_selection_csv(
+        "student_id,name,test_club_1\n"
+        "0012345,An,clb_bongro\n"
+        "0012346,Bình,clb_bongro\n"
+        "0012347,Cường,clb_bongro\n"
+        "12348,Dung,clb_bongro\n"
+    )
+    assert "csv_student_id_maybe_truncated" in ma_canh_bao(res)
+
+
+def test_van_nhap_binh_thuong_chi_canh_bao_thoi(api_co_club):
+    """Không chặn: phần mềm không biết mã gốc là gì, đoán thêm số 0 vào
+    là tự bịa dữ liệu."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "0012345,An,clb_bongro\n"
+        "0012346,Bình,clb_bongro\n"
+        "0012347,Cường,clb_bongro\n"
+        "12348,Dung,clb_bongro\n"
+    )
+    assert res["data"]["n_students_skipped"] == 0
+    assert res["data"]["n_students_created"] == 4
+    assert api_co_club.get_student_entry_state("12348")["data"]["ranked_clubs"] == ["clb_bongro"]

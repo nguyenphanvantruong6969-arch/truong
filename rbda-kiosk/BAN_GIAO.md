@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 217 test pass
+> Cập nhật lần cuối: 29/08/2026 · 225 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **217 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **225 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -57,7 +57,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 14 file test, 217 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 14 file test, 225 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 
@@ -200,10 +200,11 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   lưu ra USB" sẽ khớp đúng quy trình đó.
 
 **Đã soát thủ công luồng nạp (29/08), các ca CÒN LẠI chưa xử lý:**
-- **Excel làm mất số 0 đứng đầu mã học sinh** (`0012345` -> `12345`) nếu ô
-  không được đặt định dạng Text. Phần mềm nhận đúng thứ Excel lưu nên không
-  cứu được — chỉ ghi cảnh báo trong `HUONG_DAN_CSV.md`. Nếu muốn bịt: cảnh
-  báo khi `student_id` toàn số và độ dài lệch với các mã khác trong file.
+- ~~Excel làm mất số 0 đứng đầu mã học sinh~~ — ĐÃ CÓ CẢNH BÁO
+  (`_soat_ma_nghi_bi_cat`): mã toàn chữ số ngắn hơn độ dài phổ biến trong cùng
+  file thì báo `csv_student_id_maybe_truncated`. Ba điều kiện chống nhiễu: chỉ
+  xét mã toàn số, cần ≥3 mã như vậy, và mã ngắn phải là thiểu số. KHÔNG tự thêm
+  số 0 — phần mềm không biết mã gốc dài bao nhiêu, đoán thêm là bịa dữ liệu.
 - **File .xlsx chứa CÔNG THỨC chưa được Excel tính sẵn** đọc ra ô rỗng
   (`data_only=True` lấy giá trị đã lưu, file do openpyxl tạo thì không có).
   File Excel thật do Excel lưu luôn có giá trị nên thực tế hiếm gặp; dòng

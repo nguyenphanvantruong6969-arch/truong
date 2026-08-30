@@ -1059,6 +1059,47 @@ class PipelineAPI:
         return canh_bao
 
     @staticmethod
+    def _soat_ma_nghi_bi_cat(ma_trong_file) -> list:
+        """Cảnh báo mã học sinh nghi bị Excel cắt mất số 0 đứng đầu.
+
+        `0012345` để Excel tự nhận định dạng thì thành số `12345`. Phần
+        mềm nhận đúng thứ Excel đã lưu nên KHÔNG cứu được — nhưng PHÁT
+        HIỆN được: trong cùng một file, mã toàn chữ số mà ngắn hơn hẳn
+        những mã còn lại gần như chắc chắn đã bị cắt.
+
+        Chỉ cảnh báo, KHÔNG chặn nhập và KHÔNG tự thêm số 0 vào: phần
+        mềm không có cách nào biết mã gốc dài bao nhiêu, đoán thêm là tự
+        bịa dữ liệu.
+
+        Ba điều kiện để tránh báo nhiễu:
+          - chỉ xét mã TOÀN CHỮ SỐ (mã có chữ thì Excel không đụng tới)
+          - cần ít nhất 3 mã như vậy mới đủ cơ sở nói cái nào bất thường
+          - mã ngắn phải là THIỂU SỐ; phần lớn mã đều ngắn thì đó là quy
+            ước của trường, không phải lỗi Excel
+        """
+        toan_so = [m for m in ma_trong_file if m.isdigit()]
+        if len(toan_so) < 3:
+            return []
+
+        dem_do_dai: dict = {}
+        for m in toan_so:
+            dem_do_dai[len(m)] = dem_do_dai.get(len(m), 0) + 1
+        # Do dai pho bien nhat; hoa thi lay do dai LON hon (an toan hon —
+        # gia thiet ma day du moi la chuan).
+        pho_bien = max(dem_do_dai.items(), key=lambda kv: (kv[1], kv[0]))[0]
+
+        nghi = sorted({m for m in toan_so if len(m) < pho_bien})
+        # Ma ngan chiem da so -> quy uoc cua truong, khong phai loi.
+        if len(nghi) * 2 >= len(toan_so):
+            return []
+
+        return [
+            err("csv_student_id_maybe_truncated",
+                student_id=m, do_dai=len(m), do_dai_pho_bien=pho_bien)
+            for m in nghi
+        ]
+
+    @staticmethod
     def _khop_club_id(cur):
         """Trả về hàm đưa club_id người dùng gõ về đúng mã gốc trong DB.
 
@@ -1184,6 +1225,7 @@ class PipelineAPI:
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = self._soat_dong_trung(rows, is_wide)
             row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
+            row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
             nhom_da_ghi: dict = {}
 
             for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
@@ -1298,6 +1340,7 @@ class PipelineAPI:
             n_created, n_updated, n_skipped = 0, 0, 0
             row_errors = self._soat_dong_trung(rows, is_wide)
             row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
+            row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
             nhom_da_ghi: dict = {}
 
             for sid, (name, club_ids, nhom_du_tru) in grouped.items():

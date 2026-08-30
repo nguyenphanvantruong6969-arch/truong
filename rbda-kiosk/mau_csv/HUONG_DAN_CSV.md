@@ -196,6 +196,15 @@ Mã như `0012345` mà để Excel tự nhận định dạng thì nó biến th
 Cách tránh: bôi đen cột mã → định dạng ô → chọn **Text**, rồi mới nhập. Trong
 file mẫu, cột `student_id` đã ở dạng text sẵn.
 
+**Phần mềm phát hiện giúp bạn.** Nếu trong cùng một file có mã toàn chữ số ngắn
+hơn hẳn những mã còn lại, bạn sẽ thấy cảnh báo:
+
+> Mã `12348` chỉ dài 5 chữ số, trong khi phần lớn mã trong file dài 7 — nhiều
+> khả năng Excel đã cắt mất số 0 ở đầu.
+
+Đây chỉ là **cảnh báo, không chặn nhập** — phần mềm không biết mã gốc dài bao
+nhiêu, tự thêm số 0 vào là bịa dữ liệu. Bạn phải sửa ở file gốc rồi nhập lại.
+
 ### ⚠️ CLB phải có TRƯỚC file học sinh
 `club_id` trong file học sinh **phải đã tồn tại**. Nếu một học sinh có bất kỳ
 `club_id` nào chưa có, **cả học sinh đó bị bỏ qua** — phần mềm không nhập một
