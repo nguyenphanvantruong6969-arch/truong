@@ -5,9 +5,9 @@
 ⚠️  DỮ LIỆU MÔ PHỎNG — KHÔNG PHẢI HỌC SINH CÓ THẬT.
 
 VÌ SAO CẦN TỆP NÀY
-Bộ dữ liệu 120 học sinh cần **356 ô điểm**. Gõ tay hết chỗ đó mất khoảng
-18 phút — dài hơn toàn bộ thời gian demo trước giám khảo. Tệp này dựng
-sẵn tới ngay trước bước cuối, để hôm demo chỉ còn bấm "Chạy phân bổ".
+Bộ ba tệp Excel nay đã kèm sẵn điểm chấm (cột score_*), nên nạp tệp là
+chạy được ngay. Tệp .db này chỉ để tiết kiệm thêm bước nạp: hôm trình
+bày chép nó vào cạnh app là mở lên bấm "Chạy phân bổ" luôn.
 
 CỐ Ý DỪNG TRƯỚC KHI CHẠY PHÂN BỔ. Phần đáng xem nhất là lúc thuật toán
 chạy và kết quả hiện ra — nếu dựng sẵn cả phần đó thì không còn gì để xem.
@@ -15,7 +15,6 @@ chạy và kết quả hiện ra — nếu dựng sẵn cả phần đó thì kh
 
 import base64
 import os
-import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +23,6 @@ from api import PipelineAPI
 
 THU_MUC = os.path.dirname(os.path.abspath(__file__))
 DICH = os.path.join(THU_MUC, "app_DEMO_da_cham_diem.db")
-SEED_DIEM = 2026
 
 TEP = [
     "TEST_01_danh_sach_CLB.xlsx",
@@ -54,22 +52,8 @@ def main():
             raise SystemExit("nhap that bai %s: %r" % (ten, r["errors"]))
         print("  nap  %-38s ok" % ten)
 
-    # Diem mo phong, co seed nen lan nao dung lai cung ra dung bo do.
-    rng = random.Random(SEED_DIEM)
-    tong = 0
-    for c in api.get_scoring_overview()["data"]:
-        ds = api.get_club_applicants_for_scoring(c["club_id"])["data"]["applicants"]
-        if not ds:
-            continue
-        r = api.submit_club_scores(c["club_id"], [
-            {"student_id": u["student_id"], "score": round(rng.uniform(4.0, 10.0), 1)}
-            for u in ds
-        ])
-        if not r["ok"]:
-            raise SystemExit("cham diem that bai %s: %r" % (c["club_id"], r["errors"]))
-        tong += r["data"]["n_saved"]
-        print("  cham %-16s %3d em" % (c["club_id"], r["data"]["n_saved"]))
-
+    # KHONG cham diem o day nua: diem den thang tu cot score_* trong
+    # TEST_02. Cham them o day se ghi de len diem that cua tep.
     hr = api.get_data_health_report()["data"]
     print("\nCanh bao du lieu con lai: %d (nghiem trong: %d)"
           % (hr["n_warnings"], hr["n_high"]))
@@ -77,7 +61,7 @@ def main():
         print("   %s" % w["code"])
 
     print("\nDa dung: %s" % DICH)
-    print("Tong %d o diem. CHUA chay phan bo — de danh cho luc demo." % tong)
+    print("CHUA chay phan bo — de danh cho luc demo.")
 
 
 if __name__ == "__main__":

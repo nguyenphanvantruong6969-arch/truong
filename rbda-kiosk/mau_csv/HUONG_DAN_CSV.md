@@ -89,11 +89,12 @@ Phần mềm nhận ra dạng rộng khi thấy cột tên bắt đầu bằng `
 | `name` | Không | Họ tên. Chỉ dùng khi **tạo mới** học sinh; học sinh đã có tên thì không bị ghi đè. |
 | `reserve_group` | Không | **Nhóm dự trữ của học sinh** (vd `chinh_sach`). Xem mục 4. |
 | `test_club_1`, `test_club_2`, … | ✅ ít nhất một | `club_id` của club muốn dự tuyển. **Ô trống được bỏ qua**, không cần điền kín. |
+| `score_1`, `score_2`, … | Không | **Điểm chấm** cho club cùng **số thứ tự**. Xem mục 3.6. |
 
 ```csv
-student_id,name,test_club_1,test_club_2,test_club_3,test_club_4
-HS001,Nguyen Van An,clb_bongro,clb_tienganh,clb_amnhac,
-HS002,Tran Thi Binh,clb_tienganh,,,
+student_id,name,test_club_1,score_1,test_club_2,score_2
+HS001,Nguyen Van An,clb_bongro,8.5,clb_tienganh,9
+HS002,Tran Thi Binh,clb_tienganh,6.5,,
 ```
 
 Số cột `test_club_*` tuỳ bạn — thêm bao nhiêu cũng được.
@@ -106,12 +107,13 @@ Số cột `test_club_*` tuỳ bạn — thêm bao nhiêu cũng được.
 | `student_id` | ✅ | Mã học sinh, **lặp lại** ở mỗi dòng của cùng học sinh. |
 | `name` | Không | Họ tên. |
 | `club_id` | ✅ | Một club mỗi dòng. |
+| `score` | Không | **Điểm chấm** cho club ở dòng đó. Xem mục 3.6. |
 
 ```csv
-student_id,name,club_id
-HS001,Nguyen Van An,clb_bongro
-HS001,Nguyen Van An,clb_tienganh
-HS002,Tran Thi Binh,clb_tienganh
+student_id,name,club_id,score
+HS001,Nguyen Van An,clb_bongro,8.5
+HS001,Nguyen Van An,clb_tienganh,9
+HS002,Tran Thi Binh,clb_tienganh,6.5
 ```
 
 ### 3.3. Xếp hạng nguyện vọng — dạng rộng
@@ -171,6 +173,46 @@ Dòng nào có chỉ tiêu sai (bằng 0, hoặc dự trữ lớn hơn tổng ch
 nhập bình thường.
 
 ---
+
+### 3.6. Cột điểm — nạp điểm chấm thẳng từ file
+
+**Không bắt buộc.** Bỏ trống thì chấm điểm trong phần mềm như trước.
+
+Nhưng nếu có sẵn điểm (chấm trên giấy rồi nhập Excel), điền vào đây tiết kiệm rất
+nhiều: bộ 120 học sinh cần **396 ô điểm**, gõ tay trong phần mềm mất khoảng 18
+phút.
+
+**Dạng rộng — ghép theo SỐ THỨ TỰ trong tên cột, không theo vị trí:**
+
+| Cột club | Cột điểm đi kèm |
+|---|---|
+| `test_club_1` | `score_1` |
+| `test_club_2` | `score_2` |
+| `test_club_7` | `score_7` |
+
+Bỏ trống `test_club_2` mà vẫn điền `test_club_3` cũng không sao — phần mềm ghép
+theo con số, không đếm cột.
+
+**Dạng dài:** một cột `score` duy nhất, ứng với `club_id` trên cùng dòng.
+
+**Chấp nhận cả dấu phẩy thập phân.** Excel bản tiếng Việt lưu `8,5` chứ không phải
+`8.5`; cả hai đều đọc được.
+
+**Ô điểm hỏng chỉ mất ô đó, không mất cả học sinh:**
+
+| Tình huống | Phần mềm làm gì |
+|---|---|
+| Điểm ghi chữ (`tám phẩy năm`) | Bỏ riêng ô điểm, **giữ nguyên** lựa chọn thi, có cảnh báo |
+| Điểm âm (`-8`) | Bỏ riêng ô điểm, có cảnh báo — gần như chắc là thừa dấu trừ |
+| Có điểm mà ô club cùng số để trống | Bỏ riêng ô điểm, có cảnh báo gõ lệch cột |
+| Điểm cho club em đó không đăng ký thi | Bỏ riêng ô điểm, có cảnh báo |
+
+> ⚠️ **Cột điểm chỉ thuộc file CHỌN CLB MUỐN THI.** Đặt `score_*` vào file xếp
+> hạng nguyện vọng thì điểm **không** được nạp — phần mềm sẽ báo rõ điều đó thay
+> vì im lặng bỏ qua.
+
+**Nạp file có điểm xong là chạy phân bổ được ngay** — bảng *Cảnh báo dữ liệu* sẽ
+không còn mục "chưa chấm điểm" nào.
 
 ## 4. Quy tắc phải biết trước khi nhập
 

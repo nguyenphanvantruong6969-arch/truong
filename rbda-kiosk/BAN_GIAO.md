@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 258 test pass
+> Cập nhật lần cuối: 30/08/2026 · 271 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **258 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **271 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 17 file test, 258 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 18 file test, 271 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -140,6 +140,53 @@ thấy là biểu tượng mặc định của trang web, không phải của `.
 
 `tests/test_bieu_tuong.py` (8 test) canh cả hai, kèm một test soát mọi tệp khai
 báo trong `datas` của `kiosk.spec` đều tồn tại thật.
+
+### Cột điểm trong file nhập (30/08) — PHÁ LỆ ĐÓNG BĂNG CÓ CHỦ Ý
+
+Học sinh yêu cầu "dữ liệu chạy ra kết quả có nghĩa". Đào ra thì gặp một chỗ chặn
+thật: **không có điểm thì mọi em rơi xuống Tầng 2 và chỉ xếp bằng bốc thăm** —
+vòng thi coi như không tồn tại. Mà phần mềm khi đó **không có đường nạp điểm từ
+file**: 396 ô điểm phải gõ tay, khoảng 18 phút.
+
+Đã thêm cột điểm vào **file chọn CLB muốn thi** (chỉ file đó):
+- Dạng rộng: `score_N` ghép với `test_club_N` theo **hậu tố số**, không theo vị
+  trí cột. Ghép theo vị trí thì bỏ trống `test_club_2` sẽ gán điểm nhầm club.
+- Dạng dài: thêm cột `score`.
+- Không bắt buộc. Thiếu cột thì hành vi y hệt trước.
+- Ô điểm hỏng chỉ mất **riêng ô đó**, giữ nguyên lựa chọn thi.
+- Điểm ghi bằng `club_id` ĐÃ KHỚP qua `_khop_club_id`, không phải chuỗi thô.
+- File nguyện vọng có lẫn `score_*` → cảnh báo `csv_scores_ignored_here`.
+
+Đây là **thêm tính năng trong thời gian đóng băng**, học sinh quyết định. Rủi ro
+thấp: gói gọn trong một nhánh của `import_test_selection_csv`, 13 test riêng
+(`tests/test_nap_diem_tu_file.py`), và ràng buộc "hai dạng cho kết quả giống hệt
+nhau" vẫn được canh.
+
+### Bố cục căn giữa (30/08)
+
+`.main` có `max-width` nhưng thiếu `margin-inline: auto`, nên khối nội dung dính
+sát mép trái cột `1fr` — màn hình 1900px thừa gần 700px bên phải. Nay căn giữa và
+nới 980 → 1280px. Đo bằng Chromium thật ở ba bề rộng: 1900px cho lề 186px đều hai
+bên, 1280px và 900px không tràn ngang.
+
+### Bộ dữ liệu thiết kế lại cho cạnh tranh cao (30/08)
+
+Bộ cũ cho 93/118 em được nguyện vọng 1 và chỉ **2 em** dùng tới suất dự trữ —
+nhìn bảng kết quả như ai cũng được như ý, thuật toán không lộ ra là nó làm gì.
+
+Ba thay đổi trong `tao_du_lieu_test.py` (giữ `SEED = 2026`):
+1. Nguyện vọng bốc theo **độ hút**: 3 CLB "hot" trọng số 10, 3 CLB "nguội" 0.75.
+2. Suất dự trữ chuyển sang **đúng các CLB chật**. Đặt ở CLB còn chỗ thì vô dụng.
+3. Điểm nhóm dự trữ lệch thấp hơn (6.3/6.5 so với 7.6) — đây là cách dựng số liệu
+   để suất dự trữ phải làm việc, **không** phải nhận định về học sinh diện chính sách.
+
+Kết quả đo được: **108/120 được xếp**, nguyện vọng 1 **59%** (cũ 79%), **10 em**
+vào bằng suất dự trữ (cũ 2), 12 em chưa được xếp, 4 CLB đầy và 6 CLB thừa chỗ,
+**0 cảnh báo dữ liệu** sau khi nạp (vì điểm đã có sẵn trong file).
+
+**Bộ này CỐ Ý thiết kế cho cạnh tranh cao, không mô phỏng phân bố tự nhiên.** Mọi
+tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện vọng có thật là bịa
+đặt dữ liệu.
 
 ## 4. Quyết định đã chốt — ĐỪNG tự ý đảo ngược
 

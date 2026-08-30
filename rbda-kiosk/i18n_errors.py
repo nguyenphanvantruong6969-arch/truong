@@ -117,6 +117,26 @@ MESSAGES = {
         "vi": "Mã {student_id} xuất hiện {n} lần trong file — chỉ dòng CUỐI được giữ, các dòng trước bị ghi đè. Kiểm tra lại nếu đó không phải ý bạn.",
         "en": "Student {student_id} appears {n} times in the file — only the LAST row is kept and the earlier ones are overwritten. Check this is intended.",
     },
+    "csv_score_not_a_number": {
+        "vi": "Điểm “{score}” của học sinh {student_id} ở club {club_id} không phải số — ô điểm đó bị bỏ qua, các lựa chọn thi vẫn được giữ. Sửa lại rồi nạp lại file.",
+        "en": "Score “{score}” for student {student_id} at club {club_id} is not a number — that one score is skipped, the test selections are kept. Fix it and re-import.",
+    },
+    "csv_score_negative": {
+        "vi": "Điểm “{score}” của học sinh {student_id} ở club {club_id} là số ÂM — gần như chắc chắn thừa dấu trừ. Ô điểm đó bị bỏ qua.",
+        "en": "Score “{score}” for student {student_id} at club {club_id} is NEGATIVE — almost certainly a stray minus sign. That score is skipped.",
+    },
+    "csv_score_for_unselected_club": {
+        "vi": "Học sinh {student_id} có điểm cho club {club_id} nhưng KHÔNG đăng ký thi club đó — điểm bị bỏ qua. Kiểm tra xem có gõ nhầm mã club không.",
+        "en": "Student {student_id} has a score for club {club_id} but did not register to test for it — the score is skipped. Check for a mistyped club id.",
+    },
+    "csv_score_without_club": {
+        "vi": "Học sinh {student_id} có điểm ở cột {cot} nhưng ô mã club cùng số thứ tự lại để trống — nhiều khả năng gõ lệch cột. Điểm đó bị bỏ qua.",
+        "en": "Student {student_id} has a score in column {cot} but the club column with the same number is empty — the columns are probably misaligned. That score is skipped.",
+    },
+    "csv_scores_ignored_here": {
+        "vi": "File này có cột điểm, nhưng đây là file XẾP HẠNG NGUYỆN VỌNG — điểm KHÔNG được nạp từ đây. Đưa cột điểm sang file chọn CLB muốn thi.",
+        "en": "This file has score columns, but it is a PREFERENCE ranking file — scores are NOT imported from here. Move the score columns into the club test-selection file.",
+    },
     "csv_student_id_case_conflict": {
         "vi": "Mã {student_id} chỉ khác chữ hoa/thường so với mã {da_co} — phần mềm đang coi đây là HAI học sinh khác nhau. Nếu là một người, hãy sửa cho hai file dùng cùng một kiểu viết.",
         "en": "Student id {student_id} differs from {da_co} only in case — these are being treated as TWO different students. If they are the same person, make both files use the same spelling.",

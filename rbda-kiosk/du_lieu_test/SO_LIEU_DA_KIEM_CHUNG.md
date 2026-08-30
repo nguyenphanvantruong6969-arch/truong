@@ -2,7 +2,9 @@
 
 > ### ⚠️ TOÀN BỘ SỐ Ở ĐÂY ĐO TRÊN **DỮ LIỆU MÔ PHỎNG**
 > 120 học sinh do máy sinh (`tao_du_lieu_test.py`, seed 2026), **không phải khảo
-> sát học sinh có thật**. Trình bày như số liệu thật là bịa đặt dữ liệu.
+> sát học sinh có thật**. Hơn nữa bộ này được **cố ý thiết kế cho cạnh tranh cao**
+> để cơ chế thuật toán lộ ra — nó **không** mô phỏng một phân bố nguyện vọng tự
+> nhiên. Trình bày các con số này như số liệu khảo sát thật là **bịa đặt dữ liệu**.
 
 Đây là **số đo thô**, kèm cách đo lại. Phần nhận xét, giải thích ý nghĩa và kết
 luận — **học sinh tự viết**, AI không tham gia.
@@ -10,8 +12,9 @@ luận — **học sinh tự viết**, AI không tham gia.
 Tái lập mọi số dưới đây:
 
 ```bash
-./.venv/bin/python du_lieu_test/tao_db_demo.py     # dựng lại CSDL, seed 2026
-./.venv/bin/python -m pytest -q                    # chạy bộ kiểm thử
+./.venv/bin/python du_lieu_test/tao_du_lieu_test.py   # sinh lại 4 tệp Excel
+./.venv/bin/python du_lieu_test/tao_db_demo.py        # dựng lại CSDL demo
+./.venv/bin/python -m pytest -q                       # chạy bộ kiểm thử
 ```
 
 ---
@@ -23,55 +26,59 @@ Tái lập mọi số dưới đây:
 | Học sinh | 120 |
 | Câu lạc bộ | 10 |
 | Tổng chỉ tiêu | 130 chỗ |
-| Trong đó là suất dự trữ | 12 chỗ (ở 4 CLB) |
-| Lượt đăng ký thi | 356 |
+| Trong đó là suất dự trữ | 12 chỗ (ở 4 CLB, đều là CLB đông người đăng ký) |
+| Lượt đăng ký thi | 396 |
+| Ô điểm nạp thẳng từ tệp Excel | 396 |
 | Học sinh thuộc diện dự trữ | 26 em — `chinh_sach` 19, `khoi_10` 7 |
 | Học sinh không thuộc diện nào | 94 em |
 
 ## 2. Kết quả phân bổ
 
-Chạy với `seed = 42`, điểm sinh từ seed 2026.
+Chạy với `seed = 42`. Điểm nằm sẵn trong cột `score_*` của `TEST_02`, **không
+chấm tay ô nào**.
 
 | Đại lượng | Giá trị |
 |---|---|
-| Được xếp | **118 / 120** |
-| Chưa được xếp | 2 |
-| Số vòng lặp thuật toán | 6 |
-| Thời gian chạy | **0,012 giây** (cả 5 bước, gồm sao lưu và xuất tệp) |
-| Tổng chỗ được dùng | 118 / 130 |
+| Được xếp | **108 / 120** |
+| Chưa được xếp | 12 |
+| Số vòng lặp thuật toán | 7 |
+| Thời gian chạy | **0,011 giây** (cả 5 bước, gồm sao lưu và xuất tệp) |
+| Tổng chỗ được dùng | 108 / 130 |
+| Cảnh báo dữ liệu trước khi chạy | **0** |
 
 ### Được xếp theo nguyện vọng thứ mấy
 
-| Nguyện vọng | Số em |
-|---|---|
-| Thứ 1 | **93** |
-| Thứ 2 | 19 |
-| Thứ 3 | 6 |
+| Nguyện vọng | Số em | Tỉ lệ trên số em được xếp |
+|---|---|---|
+| Thứ 1 | **64** | 59% |
+| Thứ 2 | 28 | 26% |
+| Thứ 3 | 10 | 9% |
+| Thứ 4 | 6 | 6% |
 
 ### Diện trúng tuyển
 
 | Diện | Số em |
 |---|---|
-| Thường (`general`) | 116 |
-| Dự trữ (`reserve`) | **2** |
+| Thường (`general`) | 98 |
+| Dự trữ (`reserve`) | **10** |
 
-*(26 em thuộc diện dự trữ, nhưng chỉ 2 em thực sự cần dùng tới suất dự trữ để có
-chỗ — số còn lại vào được bằng điểm thường.)*
+*10 trong 12 suất dự trữ được dùng tới. 26 em thuộc diện dự trữ, 10 em trong số đó
+vào được **qua suất dự trữ**; số còn lại vào bằng điểm thường hoặc không được xếp.*
 
 ### Lấp đầy từng CLB
 
-| Mã CLB | Đã xếp / Chỉ tiêu | Suất dự trữ |
-|---|---|---|
-| `clb_amnhac` | 13 / 14 | 0 |
-| `clb_bongda` | 14 / 20 | 0 |
-| `clb_bongro` | 17 / 18 | 0 |
-| `clb_khoahoc` | 8 / 8 | 2 |
-| `clb_mythuat` | 12 / 12 | 3 |
-| `clb_robotics` | 8 / 8 | 0 |
-| `clb_tienganh` | 12 / 16 | 4 |
-| `clb_tinhnguyen` | 12 / 12 | 0 |
-| `clb_tinhoc` | 12 / 12 | 3 |
-| `clb_vanhoc` | 10 / 10 | 0 |
+| Mã CLB | Đã xếp / Chỉ tiêu | Suất dự trữ | Tình trạng |
+|---|---|---|---|
+| `clb_bongda` | 20 / 20 | 4 | Đầy |
+| `clb_tienganh` | 16 / 16 | 2 | Đầy |
+| `clb_mythuat` | 12 / 12 | 3 | Đầy |
+| `clb_tinhoc` | 12 / 12 | 3 | Đầy |
+| `clb_amnhac` | 13 / 14 | 0 | thừa 1 |
+| `clb_bongro` | 13 / 18 | 0 | thừa 5 |
+| `clb_robotics` | 7 / 8 | 0 | thừa 1 |
+| `clb_vanhoc` | 8 / 10 | 0 | thừa 2 |
+| `clb_khoahoc` | 2 / 8 | 0 | thừa 6 |
+| `clb_tinhnguyen` | 5 / 12 | 0 | thừa 7 |
 
 Tệp xuất ra: **120 dòng** trong tệp tổng, **11 tệp** theo CLB (10 CLB + 1 tệp
 `_chua_duoc_xep.csv`).
@@ -82,9 +89,9 @@ Dữ liệu sinh ngẫu nhiên, đo trên cùng một máy:
 
 | Quy mô | Nạp dữ liệu | Chạy phân bổ | Kết quả | Số vòng |
 |---|---|---|---|---|
-| 120 học sinh / 10 CLB | — | 0,012 s | 118/120 | 6 |
+| 120 học sinh / 10 CLB | — | 0,011 s | 108/120 | 7 |
 | 500 học sinh / 20 CLB | 0,03 s | 0,03 s | 500/500 | 21 |
-| 2 000 học sinh / 40 CLB | 0,10 s | 0,13 s | 1 994/2 000 | 33 |
+| 2 000 học sinh / 40 CLB | 0,10 s | 0,14 s | 1 994/2 000 | 33 |
 
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
@@ -105,17 +112,17 @@ tới — kết quả tính được bằng tay.
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tệp kiểm thử | 15 |
-| Trường hợp kiểm thử | **234** |
+| Tệp kiểm thử | 18 |
+| Trường hợp kiểm thử | **271** |
 | Số trường hợp không đạt | 0 |
-| Thời gian chạy toàn bộ | ~16 giây |
+| Thời gian chạy toàn bộ | ~30 giây |
 
 ## 6. Lỗi tìm được trong quá trình phát triển
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tổng số lỗi đã tìm và sửa | **10** |
-| Trong đó là lỗi **im lặng** | **7** |
+| Tổng số lỗi đã tìm và sửa | **13** |
+| Trong đó là lỗi **im lặng** | **10** |
 
 *Lỗi im lặng = phần mềm báo thành công trong khi dữ liệu đã sai.* Danh sách từng
 lỗi và cách phát hiện nằm trong lịch sử Git và `BAN_GIAO.md` mục 5.

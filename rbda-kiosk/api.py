@@ -1017,6 +1017,25 @@ class PipelineAPI:
     #   o trong      -> GIU NGUYEN, khong xoa (file thieu cot khong duoc
     #                   lam mat du lieu da gan truoc do)
     @staticmethod
+    def _doc_diem(chuoi: str):
+        """Đọc một ô điểm. Trả về float, hoặc None nếu không phải số.
+
+        Chấp nhận cả dấu phẩy thập phân: Excel bản tiếng Việt lưu 8,5
+        chứ không phải 8.5. Chỉ đổi khi có ĐÚNG một dấu phẩy và không có
+        dấu chấm nào — "1,234.5" là cách viết nghìn, không đụng vào.
+        """
+        chuoi = (chuoi or "").strip()
+        if not chuoi:
+            return None
+        if chuoi.count(",") == 1 and "." not in chuoi:
+            chuoi = chuoi.replace(",", ".")
+        try:
+            so = float(chuoi)
+        except (TypeError, ValueError):
+            return None
+        return so if so == so and so not in (float("inf"), float("-inf")) else None
+
+    @staticmethod
     def _soat_dong_trung(rows, is_wide: bool) -> list:
         """Cảnh báo khi một student_id xuất hiện nhiều lần trong file DẠNG RỘNG.
 
@@ -1241,6 +1260,11 @@ class PipelineAPI:
             row_errors = self._soat_dong_trung(rows, is_wide)
             row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
             row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
+            # Điểm chỉ thuộc file CHỌN CLB THI. Gặp cột điểm ở đây là
+            # người nhập tưởng đã nạp điểm rồi — im lặng bỏ qua đúng là
+            # loại lỗi im lặng dự án này đã phải sửa nhiều lần.
+            if any(f == "score" or f.startswith("score_") for f in fieldnames):
+                row_errors.append(err("csv_scores_ignored_here"))
             nhom_da_ghi: dict = {}
 
             for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
@@ -1326,15 +1350,52 @@ class PipelineAPI:
             is_wide = any(f.startswith("test_club_") for f in fieldnames)
 
             grouped: dict = {}
+            diem_tho: dict = {}     # sid -> {club_id thô: chuỗi điểm}
+            loi_som: list = []      # lỗi phát hiện trước khi mở CSDL
+
+            def _hau_to(ten: str, tien_to: str):
+                duoi = ten[len(tien_to):]
+                return duoi if duoi.isdigit() else None
+
             if is_wide:
-                test_cols = [f for f in fieldnames if f.startswith("test_club_")]
+                # Ghép test_club_N với score_N theo HẬU TỐ SỐ trong tên
+                # cột, KHÔNG theo vị trí. Ô CLB bỏ trống bị lọc đi, nên
+                # ghép theo vị trí sẽ lệch: em bỏ trống test_club_2 mà
+                # điền test_club_3 thì điểm sẽ gán nhầm cho club khác.
+                cot_clb = {}
+                cot_diem = {}
+                for f in fieldnames:
+                    if f.startswith("test_club_"):
+                        n = _hau_to(f, "test_club_")
+                        if n:
+                            cot_clb[n] = f
+                    elif f.startswith("score_"):
+                        n = _hau_to(f, "score_")
+                        if n:
+                            cot_diem[n] = f
+
                 for row in rows:
                     sid = row.get("student_id")
                     if not sid:
                         continue
-                    selected = [row[c] for c in test_cols if row.get(c)]
+                    selected, diem_hs = [], {}
+                    for n in sorted(cot_clb, key=int):
+                        cid = (row.get(cot_clb[n]) or "").strip()
+                        cot_d = cot_diem.get(n)
+                        d = (row.get(cot_d) or "").strip() if cot_d else ""
+                        if cid:
+                            selected.append(cid)
+                            if d:
+                                diem_hs[cid] = d
+                        elif d:
+                            # Có điểm mà không có club -> gần như chắc là
+                            # gõ lệch cột. Báo, đừng đoán club nào.
+                            loi_som.append(err("csv_score_without_club",
+                                               student_id=sid, cot="score_" + n))
                     grouped[sid] = (row.get("name", ""), selected,
                                     row.get("reserve_group", ""))
+                    if diem_hs:
+                        diem_tho[sid] = diem_hs
             else:
                 if "student_id" not in fieldnames or "club_id" not in fieldnames:
                     return _fail(err("csv_missing_columns", fieldnames=fieldnames))
@@ -1346,14 +1407,18 @@ class PipelineAPI:
                     grouped[sid] = (row.get("name") or name,
                                     clubs_list + [row["club_id"]],
                                     row.get("reserve_group") or nhom)
+                    d = (row.get("score") or "").strip()
+                    if d:
+                        diem_tho.setdefault(sid, {})[row["club_id"]] = d
 
             conn = connect_db(self.db_path)
             cur = conn.cursor()
             khop_club = self._khop_club_id(cur)
             existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
-            n_created, n_updated, n_skipped = 0, 0, 0
-            row_errors = self._soat_dong_trung(rows, is_wide)
+            n_created, n_updated, n_skipped, n_diem = 0, 0, 0, 0
+            row_errors = list(loi_som)
+            row_errors += self._soat_dong_trung(rows, is_wide)
             row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
             row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
             nhom_da_ghi: dict = {}
@@ -1397,6 +1462,37 @@ class PipelineAPI:
                 )
                 n_updated += 1
 
+                # Điểm ghi SAU lựa chọn thi, và ghi bằng club_id ĐÃ KHỚP
+                # (khop_club chấp nhận lệch hoa/thường), không phải chuỗi
+                # thô trong file — ghi thô sẽ tạo một dòng điểm mồ côi mà
+                # không màn hình nào đọc tới.
+                diem_hs = diem_tho.get(sid)
+                if diem_hs:
+                    anh_xa = {tho: that for tho, that in da_khop}
+                    for tho, chuoi in diem_hs.items():
+                        that = anh_xa.get(tho)
+                        if that is None:
+                            row_errors.append(err("csv_score_for_unselected_club",
+                                                  student_id=sid, club_id=tho))
+                            continue
+                        so = self._doc_diem(chuoi)
+                        if so is None:
+                            # Chỉ bỏ RIÊNG ô điểm này. Bỏ cả học sinh vì
+                            # một ô gõ sai là mất nhiều hơn được.
+                            row_errors.append(err("csv_score_not_a_number",
+                                                  student_id=sid, club_id=that, score=chuoi))
+                            continue
+                        if so < 0:
+                            row_errors.append(err("csv_score_negative",
+                                                  student_id=sid, club_id=that, score=chuoi))
+                            continue
+                        cur.execute(
+                            "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
+                            "ON CONFLICT(student_id, club_id) DO UPDATE SET score = excluded.score",
+                            (sid, that, so),
+                        )
+                        n_diem += 1
+
             row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
 
             conn.commit()
@@ -1405,6 +1501,7 @@ class PipelineAPI:
             return _ok({
                 "n_students_created": n_created,
                 "n_students_with_selection_written": n_updated,
+                "n_scores_written": n_diem,
                 "n_students_skipped": n_skipped,
                 "warnings": row_errors,
             })

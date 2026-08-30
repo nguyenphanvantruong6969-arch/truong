@@ -278,17 +278,19 @@ toán thật sự cạnh tranh, và để đo xem giao diện có chậm không.
 | File | Nội dung |
 |---|---|
 | `TEST_01_danh_sach_CLB.xlsx` | 10 CLB, 130 suất, 4 CLB có suất dự trữ |
-| `TEST_02_chon_CLB_muon_thi.xlsx` | 120 em, mỗi em đăng ký thi 2–4 CLB |
+| `TEST_02_chon_CLB_muon_thi.xlsx` | 120 em, mỗi em thi 2–5 CLB, **kèm sẵn 396 ô điểm** |
 | `TEST_03_xep_hang_nguyen_vong.xlsx` | 120 em, mỗi em 2–5 nguyện vọng |
-| `TEST_04_CO_LOI_CO_Y.xlsx` | 10 dòng cố ý sai 5 chỗ, để kiểm tra cảnh báo |
+| `TEST_04_CO_LOI_CO_Y.xlsx` | 10 dòng cố ý sai 6 chỗ, để kiểm tra cảnh báo |
 
-Nạp đủ ba file sạch rồi chấm điểm và chạy phân bổ thì ra **118/120 em được xếp** —
-2 em còn lại vào `_chua_duoc_xep.csv`, đúng như trong thực tế. `TEST_04` phải làm
-phần mềm hiện đủ **5 cảnh báo**; thiếu cảnh báo nào là lỗi phần mềm.
+Điểm nằm sẵn trong cột `score_*`, nên **nạp ba file xong là chạy phân bổ được
+ngay** — không phải chấm tay ô nào. Kết quả: **108/120 em được xếp**, nguyện vọng 1
+59%, **10 em vào bằng suất dự trữ**, 4 CLB đầy chỗ và 6 CLB thừa chỗ. `TEST_04`
+phải làm phần mềm hiện đủ **6 cảnh báo**; thiếu cảnh báo nào là lỗi phần mềm.
 
 > Đây là **dữ liệu mô phỏng** do `du_lieu_test/tao_du_lieu_test.py` sinh ra
-> (`seed = 2026`), **không phải học sinh có thật**. Mỗi file có sheet "Ghi chú"
-> nói rõ điều đó ngay trong file.
+> (`seed = 2026`), **không phải học sinh có thật**, và được **cố ý thiết kế cho
+> cạnh tranh cao** để cơ chế thuật toán lộ ra — không mô phỏng phân bố nguyện vọng
+> tự nhiên. Mỗi file có sheet "Ghi chú" nói rõ điều đó ngay trong file.
 
 ### Kéo thả, không phải chọn ô
 

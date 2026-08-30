@@ -26,23 +26,41 @@ XANH = PatternFill("solid", fgColor="DCE9E0")
 VANG = PatternFill("solid", fgColor="F7EEDA")
 
 # --------------------------------------------------------------- #
-# 10 CLB — tổng 130 suất cho 120 em. Dư suất trên tổng, nhưng vì
-# nguyện vọng dồn vào vài CLB nên các CLB hẹp vẫn chật: sẽ có em
-# không được xếp, đủ để kiểm tra file _chua_duoc_xep.csv.
+# 10 CLB — tổng 130 suất cho 120 em.
+#
+# Bộ này được CỐ Ý THIẾT KẾ CHO CẠNH TRANH CAO, không phải mô phỏng một
+# phân bố nguyện vọng tự nhiên. Lý do: với nguyện vọng rải đều thì gần
+# như em nào cũng được nguyện vọng 1 và suất dự trữ không bao giờ phải
+# dùng tới — nhìn bảng kết quả không thấy thuật toán làm gì cả.
+#
+# Ba điều làm cơ chế lộ ra:
+#   1. Nhu cầu dồn vào 3 CLB "hot" (trọng số 10) và né 3 CLB "nguội"
+#      (trọng số 0.6) -> có CLB chật cứng bên cạnh CLB thừa chỗ.
+#   2. Suất dự trữ đặt ĐÚNG ở các CLB chật. Đặt ở CLB còn chỗ thì suất
+#      dự trữ vô dụng, vì ai cũng vào được.
+#   3. Điểm của nhóm dự trữ lệch thấp hơn -> nhiều em vào được DÙ điểm
+#      dưới mức chuẩn chung, và nhìn bảng là thấy ngay.
 # --------------------------------------------------------------- #
 CLB = [
-    # (mã, tên, chỉ tiêu, chỉ tiêu dự trữ, nhóm dự trữ)
-    ("clb_bongro",    "CLB Bóng rổ",           18, 0, ""),
-    ("clb_bongda",    "CLB Bóng đá",           20, 0, ""),
-    ("clb_tienganh",  "CLB Tiếng Anh",         16, 4, "chinh_sach"),
-    ("clb_tinhoc",    "CLB Tin học",           12, 3, "chinh_sach"),
-    ("clb_robotics",  "CLB Robotics",           8, 0, ""),
-    ("clb_amnhac",    "CLB Âm nhạc",           14, 0, ""),
-    ("clb_mythuat",   "CLB Mỹ thuật",          12, 3, "khoi_10"),
-    ("clb_vanhoc",    "CLB Văn học",           10, 0, ""),
-    ("clb_khoahoc",   "CLB Khoa học",           8, 2, "khoi_10"),
-    ("clb_tinhnguyen","CLB Tình nguyện",       12, 0, ""),
+    # (mã, tên, chỉ tiêu, chỉ tiêu dự trữ, nhóm dự trữ, độ hút)
+    ("clb_bongda",    "CLB Bóng đá",           20, 4, "chinh_sach", 10.0),
+    ("clb_tinhoc",    "CLB Tin học",           12, 3, "chinh_sach", 10.0),
+    ("clb_mythuat",   "CLB Mỹ thuật",          12, 3, "khoi_10",    10.0),
+    ("clb_bongro",    "CLB Bóng rổ",           18, 0, "",            3.0),
+    ("clb_amnhac",    "CLB Âm nhạc",           14, 0, "",            3.0),
+    ("clb_tienganh",  "CLB Tiếng Anh",         16, 2, "khoi_10",    10.0),
+    ("clb_robotics",  "CLB Robotics",           8, 0, "",            2.0),
+    ("clb_khoahoc",   "CLB Khoa học",           8, 0, "",            0.75),
+    ("clb_vanhoc",    "CLB Văn học",           10, 0, "",            0.75),
+    ("clb_tinhnguyen","CLB Tình nguyện",       12, 0, "",            0.75),
 ]
+
+# Điểm: nhóm dự trữ lệch thấp hơn nhóm thường. Đây KHÔNG phải nhận định
+# về học sinh diện chính sách — đây là cách dựng số liệu sao cho suất dự
+# trữ thực sự phải làm việc, để người chạy thử nhìn thấy cơ chế.
+DIEM_TB = {"": 7.6, "chinh_sach": 6.3, "khoi_10": 6.5}
+DIEM_LECH = 1.15
+
 
 HO = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ",
       "Võ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý"]
@@ -103,15 +121,38 @@ def luu(wb, ten):
 # =============================================================== #
 # BỘ SẠCH
 # =============================================================== #
+def chon_theo_trong_so(rng, ung_vien, trong_so, n):
+    """Bốc n phần tử KHÔNG lặp, xác suất tỉ lệ với trọng số."""
+    con = list(ung_vien)
+    ts = dict(trong_so)
+    ra = []
+    for _ in range(min(n, len(con))):
+        tong = sum(ts[c] for c in con)
+        moc = rng.uniform(0, tong)
+        chay = 0.0
+        for c in con:
+            chay += ts[c]
+            if chay >= moc:
+                ra.append(c)
+                con.remove(c)
+                break
+    return ra
+
+
+def sinh_diem(rng, nhom):
+    d = rng.gauss(DIEM_TB.get(nhom, DIEM_TB[""]), DIEM_LECH)
+    return round(min(10.0, max(4.0, d)), 1)
+
+
 def bo_sach():
     rng = random.Random(SEED)
     ma_clb = [c[0] for c in CLB]
+    hut = {c[0]: c[5] for c in CLB}
 
     hoc_sinh = []
     for i in range(1, 121):
         ma = "HS%03d" % i
         ten = sinh_ten(rng)
-        # ~22% thuộc diện dự trữ, chia hai nhóm
         r = rng.random()
         nhom = "chinh_sach" if r < 0.13 else ("khoi_10" if r < 0.22 else "")
         hoc_sinh.append((ma, ten, nhom))
@@ -120,51 +161,58 @@ def bo_sach():
     wb = Workbook(); ws = wb.active; ws.title = "Danh sách CLB"
     ghi_sheet(ws,
               ["club_id", "name", "capacity", "reserve_capacity", "reserve_group"],
-              [list(c) for c in CLB])
+              [list(c[:5]) for c in CLB])
     them_sheet_ghi_chu(wb, [
         "10 câu lạc bộ, tổng 130 suất cho 120 học sinh.",
         "",
-        "Ba CLB có suất dự trữ: Tiếng Anh và Tin học dành cho nhóm",
-        "chinh_sach; Mỹ thuật và Khoa học dành cho nhóm khoi_10.",
+        "Bốn CLB có suất dự trữ, và ĐỀU là CLB đông người đăng ký:",
+        "Bóng đá và Tin học dành cho nhóm chinh_sach; Mỹ thuật và Tiếng",
+        "Anh dành cho nhóm khoi_10. Đặt suất dự trữ ở CLB còn thừa chỗ",
+        "thì suất đó vô dụng, vì ai cũng vào được.",
         "",
         "NHẬP FILE NÀY TRƯỚC hai file học sinh — nếu không, mọi học sinh",
         "sẽ bị bỏ qua vì mã CLB chưa tồn tại.",
     ])
     luu(wb, "TEST_01_danh_sach_CLB.xlsx")
 
-    # --- 2. Chọn CLB muốn thi + 3. Nguyện vọng ---
+    # --- 2. Chọn CLB muốn thi + điểm chấm, và 3. Nguyện vọng ---
     dong_thi, dong_nv = [], []
-    so_cot_thi = 4
+    so_cot_thi = 5
     so_cot_nv = 5
     for ma, ten, nhom in hoc_sinh:
-        # Mỗi em đăng ký thi 2-4 CLB
-        thi = rng.sample(ma_clb, rng.randint(2, so_cot_thi))
-        dong_thi.append([ma, ten, nhom] + thi + [""] * (so_cot_thi - len(thi)))
+        # Nguyện vọng bốc theo ĐỘ HÚT -> dồn vào vài CLB.
+        nv = chon_theo_trong_so(rng, ma_clb, hut, rng.randint(2, so_cot_nv))
+        # Đăng ký thi ĐÚNG những CLB đã xếp nguyện vọng. Thi một CLB mà
+        # không xếp nguyện vọng vào đó là lượt thi bỏ phí — phần mềm cảnh
+        # báo đúng như vậy, nên bộ dữ liệu demo không nên tự tạo ra.
+        thi = list(nv)[:so_cot_thi]
 
-        # Nguyện vọng: chủ yếu nằm trong số đã thi (hợp lý), thỉnh
-        # thoảng thêm một CLB chưa thi — vẫn hợp lệ, vì học sinh không
-        # thi vẫn được xét vào CLB đó (Tier 2).
-        nv = thi[:]
-        rng.shuffle(nv)
-        if rng.random() < 0.25:
-            con_lai = [c for c in ma_clb if c not in nv]
-            if con_lai:
-                nv.append(rng.choice(con_lai))
-        nv = nv[:so_cot_nv]
+        o_thi = [ma, ten, nhom]
+        for i in range(so_cot_thi):
+            if i < len(thi):
+                o_thi += [thi[i], sinh_diem(rng, nhom)]
+            else:
+                o_thi += ["", ""]
+        dong_thi.append(o_thi)
         dong_nv.append([ma, ten, nhom] + nv + [""] * (so_cot_nv - len(nv)))
 
+    cot_thi = ["student_id", "name", "reserve_group"]
+    for i in range(1, so_cot_thi + 1):
+        cot_thi += ["test_club_%d" % i, "score_%d" % i]
+
     wb = Workbook(); ws = wb.active; ws.title = "Chọn CLB muốn thi"
-    ghi_sheet(ws,
-              ["student_id", "name", "reserve_group"] +
-              ["test_club_%d" % i for i in range(1, so_cot_thi + 1)],
-              dong_thi)
+    ghi_sheet(ws, cot_thi, dong_thi)
     them_sheet_ghi_chu(wb, [
-        "120 học sinh, mỗi em đăng ký thi 2-4 CLB.",
+        "120 học sinh, mỗi em đăng ký thi 2-5 CLB.",
+        "",
+        "Cột score_1 đi kèm test_club_1, score_2 đi kèm test_club_2, và",
+        "cứ thế — GHÉP THEO SỐ THỨ TỰ trong tên cột, không theo vị trí.",
+        "Nạp file này là có luôn điểm chấm, không phải gõ tay 400 ô.",
         "",
         "Cột reserve_group: khoảng 22%% số em thuộc diện dự trữ",
         "(chinh_sach hoặc khoi_10), phần còn lại để trống.",
         "",
-        "Ô trống ở các cột test_club_* là bình thường — không cần điền kín.",
+        "Ô trống ở các cột test_club_* và score_* là bình thường.",
     ])
     luu(wb, "TEST_02_chon_CLB_muon_thi.xlsx")
 
@@ -177,9 +225,11 @@ def bo_sach():
         "Cùng 120 học sinh, xếp 2-5 nguyện vọng theo THỨ TỰ CỘT:",
         "pref_1 là nguyện vọng mong muốn nhất.",
         "",
-        "Nguyện vọng chủ yếu nằm trong số CLB em đã đăng ký thi. Khoảng",
-        "1/4 số em có thêm một nguyện vọng vào CLB chưa thi — vẫn hợp lệ,",
-        "vì học sinh không thi vẫn được xét vào CLB đó.",
+        "Nhu cầu CỐ Ý dồn vào vài CLB: Bóng đá, Tin học và Mỹ thuật đông",
+        "gấp nhiều lần chỉ tiêu, còn Khoa học, Văn học và Tình nguyện thì",
+        "gần như không ai chọn. Nhờ vậy mới thấy thuật toán phải làm việc:",
+        "nhiều em trượt xuống nguyện vọng 2-3, và suất dự trữ thực sự",
+        "quyết định ai vào ai không.",
     ])
     luu(wb, "TEST_03_xep_hang_nguyen_vong.xlsx")
     return hoc_sinh
@@ -191,25 +241,25 @@ def bo_sach():
 def bo_co_loi():
     wb = Workbook(); ws = wb.active; ws.title = "Có lỗi cố ý"
     dong = [
-        # (mã, tên, nhóm, nv1, nv2)  — kèm chú thích ở sheet sau
-        ["HS201", "Nguyễn Văn Một",   "",            "clb_bongro",  "clb_amnhac"],
-        ["HS202", "Trần Thị Hai",     "",            "clb_bongro",  ""],
-        ["HS202", "Trần Thị Hai",     "",            "clb_amnhac",  ""],
-        ["hs201", "Nguyễn Văn Một",   "",            "clb_vanhoc",  ""],
-        ["HS204", "Lê Văn Bốn",       "chinh_sac",   "clb_tienganh",""],
-        ["HS205", "Phạm Thị Năm",     "",            "clb_khong_co",""],
-        ["0012345","Hoàng Văn Sáu",   "",            "clb_bongro",  ""],
-        ["0012346","Vũ Thị Bảy",      "",            "clb_amnhac",  ""],
-        ["0012347","Đỗ Văn Tám",      "",            "clb_vanhoc",  ""],
-        ["12348",  "Bùi Thị Chín",    "",            "clb_bongro",  ""],
+        # (mã, tên, nhóm, nv1, nv2, điểm) — kèm chú thích ở sheet sau
+        ["HS201", "Nguyễn Văn Một",   "",            "clb_bongro",  "clb_amnhac", ""],
+        ["HS202", "Trần Thị Hai",     "",            "clb_bongro",  "",           ""],
+        ["HS202", "Trần Thị Hai",     "",            "clb_amnhac",  "",           ""],
+        ["hs201", "Nguyễn Văn Một",   "",            "clb_vanhoc",  "",           ""],
+        ["HS204", "Lê Văn Bốn",       "chinh_sac",   "clb_tienganh","",           ""],
+        ["HS205", "Phạm Thị Năm",     "",            "clb_khong_co","",           ""],
+        ["0012345","Hoàng Văn Sáu",   "",            "clb_bongro",  "",         8.5],
+        ["0012346","Vũ Thị Bảy",      "",            "clb_amnhac",  "",           ""],
+        ["0012347","Đỗ Văn Tám",      "",            "clb_vanhoc",  "",           ""],
+        ["12348",  "Bùi Thị Chín",    "",            "clb_bongro",  "",           ""],
     ]
-    ghi_sheet(ws, ["student_id", "name", "reserve_group", "pref_1", "pref_2"],
+    ghi_sheet(ws, ["student_id", "name", "reserve_group", "pref_1", "pref_2", "score_1"],
               dong, to_mau=VANG)
     them_sheet_ghi_chu(wb, [
         "File này CỐ Ý SAI, dùng để kiểm tra phần mềm có cảnh báo không.",
         "Nhập file TEST_01 (danh sách CLB) trước, rồi nhập file này.",
         "",
-        "Năm lỗi đã cài sẵn, và cảnh báo tương ứng phải hiện ra:",
+        "Sáu lỗi đã cài sẵn, và cảnh báo tương ứng phải hiện ra:",
         "",
         "1. HS202 xuất hiện HAI DÒNG (dòng 3 và 4)",
         "   -> báo: mã HS202 xuất hiện 2 lần, chỉ dòng cuối được giữ",
@@ -226,7 +276,11 @@ def bo_co_loi():
         "5. Mã 12348 chỉ dài 5 chữ số trong khi các mã khác dài 7",
         "   -> báo: nghi Excel đã cắt mất số 0 ở đầu",
         "",
-        "Nếu thiếu bất kỳ cảnh báo nào trong 5 cảnh báo trên, đó là lỗi",
+        "6. File này có cột score_1, nhưng đây là file NGUYỆN VỌNG —",
+        "   điểm chỉ nạp được từ file chọn CLB muốn thi",
+        "   -> báo: điểm trong file này KHÔNG được nạp",
+        "",
+        "Nếu thiếu bất kỳ cảnh báo nào trong 6 cảnh báo trên, đó là lỗi",
         "của phần mềm — hãy báo lại.",
     ])
     luu(wb, "TEST_04_CO_LOI_CO_Y.xlsx")

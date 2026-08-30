@@ -247,7 +247,11 @@ button, input {
 
 .main {
   padding: 40px 48px 64px 48px;
-  max-width: 980px;
+  /* Khoi noi dung nam trong cot 1fr cua .app-shell. Khong co margin
+     auto thi no dinh sat mep TRAI, va tren man hinh rong (1900px) se
+     thua gan 700px trong ben phai — dung nhu anh chup man hinh kiosk. */
+  max-width: 1280px;
+  margin-inline: auto;
 }
 
 .view { display: none; }

@@ -3,17 +3,18 @@
 > ### ⚠️ DỮ LIỆU MÔ PHỎNG — KHÔNG PHẢI HỌC SINH CÓ THẬT
 >
 > Toàn bộ tên và mã trong thư mục này do máy sinh ngẫu nhiên (seed cố định).
-> Dùng để **chạy thử phần mềm**, không phải kết quả khảo sát. Trình bày các
-> con số này như số liệu thật trong báo cáo là **bịa đặt dữ liệu**.
+> Hơn nữa bộ này được **cố ý thiết kế cho cạnh tranh cao** để cơ chế thuật toán
+> lộ ra — nó không mô phỏng một phân bố nguyện vọng tự nhiên. Trình bày các con
+> số này như số liệu khảo sát thật là **bịa đặt dữ liệu**.
 
 ## Bốn file
 
 | File | Nội dung | Dùng để |
 |---|---|---|
 | `TEST_01_danh_sach_CLB.xlsx` | 10 CLB, tổng 130 suất, 4 CLB có suất dự trữ | Nạp **đầu tiên** |
-| `TEST_02_chon_CLB_muon_thi.xlsx` | 120 học sinh, mỗi em đăng ký thi 2–4 CLB | Nạp thứ hai |
+| `TEST_02_chon_CLB_muon_thi.xlsx` | 120 học sinh, mỗi em thi 2–5 CLB, **kèm sẵn 396 ô điểm** | Nạp thứ hai |
 | `TEST_03_xep_hang_nguyen_vong.xlsx` | Cùng 120 em, mỗi em 2–5 nguyện vọng | Nạp thứ ba |
-| `TEST_04_CO_LOI_CO_Y.xlsx` | 10 dòng, cố ý sai 5 chỗ | Kiểm tra phần mềm **có cảnh báo không** |
+| `TEST_04_CO_LOI_CO_Y.xlsx` | 10 dòng, cố ý sai 6 chỗ | Kiểm tra phần mềm **có cảnh báo không** |
 
 Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file.
 
@@ -30,24 +31,34 @@ Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file
 
 1. Kéo cả ba file `TEST_01`, `TEST_02`, `TEST_03` vào ô thả file — thứ tự nạp
    phần mềm tự sắp, không cần kéo đúng thứ tự.
-2. Sang tab **Chấm điểm**, chấm cho từng CLB (điểm nào cũng được — đây là chạy thử).
+2. **Không cần chấm điểm.** Điểm nằm sẵn ở cột `score_*` trong `TEST_02`; nạp
+   xong là bảng *Cảnh báo dữ liệu* phải hiện **0 cảnh báo**.
 3. Bấm **Chạy phân bổ**.
 4. Bấm **Xuất kết quả**.
 
-**Kết quả đúng phải ra như sau** (đã kiểm chứng bằng `seed=42`):
+**Kết quả đúng phải ra như sau** (đã kiểm chứng với `seed=42`):
 
-- 118/120 em được xếp, **2 em chưa được xếp** → có file `_chua_duoc_xep.csv`
-- 11 file trong thư mục `ket_qua_phan_bo_theo_club/` (10 CLB + 1 file chưa xếp)
-- CLB Âm nhạc, Khoa học, Mỹ thuật, Robotics, Tình nguyện, Văn học **đầy chỗ**;
-  Bóng đá 17/20, Bóng rổ 16/18, Tiếng Anh 10/16, Tin học 11/12
+| | |
+|---|---|
+| Được xếp | **108 / 120** — 12 em vào `_chua_duoc_xep.csv` |
+| Nguyện vọng 1 | 64 em (59%) · NV2: 28 · NV3: 10 · NV4: 6 |
+| Vào bằng **suất dự trữ** | **10 em** |
+| CLB đầy chỗ | Bóng đá 20/20 · Tiếng Anh 16/16 · Mỹ thuật 12/12 · Tin học 12/12 |
+| CLB thừa nhiều chỗ | Tình nguyện 5/12 · Khoa học 2/8 · Bóng rổ 13/18 |
+| File xuất ra | 120 dòng trong file tổng, 11 file theo CLB |
 
-Nếu máy bạn ra số khác, nhiều khả năng do bước chấm điểm (điểm khác thì thứ tự
-xét khác) — đó là bình thường. Con số cần giống là **120 em, 10 CLB, không dòng
-nào bị bỏ qua** ở bước nạp file.
+Ba điều bảng trên cho thấy, và **học sinh tự viết phần nhận xét**:
+
+- **41% số em được xếp KHÔNG vào nguyện vọng 1** — thuật toán thực sự phải đẩy
+  người xuống nguyện vọng sau, không phải ai muốn gì được nấy.
+- **10 em vào bằng suất dự trữ** — nếu bỏ cơ chế dự trữ thì 10 em này mất chỗ vào
+  tay các em điểm cao hơn.
+- **Có CLB thừa 7 chỗ trong khi 12 em không có CLB nào** — thuật toán không nhét
+  học sinh vào CLB họ không chọn.
 
 ## Chạy thử bộ có lỗi
 
-Nạp `TEST_01` trước, rồi nạp `TEST_04`. Phần mềm **phải** hiện đủ **5 cảnh báo**:
+Nạp `TEST_01` trước, rồi nạp `TEST_04`. Phần mềm **phải** hiện đủ **6 cảnh báo**:
 
 | # | Lỗi cài sẵn | Cảnh báo phải hiện |
 |---|---|---|
@@ -56,14 +67,13 @@ Nạp `TEST_01` trước, rồi nạp `TEST_04`. Phần mềm **phải** hiện 
 | 3 | nhóm dự trữ `chinh_sac` (thiếu chữ h) | không CLB nào nhận, gợi ý `chinh_sach` |
 | 4 | nguyện vọng vào `clb_khong_co` | club không tồn tại, bỏ qua học sinh này |
 | 5 | mã `12348` giữa các mã 7 chữ số | nghi Excel đã cắt mất số 0 đầu |
+| 6 | cột `score_1` đặt trong file nguyện vọng | điểm ở đây KHÔNG được nạp |
 
 **Thiếu bất kỳ cảnh báo nào là lỗi của phần mềm** — chụp màn hình và báo lại.
 
 ## Bộ demo — `app_DEMO_da_cham_diem.db`
 
-Bộ 120 học sinh cần **356 ô điểm**. Gõ tay hết chỗ đó mất khoảng **18 phút** —
-dài hơn cả thời gian đứng trước giám khảo. Tệp `.db` này dựng sẵn tới ngay
-trước bước cuối: dữ liệu đã nạp, điểm đã chấm đủ, **0 cảnh báo**.
+Dựng sẵn tới ngay trước bước cuối: dữ liệu đã nạp, điểm đã có đủ, **0 cảnh báo**.
 
 **Cách dùng, hôm demo:**
 
@@ -72,19 +82,14 @@ trước bước cuối: dữ liệu đã nạp, điểm đã chấm đủ, **0 
 3. Chép `app_DEMO_da_cham_diem.db` vào cạnh `PhanBoCauLacBo.exe`, đổi tên thành `app.db`
 4. Mở app → bấm **Chạy phân bổ** → **Xuất kết quả**
 
-Ra **118/120 em được xếp**, 120 dòng trong file tổng, 11 file theo CLB. Đã chạy thử
-đúng các bước trên trước khi gửi.
-
 > Cố ý **chưa chạy phân bổ sẵn**. Phần đáng xem nhất là lúc thuật toán chạy và kết
 > quả hiện ra — dựng sẵn cả phần đó thì không còn gì để cho xem.
-
-Dựng lại bằng `./.venv/bin/python du_lieu_test/tao_db_demo.py` (điểm có seed 2026,
-lần nào cũng ra đúng bộ đó).
 
 ## Sinh lại
 
 ```bash
-./.venv/bin/python du_lieu_test/tao_du_lieu_test.py
+./.venv/bin/python du_lieu_test/tao_du_lieu_test.py   # 4 tệp Excel
+./.venv/bin/python du_lieu_test/tao_db_demo.py        # CSDL demo
 ```
 
 Seed cố định (`SEED = 2026`) nên chạy bao nhiêu lần cũng ra đúng bộ này.
