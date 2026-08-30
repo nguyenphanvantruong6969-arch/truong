@@ -59,6 +59,28 @@ Nạp `TEST_01` trước, rồi nạp `TEST_04`. Phần mềm **phải** hiện 
 
 **Thiếu bất kỳ cảnh báo nào là lỗi của phần mềm** — chụp màn hình và báo lại.
 
+## Bộ demo — `app_DEMO_da_cham_diem.db`
+
+Bộ 120 học sinh cần **356 ô điểm**. Gõ tay hết chỗ đó mất khoảng **18 phút** —
+dài hơn cả thời gian đứng trước giám khảo. Tệp `.db` này dựng sẵn tới ngay
+trước bước cuối: dữ liệu đã nạp, điểm đã chấm đủ, **0 cảnh báo**.
+
+**Cách dùng, hôm demo:**
+
+1. Đóng app
+2. Đổi tên `app.db` đang có thành `app_cua_toi.db` *(đừng xoá — đó là dữ liệu của bạn)*
+3. Chép `app_DEMO_da_cham_diem.db` vào cạnh `PhanBoCauLacBo.exe`, đổi tên thành `app.db`
+4. Mở app → bấm **Chạy phân bổ** → **Xuất kết quả**
+
+Ra **118/120 em được xếp**, 120 dòng trong file tổng, 11 file theo CLB. Đã chạy thử
+đúng các bước trên trước khi gửi.
+
+> Cố ý **chưa chạy phân bổ sẵn**. Phần đáng xem nhất là lúc thuật toán chạy và kết
+> quả hiện ra — dựng sẵn cả phần đó thì không còn gì để cho xem.
+
+Dựng lại bằng `./.venv/bin/python du_lieu_test/tao_db_demo.py` (điểm có seed 2026,
+lần nào cũng ra đúng bộ đó).
+
 ## Sinh lại
 
 ```bash
