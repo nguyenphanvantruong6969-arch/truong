@@ -244,7 +244,35 @@ Chính bộ này lộ ra lỗi thứ mười: `_soat_ma_trung_hoa_thuong` chỉ 
 file với mã **đã có trong CSDL**, nên hai cách viết `HS201`/`hs201` nằm trong **cùng
 một file** (cả hai đều mới) thì lọt hoàn toàn. Đã sửa và có test riêng.
 
-**Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên
+### ✅ ĐÃ CHẠY ĐƯỢC TRÊN MÁY WINDOWS THẬT (30/08) — học sinh xác nhận
+
+Ba câu hỏi chặn cả tuần đã có câu trả lời, học sinh tự quan sát và báo lại:
+
+| Câu hỏi | Kết quả |
+|---|---|
+| Cửa sổ riêng hay tab trình duyệt? | **Cửa sổ ứng dụng riêng** |
+| Có mục riêng trên thanh tác vụ? | **Có** |
+| Thu nhỏ 3–5 phút rồi mở lại còn sống? | **Còn sống** |
+
+Học sinh cũng đã nạp thành công cả 4 tệp Excel trong `du_lieu_test/` và gửi ảnh
+màn hình. **Mười con số ứng viên mỗi CLB (31 · 35 · 37 · 36 · 43 · 38 · 28 · 34 ·
+31 · 43) khớp từng cái với kết quả đo trong sandbox** — đường đọc Excel → nhận
+diện → ghi CSDL cho kết quả giống nhau trên hai máy khác nhau.
+
+Học sinh báo **không gặp lỗi nào**. 11 cảnh báo trên màn hình là phần mềm chạy
+ĐÚNG: 10 cảnh báo "chưa chấm điểm" (đo được: chấm xong thì 11 → 1) và 1 cảnh báo
+nhãn `chinh_sac` — chính là lỗi cố ý trong `TEST_04`, bị bắt lần thứ hai bởi một
+cơ chế khác với lúc nhập tệp.
+
+**CÒN MƠ HỒ — đừng ghi vào báo cáo trước khi làm rõ:** "cửa sổ ứng dụng riêng"
+KHÔNG phân biệt được hai đường. Cả pywebview lẫn chế độ dự phòng `--app=` đều cho
+ra cửa sổ không thanh địa chỉ, không thanh tab, có mục riêng trên thanh tác vụ.
+Nên **chưa kết luận được lỗi pythonnet đã hết hay chỉ là đường dự phòng đang gánh**.
+Muốn biết: mở Task Manager, nếu thấy tiến trình `msedge.exe` (hoặc `chrome.exe`)
+xuất hiện lúc mở app thì đó là đường dự phòng.
+
+**Chưa kiểm chứng trên máy thật:** các bước SAU khi nạp dữ liệu (chấm điểm, chạy
+phân bổ, xuất kết quả), thao tác chuột/cảm ứng trên
 máy kiosk thật, và **toàn bộ `ky_va_tin_cay.ps1`** — sandbox là Linux, không có
 `signtool`, không có kho chứng chỉ Windows. Đã kiểm được cú pháp PowerShell (parse
 sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertificate`,
