@@ -33,6 +33,8 @@ datas = [
     ("i18n.js", "."),
     ("recovery.html", "."),
     ("recovery.js", "."),
+    ("logo.png", "."),
+    ("logo.ico", "."),
     ("assets/fonts", "assets/fonts"),
 ]
 
@@ -112,7 +114,9 @@ exe = EXE(
     # lớn hơn một chút, không đáng kể với phần mềm kiosk chạy nội bộ).
     upx=False,
     console=False,   # False = khong hien cua so console den phia sau kiosk
-    icon=None,       # co the thay bang duong dan .ico neu truong co logo
+    # Bieu tuong tren tep .exe, tren thanh tac vu va trong cua so
+    # "Properties" cua Windows. Sinh tu logo.svg bang tao_logo.py.
+    icon="logo.ico",
 )
 
 coll = COLLECT(

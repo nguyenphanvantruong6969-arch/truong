@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 234 test pass
+> Cập nhật lần cuối: 30/08/2026 · 242 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **234 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **242 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 15 file test, 234 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 16 file test, 242 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -67,6 +67,21 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   gõ tay 8 học sinh / 3 CLB cho các màn hình mà đường nạp tệp không chạm tới
 
 ---
+
+### Biểu tượng ứng dụng (30/08)
+
+Học sinh tự thiết kế, nộp dạng SVG. Nguồn gốc duy nhất là `logo.svg`;
+`tao_logo.py` vẽ lại bằng Pillow ở độ phân giải gấp 8 rồi thu nhỏ, sinh ra
+`logo.png` (512, nền trong suốt) và `logo.ico` (7 cỡ, 16→256). **Sửa hình thì sửa
+`logo.svg` rồi chạy lại `tao_logo.py`, đừng sửa tay tệp .png/.ico.**
+
+Gắn ở hai chỗ vì có hai đường hiển thị: `icon="logo.ico"` trong `kiosk.spec` cho
+tệp `.exe`, và `<link rel="icon">` trong `index.html`/`recovery.html` cho cửa sổ
+trình duyệt dự phòng — chính đường này đang chạy, nên quả địa cầu học sinh nhìn
+thấy là biểu tượng mặc định của trang web, không phải của `.exe`.
+
+`tests/test_bieu_tuong.py` (8 test) canh cả hai, kèm một test soát mọi tệp khai
+báo trong `datas` của `kiosk.spec` đều tồn tại thật.
 
 ## 4. Quyết định đã chốt — ĐỪNG tự ý đảo ngược
 
