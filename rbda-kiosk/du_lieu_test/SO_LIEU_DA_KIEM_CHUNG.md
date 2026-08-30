@@ -93,6 +93,15 @@ Dữ liệu sinh ngẫu nhiên, đo trên cùng một máy:
 | 500 học sinh / 20 CLB | 0,03 s | 0,03 s | 500/500 | 21 |
 | 2 000 học sinh / 40 CLB | 0,10 s | 0,14 s | 1 994/2 000 | 33 |
 
+## 3b. Thử tải ở quy mô lớn
+
+Bảng ở mục 3 chỉ là ba điểm đo. Bộ thử tải đầy đủ — **204 lần chạy**, quét số học
+sinh, số CLB, số nguyện vọng, tổng chỉ tiêu và cách chia chỉ tiêu — nằm ở
+`du_lieu_test/thu_tai/`, số liệu thô trong `ket_qua_thu_tai.csv`.
+
+**Cố ý không chép số sang đây.** Chép là tạo ra hai bản dễ lệch nhau; đọc thẳng
+tệp CSV hoặc trang báo cáo.
+
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
 Xem `NHAP_TAY.md` — 8 học sinh, 3 CLB.
