@@ -3,6 +3,10 @@ name: Build Windows executable (rbda-kiosk)
 on:
   workflow_dispatch:
 
+# Can quyen ghi de dua ban build len muc Releases.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -31,6 +35,27 @@ jobs:
           Copy-Item ky_va_tin_cay.ps1    dist/PhanBoCauLacBo/
           Copy-Item mau_csv              dist/PhanBoCauLacBo/mau_csv -Recurse
           Copy-Item du_lieu_test         dist/PhanBoCauLacBo/du_lieu_test -Recurse
+        shell: pwsh
+
+      # Tep trong muc Actions chi tai duoc khi DA DANG NHAP GitHub. Tren
+      # may nguoi khac (may giam khao) thi do la mot rao can that. Ban tren
+      # muc Releases thi tai bang mot duong dan thuong, khong can dang nhap.
+      - name: Nen thanh mot tep .zip
+        run: Compress-Archive -Path dist/PhanBoCauLacBo/* -DestinationPath PhanBoCauLacBo-windows.zip -Force
+        shell: pwsh
+
+      - name: Phat hanh len muc Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Mo ta de o tep rieng: here-string cua PowerShell doi dau dong ket
+        # thuc nam o cot 0, ma cot 0 lai ket thuc luon khoi YAML nay.
+        run: |
+          $tag = "ban-moi-nhat"
+          gh release view $tag 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "RB-DA Kiosk - ban moi nhat" --notes-file ../.github/mo_ta_ban_phat_hanh.md
+          }
+          gh release upload $tag PhanBoCauLacBo-windows.zip --clobber
         shell: pwsh
 
       - name: Upload build artifact

@@ -271,8 +271,22 @@ Nên **chưa kết luận được lỗi pythonnet đã hết hay chỉ là đư
 Muốn biết: mở Task Manager, nếu thấy tiến trình `msedge.exe` (hoặc `chrome.exe`)
 xuất hiện lúc mở app thì đó là đường dự phòng.
 
+**Điều kiện dùng thật, học sinh xác nhận 30/08:** dùng **chuột**, không phải màn
+hình cảm ứng → mọi lo ngại về kích thước nút cho ngón tay là **không còn liên quan**.
+Máy demo có thể là máy giám khảo, và có mạng ở phòng thi.
+
+Hai hệ quả đã xử lý:
+- Bản build nay được đưa lên mục **Releases** (tải bằng đường dẫn thường, không cần
+  đăng nhập GitHub — tệp trong mục Actions thì BẮT BUỘC đăng nhập, trên máy người
+  khác là rào cản thật).
+- Bộ 120 học sinh cần **356 ô điểm** và phần mềm **không có đường nhập điểm từ tệp**
+  — gõ tay hết mất ~18 phút, dài hơn thời gian demo. Đã dựng sẵn
+  `du_lieu_test/app_DEMO_da_cham_diem.db` (nạp xong, chấm xong, 0 cảnh báo, cố ý
+  chưa chạy phân bổ). Đây là **lỗ hổng tiện dụng còn lại đã biết**, không sửa vì
+  đang đóng băng tính năng.
+
 **Chưa kiểm chứng trên máy thật:** các bước SAU khi nạp dữ liệu (chấm điểm, chạy
-phân bổ, xuất kết quả), thao tác chuột/cảm ứng trên
+phân bổ, xuất kết quả), và
 máy kiosk thật, và **toàn bộ `ky_va_tin_cay.ps1`** — sandbox là Linux, không có
 `signtool`, không có kho chứng chỉ Windows. Đã kiểm được cú pháp PowerShell (parse
 sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertificate`,
