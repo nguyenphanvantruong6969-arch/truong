@@ -372,6 +372,32 @@ CLB được làm sạch trước khi ghi — một mã như `../ngoai` không t
 rơi ra ngoài thư mục kết quả, và hai mã khác nhau cho ra cùng tên sau khi
 làm sạch cũng không ghi đè lên nhau.
 
+## Cảnh báo chữ ký số khi chạy `.exe` trên Windows
+
+Windows SmartScreen cảnh báo "nhà phát hành không xác định" với **mọi** ứng dụng
+không mua chữ ký số thương mại. Không phải lỗi phần mềm.
+
+Chứng chỉ ký mã loại OV giá 200–400 USD/năm — và **vẫn bị SmartScreen cảnh báo**
+cho tới khi phần mềm tích đủ lượt tải; chỉ loại EV (400–1000 USD/năm, kèm thiết bị
+USB) mới bỏ qua ngay. Với phần mềm nội bộ dùng trong một trường, cách xử lý thông
+thường là hai đường dưới đây, không phải mua chứng chỉ.
+
+| Cách | Cần gì | Kết quả |
+|---|---|---|
+| **Bấm qua** — More info → Run anyway | Không cần gì | Windows nhớ lựa chọn, chỉ hiện lần đầu trên mỗi máy |
+| **`ky_va_tin_cay.ps1`** | Quyền Administrator + Windows SDK | Hết cảnh báo hoàn toàn, nhưng **chỉ trên máy đã chạy script** |
+
+Script tạo chứng chỉ tự ký, cài vào kho `Root` và `TrustedPublisher` của máy, rồi ký
+`.exe` bằng `signtool` (kèm dấu thời gian để chữ ký không hết hiệu lực khi chứng chỉ
+hết hạn). Chạy lại nhiều lần không sao — nó tìm chứng chỉ cũ trước, chỉ tạo mới khi
+chưa có, nên các bản build sau dùng lại đúng chứng chỉ đó.
+
+Chi tiết trong `HUONG_DAN_CAI_DAT.md`, được workflow chép sẵn vào thư mục cài đặt.
+
+> **Chưa kiểm chứng:** script viết theo tài liệu Microsoft, chưa chạy thật lần nào —
+> môi trường phát triển là Linux, không có `signtool` lẫn kho chứng chỉ Windows. Đã
+> kiểm được cú pháp và logic tìm file; phần còn lại cần chạy thử trên máy Windows.
+
 ## Chạy test tự động
 
 ```bash

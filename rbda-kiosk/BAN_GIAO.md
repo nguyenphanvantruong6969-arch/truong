@@ -51,6 +51,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   sự thật duy nhất cho schema DB (không có `02_schema.sql` riêng).
 - `api.py` — lớp `PipelineAPI`, cầu nối JS ↔ Python. Mọi hàm trả `{ok, data, errors}`.
 - `main.py`, `index.html`, `style.css`, `app.js`, `kiosk.spec`
+- `ky_va_tin_cay.ps1` + `HUONG_DAN_CAI_DAT.md` — xử lý cảnh báo chữ ký Windows
 
 ### AI viết mới (đã trích dẫn đầy đủ trong nhật ký AI)
 - `i18n.js` (830) + `i18n_errors.py` (415) — từ điển song ngữ vi/en, **phải luôn khớp nhau**
@@ -210,7 +211,23 @@ from ...\_internal\pythonnet\runtime\Python.Runtime.dll
   File Excel thật do Excel lưu luôn có giá trị nên thực tế hiếm gặp; dòng
   hỏng vẫn bị bỏ qua kèm cảnh báo `csv_club_row_invalid`.
 
-**Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên máy kiosk thật.
+**Cảnh báo chữ ký số của Windows (30/08):** bản `.exe` không có chữ ký thương mại
+nên Windows SmartScreen cảnh báo "nhà phát hành không xác định". Đây KHÔNG phải lỗi
+phần mềm — mọi ứng dụng không mua chứng chỉ đều bị. Chứng chỉ OV giá 200–400 USD/năm
+mà SmartScreen VẪN cảnh báo tới khi đủ lượt tải; chỉ EV (400–1000 USD/năm, kèm USB
+token) mới hết ngay → ngoài tầm với đề tài học sinh.
+
+Đã làm hai đường đi được, ghi trong `HUONG_DAN_CAI_DAT.md`:
+- **Bấm qua cảnh báo** (More info → Run anyway) — mặc định, không cần quyền gì, và
+  Windows nhớ lựa chọn nên chỉ hiện lần đầu trên mỗi máy.
+- **`ky_va_tin_cay.ps1`** — tạo chứng chỉ tự ký, cài vào kho tin cậy, ký `.exe`.
+  Hết cảnh báo hoàn toàn NHƯNG chỉ trên máy đã chạy script (cần Administrator).
+
+**Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên
+máy kiosk thật, và **toàn bộ `ky_va_tin_cay.ps1`** — sandbox là Linux, không có
+`signtool`, không có kho chứng chỉ Windows. Đã kiểm được cú pháp PowerShell (parse
+sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertificate`,
+`Import-Certificate`, `signtool sign` thì CHƯA CHẠY THẬT lần nào.
 
 ---
 
