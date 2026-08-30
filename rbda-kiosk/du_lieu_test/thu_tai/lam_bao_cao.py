@@ -81,13 +81,20 @@ def chu_thich(muc):
     return "\n".join(o)
 
 
+def so(x, n=2):
+    """Số kiểu Việt Nam: dấu PHẨY thập phân, dấu chấm phân nhóm nghìn."""
+    t = ("{:,.%df}" % n).format(x)
+    return t.replace(",", "\u00a0").replace(".", ",").replace("\u00a0", ".")
+
+
 def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
 CSS = """
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
   :root {
     --muc: #1C2321;          /* mực — chữ chính */
@@ -232,7 +239,11 @@ def main():
                 cach_chia_chi_tieu=cach, ty_le_cho=ty)
         return m[0]
     chinh = o(5, "chia_deu")
-    lon_nhat = max(rows, key=lambda r: r["hoc_sinh"] * r["so_clb"])
+    # "Xấu nhất" phải là lần CHẠY LÂU NHẤT, không phải lần nhiều dữ liệu
+    # nhất — hai thứ đó khác nhau, và lấy nhầm là báo cáo một con số dễ
+    # chịu hơn sự thật.
+    cham_nhat = max(rows, key=lambda r: r["t_phan_bo_giay"])
+    tong_cho = chinh["t_phan_bo_giay"] * 1000 + TANG_CSDL_MS + TANG_UI_MS
 
     k1 = khung(760, 300, 20, 24, 44, 62)
     k2 = khung(760, 280, 20, 24, 44, 52)
@@ -258,20 +269,25 @@ def main():
       'và dự thi 4 câu lạc bộ:</p>')
     A('<div class="doc-so">')
     for gt, nhan, lop in [
-        ("%.2f s" % chinh["t_phan_bo_giay"], "chạy phân bổ", "tot"),
+        (so(chinh["t_phan_bo_giay"]) + " s", "chạy phân bổ", "tot"),
         ("%d" % chinh["so_vong"], "số vòng lặp", ""),
-        ("%.1f%%" % chinh["ty_le_xep"], "được xếp", ""),
-        ("%.0f ms" % TANG_CSDL_MS, "truy vấn chậm nhất", ""),
-        ("%.0f ms" % TANG_UI_MS, "vẽ bảng kết quả", ""),
-        ("%.1f MB" % chinh["dinh_bo_nho_MB"], "đỉnh bộ nhớ", ""),
+        (so(chinh["ty_le_xep"], 1) + "%", "được xếp", ""),
+        (so(TANG_CSDL_MS, 0) + " ms", "truy vấn chậm nhất", ""),
+        (so(TANG_UI_MS, 0) + " ms", "vẽ bảng kết quả", ""),
+        (so(chinh["dinh_bo_nho_MB"], 1) + " MB", "đỉnh bộ nhớ", ""),
     ]:
         A('<div class="o-so %s"><div class="con-so">%s</div>'
           '<span class="nhan">%s</span></div>' % (lop, gt, nhan))
     A('</div>')
-    A('<div class="ket"><p>Cả ba tầng cộng lại vẫn dưới <strong>một giây rưỡi</strong>. '
-      'Cấu hình lớn nhất đã thử — <strong>%d học sinh / %d câu lạc bộ</strong> — chạy phân bổ '
-      'trong <strong>%.2f giây</strong>.</p></div>'
-      % (lon_nhat["hoc_sinh"], lon_nhat["so_clb"], lon_nhat["t_phan_bo_giay"]))
+    A('<div class="ket"><p>Cả ba tầng cộng lại: <strong>%s giây</strong> từ lúc bấm nút '
+      'tới lúc bảng kết quả hiện ra. Lần chạy <strong>lâu nhất trong cả %d cấu hình</strong> — '
+      '%s học sinh, %d câu lạc bộ, mỗi em 10 nguyện vọng — mất <strong>%s giây</strong>.</p>'
+      '<p style="margin-top:10px">Tỉ lệ 90%% ở trên là trường hợp <strong>chỉ tiêu vừa khít</strong> '
+      '(tổng chỗ đúng bằng số học sinh) và mọi câu lạc bộ chỉ tiêu bằng nhau. Dư 8%% chỗ thì '
+      'con số này lên <strong>%s%%</strong>.</p></div>'
+      % (so(tong_cho / 1000), len(rows), so(cham_nhat["hoc_sinh"], 0),
+         cham_nhat["so_clb"], so(cham_nhat["t_phan_bo_giay"]),
+         so(o(5, "chia_deu", 1.08)["ty_le_xep"], 1)))
 
     # ---------- Tang 1 ----------
     A('<h2><span class="stt">1</span>Tầng thuật toán</h2>')
@@ -294,11 +310,11 @@ def main():
         if not m:
             continue
         r = m[0]
-        A('<tr><td class="so">%d em / %d CLB</td><td class="so">%.2f s</td>'
-          '<td class="so dam">%.2f s</td><td class="so">%.2f s</td>'
-          '<td class="so">%d</td><td class="so">%.1f MB</td><td class="so">%.1f MB</td></tr>'
-          % (h, c, r["t_nap_giay"], r["t_phan_bo_giay"], r["t_xuat_giay"],
-             r["so_vong"], r["dinh_bo_nho_MB"], r["db_MB"]))
+        A('<tr><td class="so">%d em / %d CLB</td><td class="so">%s s</td>'
+          '<td class="so dam">%s s</td><td class="so">%s s</td>'
+          '<td class="so">%d</td><td class="so">%s MB</td><td class="so">%s MB</td></tr>'
+          % (h, c, so(r["t_nap_giay"]), so(r["t_phan_bo_giay"]), so(r["t_xuat_giay"]),
+             r["so_vong"], so(r["dinh_bo_nho_MB"], 1), so(r["db_MB"], 1)))
     A('</tbody></table></div>')
 
     # ---------- Tang 2 + 3 ----------
@@ -309,20 +325,20 @@ def main():
     A('<div class="bang-cuon"><table><thead><tr>'
       '<th>Phép đo ở 2 000 em / 50 CLB</th><th>Kết quả</th><th>Dự đoán trước khi đo</th>'
       '</tr></thead><tbody>'
-      '<tr><td>Truy vấn chậm nhất (Cảnh báo dữ liệu)</td><td class="so dam">%.1f ms</td>'
+      '<tr><td>Truy vấn chậm nhất (Cảnh báo dữ liệu)</td><td class="so dam">%s ms</td>'
       '<td>nghẽn vì thiếu chỉ mục — <span class="sai">sai</span></td></tr>'
       '<tr><td>Thêm chỉ mục vào bản sao thì nhanh hơn</td><td class="so">1,0–2,0×</td>'
       '<td>trên truy vấn vốn đã dưới 2 ms — không đáng</td></tr>'
-      '<tr><td>Vẽ bảng Kết quả 2 000 dòng</td><td class="so dam">%.0f ms</td>'
+      '<tr><td>Vẽ bảng Kết quả 2 000 dòng</td><td class="so dam">%s ms</td>'
       '<td>nghẽn vì không phân trang — <span class="sai">sai</span></td></tr>'
       '<tr><td>Vẽ bảng 200 dòng, để so sánh</td><td class="so">18 ms</td>'
       '<td>—</td></tr>'
-      '</tbody></table></div>' % (TANG_CSDL_MS, TANG_UI_MS))
+      '</tbody></table></div>' % (so(TANG_CSDL_MS, 1), so(TANG_UI_MS, 0)))
     A('<div class="ket"><p>Ở quy mô này, <strong>thuật toán chiếm gần như toàn bộ thời gian '
-      'chờ</strong>: %.0f phần nghìn giây so với %.0f ms của cơ sở dữ liệu và %.0f ms của '
+      'chờ</strong>: %s phần nghìn giây so với %s ms của cơ sở dữ liệu và %s ms của '
       'giao diện. Hai chỗ tôi nghi ngờ trước khi đo đều không phải vấn đề — chúng chỉ trở '
       'thành vấn đề ở quy mô lớn hơn nhiều so với một trường trung học.</p></div>'
-      % (chinh["t_phan_bo_giay"] * 1000, TANG_CSDL_MS, TANG_UI_MS))
+      % (so(chinh["t_phan_bo_giay"] * 1000, 0), so(TANG_CSDL_MS, 1), so(TANG_UI_MS, 0)))
 
     # ---------- Do thi 2: so nguyen vong ----------
     A('<h2><span class="stt">3</span>Nên cho học sinh xếp mấy nguyện vọng?</h2>')
@@ -379,18 +395,18 @@ def main():
       '<th>Khi nào thành vấn đề</th></tr></thead><tbody>'
       '<tr><td>Thuật toán duyệt <strong>mọi</strong> câu lạc bộ ở mỗi vòng, kể cả câu lạc bộ '
       'không nhận đề nghị nào — và mỗi lần đều sắp xếp lại danh sách</td>'
-      '<td class="so">%.1f s ở %d em / %d CLB</td>'
-      '<td>Chi phí ≈ số vòng × số CLB. Đây là số lớn nhất đo được, và vẫn dưới 5 giây.</td></tr>'
+      '<td class="so">%s s ở %s em / %d CLB</td>'
+      '<td>Chi phí ≈ số vòng × số CLB × cỡ danh sách. Đây là lần chạy lâu nhất trong cả %d cấu hình.</td></tr>'
       '<tr><td>Trần cứng <strong>10 nguyện vọng</strong> mỗi học sinh</td>'
       '<td class="so">10</td>'
       '<td>Với 50–100 câu lạc bộ, học sinh chỉ xếp được 10–20%% số lựa chọn.</td></tr>'
-      '<tr><td>Cơ sở dữ liệu không có chỉ mục phụ</td><td class="so">%.1f ms</td>'
+      '<tr><td>Cơ sở dữ liệu không có chỉ mục phụ</td><td class="so">%s ms</td>'
       '<td>Chưa thành vấn đề ở 2 000 em. Thêm chỉ mục chỉ lợi 1–2× trên truy vấn vốn đã nhanh.</td></tr>'
-      '<tr><td>Bảng Kết quả vẽ thẳng mọi dòng, không phân trang</td><td class="so">%.0f ms</td>'
+      '<tr><td>Bảng Kết quả vẽ thẳng mọi dòng, không phân trang</td><td class="so">%s ms</td>'
       '<td>Chưa thành vấn đề ở 2 000 dòng.</td></tr>'
       '</tbody></table></div>'
-      % (lon_nhat["t_phan_bo_giay"], lon_nhat["hoc_sinh"], lon_nhat["so_clb"],
-         TANG_CSDL_MS, TANG_UI_MS))
+      % (so(cham_nhat["t_phan_bo_giay"]), so(cham_nhat["hoc_sinh"], 0),
+         cham_nhat["so_clb"], len(rows), so(TANG_CSDL_MS, 1), so(TANG_UI_MS, 0)))
 
     # ---------- Phuong phap ----------
     A('<h2><span class="stt">PP</span>Cách đo</h2>')
