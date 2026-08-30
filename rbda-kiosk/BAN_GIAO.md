@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 226 test pass
+> Cập nhật lần cuối: 30/08/2026 · 234 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **226 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **234 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,12 +58,13 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 14 file test, 226 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 15 file test, 234 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
   10 CLB) + 1 file cố ý sai 5 chỗ, kèm `tao_du_lieu_test.py` (seed = 2026) và
-  `README.md` ghi rõ kết quả đúng phải ra thế nào
+  `README.md` ghi rõ kết quả đúng phải ra thế nào, kèm `NHAP_TAY.md` — kịch bản
+  gõ tay 8 học sinh / 3 CLB cho các màn hình mà đường nạp tệp không chạm tới
 
 ---
 
@@ -232,6 +233,12 @@ token) mới hết ngay → ngoài tầm với đề tài học sinh.
 lượt → `run_pipeline(seed=42)` → xuất kết quả. Ra **118/120 em được xếp**, 2 em vào
 `_chua_duoc_xep.csv`, 11 file theo CLB. File `TEST_04_CO_LOI_CO_Y.xlsx` cho ra đủ
 **5 cảnh báo** đã hứa trong sheet Ghi chú.
+
+`NHAP_TAY.md` hứa một bảng kết quả cụ thể và bảo người dùng "ra khác là phần mềm
+sai". Lời hứa đó được canh bằng `tests/test_kich_ban_nhap_tay.py` (8 test) — không
+có test canh thì một thay đổi thuật toán sẽ âm thầm làm tài liệu nói dối. Kịch bản
+cố ý không có hai em bằng điểm trong cùng CLB, nên STB không được dùng tới: đã chạy
+với 5 seed khác nhau, kết quả giống hệt nhau.
 
 Chính bộ này lộ ra lỗi thứ mười: `_soat_ma_trung_hoa_thuong` chỉ đối chiếu mã trong
 file với mã **đã có trong CSDL**, nên hai cách viết `HS201`/`hs201` nằm trong **cùng

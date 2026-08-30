@@ -17,6 +17,15 @@
 
 Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file.
 
+## Hai đường thử khác nhau
+
+- **Nạp tệp** — bốn tệp `.xlsx` ở trên, dùng ô kéo-thả. Đường mà nhà trường
+  thật sự sẽ dùng khi có sẵn dữ liệu từ Microsoft Forms.
+- **Gõ tay** — xem `NHAP_TAY.md`: 8 học sinh, 3 CLB, gõ trong ~15 phút. Kiểm tra
+  các màn hình *Quản lý club*, *Nhập dự phòng tại kiosk*, *Chấm điểm* — những
+  màn hình mà đường nạp tệp **không** đụng tới. Bộ này nhỏ đủ để tự tính kết quả
+  bằng tay rồi đối chiếu với máy.
+
 ## Chạy thử bộ sạch
 
 1. Kéo cả ba file `TEST_01`, `TEST_02`, `TEST_03` vào ô thả file — thứ tự nạp
