@@ -25,11 +25,12 @@ jobs:
       # Windows canh bao "nha phat hanh khong xac dinh" voi moi ung dung
       # khong mua chu ky so thuong mai. Nguoi tai ve can huong dan xu ly
       # NGAY TRONG thu muc vua giai nen — de o cho khac thi khong ai thay.
-      - name: Kem huong dan cai dat va script ky vao goc
+      - name: Kem tai lieu, mau CSV va du lieu chay thu vao goi
         run: |
           Copy-Item HUONG_DAN_CAI_DAT.md dist/PhanBoCauLacBo/
           Copy-Item ky_va_tin_cay.ps1    dist/PhanBoCauLacBo/
           Copy-Item mau_csv              dist/PhanBoCauLacBo/mau_csv -Recurse
+          Copy-Item du_lieu_test         dist/PhanBoCauLacBo/du_lieu_test -Recurse
         shell: pwsh
 
       - name: Upload build artifact

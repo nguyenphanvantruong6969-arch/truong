@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 29/08/2026 · 225 test pass
+> Cập nhật lần cuối: 30/08/2026 · 226 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **225 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **226 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,9 +58,12 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 14 file test, 225 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 14 file test, 226 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
+- `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
+  10 CLB) + 1 file cố ý sai 5 chỗ, kèm `tao_du_lieu_test.py` (seed = 2026) và
+  `README.md` ghi rõ kết quả đúng phải ra thế nào
 
 ---
 
@@ -223,6 +226,17 @@ token) mới hết ngay → ngoài tầm với đề tài học sinh.
 - **`ky_va_tin_cay.ps1`** — tạo chứng chỉ tự ký, cài vào kho tin cậy, ký `.exe`.
   Hết cảnh báo hoàn toàn NHƯNG chỉ trên máy đã chạy script (cần Administrator).
 
+### Bộ dữ liệu chạy thử (`du_lieu_test/`)
+
+Đã chạy trọn quy trình với bộ này trong sandbox: nạp 3 file Excel → chấm điểm 356
+lượt → `run_pipeline(seed=42)` → xuất kết quả. Ra **118/120 em được xếp**, 2 em vào
+`_chua_duoc_xep.csv`, 11 file theo CLB. File `TEST_04_CO_LOI_CO_Y.xlsx` cho ra đủ
+**5 cảnh báo** đã hứa trong sheet Ghi chú.
+
+Chính bộ này lộ ra lỗi thứ mười: `_soat_ma_trung_hoa_thuong` chỉ đối chiếu mã trong
+file với mã **đã có trong CSDL**, nên hai cách viết `HS201`/`hs201` nằm trong **cùng
+một file** (cả hai đều mới) thì lọt hoàn toàn. Đã sửa và có test riêng.
+
 **Chưa test được trong sandbox:** cửa sổ pywebview thật, thao tác chuột/cảm ứng trên
 máy kiosk thật, và **toàn bộ `ky_va_tin_cay.ps1`** — sandbox là Linux, không có
 `signtool`, không có kho chứng chỉ Windows. Đã kiểm được cú pháp PowerShell (parse
@@ -249,8 +263,9 @@ sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertif
 
 **Điều kiện phải nhắc học sinh mỗi khi liên quan:**
 - Sơ đồ AI vẽ → phải ghi nhãn *"Sơ đồ do AI tạo ra"*
-- **Bộ dữ liệu 120 học sinh là DỮ LIỆU MÔ PHỎNG** (`seed_sample_data(seed=42)`), không phải
-  khảo sát thật. Trình bày như số liệu thật là **bịa đặt dữ liệu**.
+- **Bộ dữ liệu 120 học sinh là DỮ LIỆU MÔ PHỎNG** (`seed_sample_data(seed=42)`, và bộ
+  Excel trong `du_lieu_test/` với `seed=2026`), không phải khảo sát thật. Trình bày như
+  số liệu thật là **bịa đặt dữ liệu**.
 - Diễn giải, nhận xét kết quả kiểm thử → học sinh tự viết
 
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của

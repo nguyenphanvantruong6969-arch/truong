@@ -116,8 +116,8 @@
       en: "Student {student_id} appears {n} times in the file — only the LAST row is kept and the earlier ones are overwritten. Check this is intended.",
     },
     csv_student_id_case_conflict: {
-      vi: "Mã {student_id} chỉ khác chữ hoa/thường so với mã {da_co} đã có — phần mềm đang coi đây là HAI học sinh khác nhau. Nếu là một người, hãy sửa cho hai file dùng cùng một kiểu viết.",
-      en: "Student id {student_id} differs from the existing {da_co} only in case — these are being treated as TWO different students. If they are the same person, make both files use the same spelling.",
+      vi: "Mã {student_id} chỉ khác chữ hoa/thường so với mã {da_co} — phần mềm đang coi đây là HAI học sinh khác nhau. Nếu là một người, hãy sửa cho hai file dùng cùng một kiểu viết.",
+      en: "Student id {student_id} differs from {da_co} only in case — these are being treated as TWO different students. If they are the same person, make both files use the same spelling.",
     },
     csv_student_id_maybe_truncated: {
       vi: "Mã {student_id} chỉ dài {do_dai} chữ số, trong khi phần lớn mã trong file dài {do_dai_pho_bien} — nhiều khả năng Excel đã cắt mất số 0 ở đầu. Mở file gốc, đặt định dạng cột mã là Text rồi nhập lại.",

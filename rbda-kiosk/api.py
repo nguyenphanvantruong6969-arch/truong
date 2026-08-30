@@ -1044,18 +1044,24 @@ class PipelineAPI:
             r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
         }
         theo_thuong = {}
-        for m in da_co:
+        for m in sorted(da_co):
             theo_thuong.setdefault(m.lower(), m)
 
+        # Hai cach viet nam TRONG CUNG MOT FILE cung phai bat duoc: nguoi
+        # nhap go tay 'hs201' o dong nay va 'HS201' o dong kia thi ca hai
+        # deu la ma moi, khong ma nao co san trong CSDL de doi chieu.
         canh_bao = []
         for m in sorted(set(ma_trong_file)):
             if m in da_co:
+                theo_thuong.setdefault(m.lower(), m)
                 continue
             cu = theo_thuong.get(m.lower())
             if cu:
                 canh_bao.append(
                     err("csv_student_id_case_conflict", student_id=m, da_co=cu)
                 )
+            else:
+                theo_thuong[m.lower()] = m
         return canh_bao
 
     @staticmethod

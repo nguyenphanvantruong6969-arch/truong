@@ -102,6 +102,21 @@ def test_ma_hoc_sinh_khac_hoa_thuong_phai_duoc_canh_bao(api_co_club):
     assert w["params"]["da_co"] == "hs001"
 
 
+def test_hai_cach_viet_trong_cung_mot_file_van_phai_canh_bao(api_co_club):
+    """Cả hai mã đều MỚI nên không mã nào có sẵn trong CSDL để đối chiếu —
+    nếu chỉ so với CSDL thì lỗi này lọt qua hoàn toàn."""
+    res = api_co_club.import_preferences_csv(
+        "student_id,name,pref_1\n"
+        "HS201,Một,clb_bongro\n"
+        "hs201,Một,clb_amnhac\n"
+    )
+    assert "csv_student_id_case_conflict" in ma_canh_bao(res)
+    w = [w for w in res["data"]["warnings"]
+         if w["code"] == "csv_student_id_case_conflict"]
+    assert len(w) == 1, "một cặp trùng chỉ báo một lần"
+    assert {w[0]["params"]["student_id"], w[0]["params"]["da_co"]} == {"HS201", "hs201"}
+
+
 def test_ma_hoc_sinh_khop_chinh_xac_thi_khong_canh_bao(api_co_club):
     api_co_club.import_test_selection_csv(
         "student_id,name,test_club_1\nHS001,An,clb_bongro\n"
