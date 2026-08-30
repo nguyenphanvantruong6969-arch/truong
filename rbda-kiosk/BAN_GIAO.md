@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 242 test pass
+> Cập nhật lần cuối: 30/08/2026 · 254 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **242 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **254 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 16 file test, 242 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 17 file test, 254 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -67,6 +67,34 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   gõ tay 8 học sinh / 3 CLB cho các màn hình mà đường nạp tệp không chạm tới
 
 ---
+
+### Soát lại vòng NẠP → XUẤT (30/08) — tìm thêm 2 lỗi im lặng
+
+Chạy 7 ca hiểm của vòng nạp-xuất. 5 ca đạt ngay. Hai ca hỏng, cả hai đều im lặng:
+
+**Lỗi 11 — `csv.Sniffer` làm vỡ ô có dấu nháy kép.** `sniff()` trả về
+`doublequote=False`, tức bỏ quy ước `""` của CSV. Ô `"Trần ""Bo"" Văn A, Jr."` bị
+cắt ngay dấu phẩy; phần đuôi `Jr."` trôi sang cột kế bên và bị hiểu là mã club. Cả
+dòng bị bỏ, kèm cảnh báo *"club không tồn tại"* **chẳng liên quan gì tới nguyên
+nhân thật** — người nhập sẽ đi tìm sai chỗ. Tên CLB tiếng Việt rất hay có dấu
+nháy (`CLB "Vì Cộng Đồng"`). Đã sửa: chỉ lấy **dấu phân cách** từ Sniffer, phần
+quy ước trích dẫn dùng `csv.excel` chuẩn. Có test canh `;` và Tab vẫn nhận đúng.
+
+**Lỗi 12 — tệp của lần xuất trước còn sót lại.** Xuất lần hai mà một CLB không còn
+ai vào thì tệp `.csv` của nó từ lần một **vẫn nằm nguyên**, trông y hệt tệp thật.
+Giáo viên cầm nhầm đi tổ chức một CLB không còn học sinh nào. Đã sửa: dọn `.csv`
+cũ trong đúng thư mục `_theo_club` trước khi ghi. Có test canh **không** đụng vào
+tệp khác của người dùng để trong đó.
+
+**Sửa thêm (không phải lỗi, là lỗ hổng):** ô bắt đầu bằng `= + - @` bị Excel TÍNH
+như công thức — học sinh tên `=1+1` hiện ra là `2`. Nay thêm dấu nháy đơn ở đầu.
+
+Ca thứ 7 tôi tưởng hỏng hoá ra **test viết sai**: `delete_club` từ chối xoá club
+còn nguyện vọng/kết quả tham chiếu tới (`cannot_delete_club_referenced`) — phần
+mềm đang bảo vệ dữ liệu đúng như phải thế.
+
+Đã đối chứng A/B với bản trước khi sửa: bản cũ nạp tên có dấu nháy ra **0 học
+sinh**, bản mới ra **1**; bản cũ để sót `clb_b.csv`, bản mới sạch.
 
 ### Biểu tượng ứng dụng (30/08)
 

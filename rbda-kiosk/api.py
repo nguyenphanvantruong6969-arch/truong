@@ -648,11 +648,20 @@ class PipelineAPI:
         # nó không phải khoảng trắng.
         csv_text = csv_text.lstrip("\ufeff")
         sample = csv_text[:4096]
+        # CHI lay dau phan cach tu Sniffer, KHONG lay ca dialect.
+        #
+        # csv.Sniffer doan luon quy uoc trich dan, va no doan SAI: voi
+        # 'HS1,"Tran ""Bo"" Van A, Jr.",clb_a' no tra ve doublequote=False,
+        # tuc la bo quy uoc "" = mot dau nhay. Hau qua: o ten bi cat ngay
+        # dau phay, phan duoi ('Jr."') roi sang cot ke ben va bi hieu la
+        # ma club. Ca dong bi bo qua, chi kem mot canh bao "club khong ton
+        # tai" khong lien quan gi toi nguyen nhan that.
+        # Ten CLB tieng Viet rat hay co dau nhay: CLB "Vi Cong Dong".
         try:
-            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+            delimiter = csv.Sniffer().sniff(sample, delimiters=",;\t").delimiter
         except csv.Error:
-            dialect = csv.excel
-        reader = csv.DictReader(io.StringIO(csv_text), dialect=dialect)
+            delimiter = ","
+        reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
         fieldnames = [ (f or "").strip().lower() for f in (reader.fieldnames or []) ]
         rows = []
         for raw_row in reader:
@@ -1635,6 +1644,18 @@ class PipelineAPI:
             """).fetchall()
             conn.close()
 
+            def an_toan_cho_excel(o):
+                """Chan Excel hieu noi dung o thanh CONG THUC.
+
+                Excel tinh moi o bat dau bang = + - @ nhu cong thuc. Mot
+                hoc sinh ten "=1+1" se hien ra la 2, va giao vien khong
+                the biet ten that la gi. Them dau nhay don o dau la cach
+                chuan de Excel hieu "day la chu, dung tinh".
+                """
+                if isinstance(o, str) and o[:1] in ("=", "+", "-", "@"):
+                    return "'" + o
+                return o
+
             def dien(tier):
                 # 'reserve'/'general' la ma noi bo — giao vien khong phai doan.
                 return {"reserve": "Dự trữ", "general": "Thường"}.get(tier or "", "")
@@ -1659,13 +1680,26 @@ class PipelineAPI:
                 with open(path, "w", newline="", encoding="utf-8-sig") as f:
                     w = csv.writer(f)
                     w.writerow(header)
-                    w.writerows(cac_dong)
+                    w.writerows([an_toan_cho_excel(o) for o in d] for d in cac_dong)
 
             ghi(output_path, COT_TONG, [dong_tong(r) for r in rows])
 
             goc, _ = os.path.splitext(output_path)
             per_club_dir = goc + "_theo_club"
             os.makedirs(per_club_dir, exist_ok=True)
+
+            # Xoa tep .csv cua lan xuat TRUOC trong dung thu muc nay.
+            # Khong xoa thi mot CLB da bi go khoi he thong van con nguyen
+            # tep cua no, nam canh cac tep moi va trong y het nhu that.
+            # Giao vien cam nham tep do di to chuc mot CLB khong con ton
+            # tai — sai ma khong co dau hieu nao bao.
+            # Chi dung .csv, chi trong thu muc do phan mem tu tao ra.
+            for cu_ten in os.listdir(per_club_dir):
+                if cu_ten.lower().endswith(".csv"):
+                    try:
+                        os.remove(os.path.join(per_club_dir, cu_ten))
+                    except OSError:
+                        pass
 
             theo_club: dict = {}
             for r in rows:
