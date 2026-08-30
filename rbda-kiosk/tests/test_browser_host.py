@@ -223,21 +223,84 @@ def test_open_ui_uses_app_window_when_a_browser_exists(monkeypatch):
 # ------------------------------------------------------------------ #
 # TẮT ĐÚNG LÚC — không tắt nhầm khi thu nhỏ, tắt ngay khi đóng thật
 #
-# Máy chủ tự tắt khi không còn nhận được "ping" từ trang. Nhưng trình
-# duyệt BÓP THẮT (throttle) setInterval của trang đang bị ẩn: cửa sổ thu
-# nhỏ quá lâu thì ping chỉ còn khoảng 1 lần/phút. Với ngưỡng chờ cũ
-# (25 giây), người vận hành chỉ cần thu nhỏ cửa sổ đi làm việc khác là
-# app TỰ TẮT — hành vi không thể chấp nhận với một ứng dụng thật.
+# Cách đếm ping ĐÃ HỎNG THẬT trên máy học sinh ngày 30/08: trình duyệt
+# không bóp thưa bộ đếm giờ của trang bị che, nó ĐÓNG BĂNG hẳn (Chromium
+# intensive throttling, Edge còn thêm Efficiency mode). Ping ngừng hẳn,
+# máy chủ tự tắt trong khi cửa sổ VẪN MỞ, và mọi thao tác sau đó báo
+# "TypeError: Failed to fetch" mà không nói vì sao.
 #
-# Cách xử lý: nới ngưỡng chờ vượt qua mức bóp thắt, ĐỒNG THỜI báo thẳng
-# cho máy chủ ngay khi cửa sổ đóng (pagehide + sendBeacon) để vẫn tắt
-# ngay tức khắc trong trường hợp đóng thật.
+# Nay tín hiệu chính là một KẾT NỐI MỞ (EventSource): trình duyệt không
+# đóng băng socket, chỉ đóng băng bộ đếm giờ. Ping chỉ còn là lưới đỡ khi
+# kết nối đó không dùng được.
 # ------------------------------------------------------------------ #
 
 
 def test_ping_timeout_outlasts_browser_throttling():
-    """Trình duyệt bóp ping của cửa sổ ẩn xuống ~1 lần/phút."""
+    """Lưới đỡ khi không có kết nối sống nào thì vẫn phải rộng rãi."""
     assert browser_host._PING_TIMEOUT_SECONDS >= 90
+
+
+def _mo_ket_noi_song(base, token):
+    """Mở kết nối EventSource và GIỮ nguyên — không đọc tới hết."""
+    return urllib.request.urlopen(f"{base}/__alive__?t={token}", timeout=5)
+
+
+def test_ket_noi_song_can_dung_token(hosted):
+    base, _ = hosted
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(f"{base}/__alive__?t=sai", timeout=5)
+    assert e.value.code == 403
+
+
+def test_shim_mo_ket_noi_song(hosted):
+    base, _ = hosted
+    with urllib.request.urlopen(f"{base}/index.html") as r:
+        html = r.read().decode("utf-8")
+    assert "EventSource" in html
+    assert "/__alive__" in html
+
+
+def test_cua_so_mo_thi_khong_tat_du_ping_bi_dong_bang(monkeypatch, api):
+    """Đây chính là lỗi học sinh gặp: trang bị đóng băng, ping ngừng hẳn,
+    máy chủ tắt trong khi cửa sổ vẫn mở. Kết nối sống phải giữ được nó."""
+    monkeypatch.setattr(browser_host, "_PING_TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(browser_host, "_GRACE_SECONDS", 1)
+    monkeypatch.setattr(browser_host, "_ALIVE_BEAT_SECONDS", 0.2)
+    url = browser_host.serve(api, RESOURCE_DIR, "index.html", open_browser=False)
+    base, token = url.split("/index.html?t=")
+
+    song = _mo_ket_noi_song(base, token)
+    try:
+        # Một ping duy nhất rồi im hẳn — đúng như trang bị đóng băng.
+        urllib.request.urlopen(urllib.request.Request(
+            f"{base}/__ping__", data=b"", method="POST"), timeout=5).read()
+        time.sleep(8)          # quá xa ngưỡng ping (1 giây)
+        res = _post(base, token, "get_dashboard_status")
+        assert res["ok"] is True, "máy chủ đã tắt dù cửa sổ còn mở"
+    finally:
+        song.close()
+
+
+def test_dong_cua_so_thi_may_chu_tat(monkeypatch, api):
+    """Mặt còn lại: đóng thật thì phải tắt, không để tiến trình chạy ngầm."""
+    monkeypatch.setattr(browser_host, "_PING_TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(browser_host, "_GRACE_SECONDS", 1)
+    monkeypatch.setattr(browser_host, "_ALIVE_BEAT_SECONDS", 0.2)
+    url = browser_host.serve(api, RESOURCE_DIR, "index.html", open_browser=False)
+    base, token = url.split("/index.html?t=")
+
+    song = _mo_ket_noi_song(base, token)
+    urllib.request.urlopen(urllib.request.Request(
+        f"{base}/__ping__", data=b"", method="POST"), timeout=5).read()
+    song.close()               # cửa sổ đóng
+
+    for _ in range(40):        # tối đa 20 giây
+        time.sleep(0.5)
+        try:
+            urllib.request.urlopen(f"{base}/index.html", timeout=2).read()
+        except Exception:
+            return             # đã tắt — đúng
+    pytest.fail("máy chủ vẫn chạy sau khi cửa sổ đóng")
 
 
 def test_shim_reports_the_window_closing(hosted):

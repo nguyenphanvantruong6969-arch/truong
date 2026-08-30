@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 254 test pass
+> Cập nhật lần cuối: 30/08/2026 · 258 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **254 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **258 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 17 file test, 254 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 17 file test, 258 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -67,6 +67,36 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   gõ tay 8 học sinh / 3 CLB cho các màn hình mà đường nạp tệp không chạm tới
 
 ---
+
+### LỖI 13 — app chết sau một lúc mở (30/08) — ĐÃ SỬA
+
+**Triệu chứng học sinh gặp:** mở app một lúc rồi quay lại, kéo file vào thì mọi
+file đều báo `TypeError: Failed to fetch`. Giao diện vẫn hiện đầy đủ, số liệu vẫn
+đó, nhưng không thao tác nào chạy.
+
+**Nguyên nhân:** `browser_host.py` đếm ping do `setInterval` gửi, không có ping quá
+120 giây thì tự tắt máy chủ. Giả định đằng sau con số 120 là "trình duyệt bóp ping
+thưa xuống ~1 lần/phút" — **giả định đó SAI**. Chromium hiện **đóng băng hẳn** bộ
+đếm giờ của trang bị che (intensive throttling), và Edge trên Windows bật thêm
+**Efficiency mode** — nhìn thấy rõ ngay trong ảnh Task Manager học sinh gửi
+trước đó: dòng *Tab: Phân bổ Câu lạc bộ* mang nhãn *Efficiency mode*.
+
+Ping không thưa đi, nó **ngừng hẳn**. Máy chủ tự tắt trong khi cửa sổ vẫn mở.
+Trình duyệt giữ lại hình đã vẽ nên nhìn như app còn sống.
+
+**Cách sửa:** tín hiệu chính không còn là bộ đếm giờ mà là **một socket đang mở**.
+Trang mở `EventSource("/__alive__")` và giữ nguyên. Trình duyệt **không** đóng băng
+socket — nó chỉ đóng băng bộ đếm giờ. Cửa sổ còn mở thì kết nối còn đó; đóng cửa sổ
+thì đứt ngay và máy chủ biết tức khắc. Ping cũ giữ lại làm lưới đỡ cho trường hợp
+kết nối đó không thiết lập được lần nào (lúc đó vẫn dùng ngưỡng 120 giây cũ).
+
+**Đã kiểm bằng Chromium THẬT** (Playwright + Xvfb): dừng hẳn mọi `setInterval` của
+trang để giả lập đóng băng, hạ ngưỡng ping xuống 3 giây, chờ 9 giây — gọi backend
+vẫn **thành công**. Với cách cũ thì đã chết từ giây thứ 3.
+
+**Sửa kèm:** nhánh `open_browser=False` không gọi `server_close()`, nên sau khi
+dừng, cổng vẫn mở: kết nối mới bắt tay được nhưng không ai trả lời, bên gọi **treo
+vô hạn** thay vì nhận lỗi rõ ràng. Chính chỗ này làm bộ test treo lúc phát hiện.
 
 ### Soát lại vòng NẠP → XUẤT (30/08) — tìm thêm 2 lỗi im lặng
 

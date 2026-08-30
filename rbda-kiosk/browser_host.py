@@ -42,22 +42,33 @@ import threading
 import time
 import webbrowser
 
-# Không có ping trong ngần này giây -> coi như người dùng đã đóng cửa sổ và
-# tự tắt tiến trình. Nếu không có cơ chế này, bản đóng gói console=False sẽ
-# chạy ngầm mãi sau khi người dùng đóng cửa sổ (không có cửa sổ nào để tắt,
-# phải vào Task Manager).
+# LÀM SAO BIẾT CỬA SỔ CÒN MỞ
 #
-# VÌ SAO 120 GIÂY CHỨ KHÔNG PHẢI 25: trình duyệt BÓP THẮT (throttle)
-# setInterval của trang đang bị ẩn — cửa sổ thu nhỏ lâu thì ping tụt xuống
-# khoảng 1 lần/phút. Với ngưỡng 25 giây, người vận hành chỉ cần thu nhỏ cửa
-# sổ đi làm việc khác là app TỰ TẮT giữa chừng. Một ứng dụng thật không
-# hành xử như vậy.
+# Bản đóng gói chạy `console=False`: đóng cửa sổ mà tiến trình không tự
+# tắt thì nó chạy ngầm mãi, phải vào Task Manager mới diệt được.
 #
-# Nới ngưỡng KHÔNG làm chậm việc tắt khi đóng thật: trang gọi
-# navigator.sendBeacon("/__closed__") ngay trong sự kiện `pagehide`, nên
-# đóng cửa sổ là máy chủ tắt tức khắc. Ngưỡng này chỉ còn là lưới an toàn
-# cho trường hợp trình duyệt bị kill cứng, không kịp gửi beacon.
-_PING_TIMEOUT_SECONDS = 120
+# Cách cũ là đếm ping do `setInterval` gửi, không có ping quá 120 giây thì
+# tự tắt. CÁCH ĐÓ SAI, và đã hỏng thật trên máy học sinh ngày 30/08:
+# trình duyệt hiện ĐÓNG BĂNG hẳn bộ đếm giờ của trang đang bị che
+# (Chromium gọi là intensive throttling; Edge trên Windows còn bật thêm
+# "Efficiency mode" — nhìn thấy rõ trong ảnh Task Manager của học sinh).
+# Trang bị đóng băng thì ping ngừng hẳn, không phải thưa đi. Máy chủ tự
+# tắt trong khi cửa sổ VẪN ĐANG MỞ. Người dùng quay lại thấy giao diện
+# còn nguyên (trình duyệt giữ lại hình đã vẽ) nhưng mọi thao tác đều báo
+# "TypeError: Failed to fetch" — không một dấu hiệu nào cho biết vì sao.
+#
+# Cách mới: trang mở một KẾT NỐI SỰ KIỆN (EventSource) và giữ nguyên đó.
+# Trình duyệt KHÔNG đóng băng socket đang mở — nó chỉ đóng băng bộ đếm
+# giờ. Cửa sổ còn mở thì socket còn đó, dù trang bị đóng băng bao lâu.
+# Đóng cửa sổ thì socket đứt ngay, máy chủ biết tức khắc.
+#
+# Ping cũ vẫn giữ, nhưng chỉ còn là lưới đỡ cho trường hợp EventSource
+# không kết nối được lần nào. Khi đã có ít nhất một kết nối sống thì
+# ngưỡng chờ rút xuống _GRACE_SECONDS, vì lúc đó socket đứt là tín hiệu
+# chắc chắn, không cần chờ lâu.
+_PING_TIMEOUT_SECONDS = 120     # chỉ dùng khi EventSource chưa từng kết nối
+_GRACE_SECONDS = 20             # chờ sau khi kết nối cuối cùng đứt
+_ALIVE_BEAT_SECONDS = 10        # nhịp ghi vào socket để phát hiện đứt
 _PING_INTERVAL_MS = 3000
 
 _SHIM_TEMPLATE = """
@@ -90,7 +101,18 @@ _SHIM_TEMPLATE = """
     }),
   };
 
-  /* Bao cho may chu biet cua so van dang mo. */
+  /* Bao cho may chu biet cua so van dang mo.
+
+     Ket noi EventSource nay la tin hieu CHINH. No la mot socket mo, ma
+     trinh duyet khong dong bang socket — chi dong bang bo dem gio. Nen
+     cua so con mo thi may chu con biet, du trang bi che bao lau.
+     EventSource tu ket noi lai neu duong truyen dut quang. */
+  try {
+    var song = new EventSource("/__alive__?t=" + encodeURIComponent(TOKEN));
+    song.onerror = function () { /* tu ket noi lai, khong lam gi */ };
+  } catch (e) { /* trinh duyet qua cu -> con ping o duoi do */ }
+
+  /* Ping cu: luoi do khi EventSource khong dung duoc. */
   function ping() { fetch("/__ping__", { method: "POST" }).catch(function () {}); }
   ping();
   setInterval(ping, __PING_INTERVAL__);
@@ -115,6 +137,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     token = ""
     on_ping = None
     on_closed = None
+    on_alive_open = None
+    on_alive_close = None
 
     def log_message(self, *args):
         """Im lang — ban dong goi console=False khong co stderr de ghi."""
@@ -133,6 +157,38 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         return secrets.compare_digest(
             self.headers.get("X-Kiosk-Token", ""), self.token
         )
+
+    def _giu_ket_noi_song(self):
+        """Giữ một kết nối mở suốt thời gian cửa sổ còn sống.
+
+        Ghi một dòng chú thích SSE mỗi _ALIVE_BEAT_SECONDS giây. Cửa sổ
+        đóng thì lần ghi kế tiếp hỏng — đó là lúc biết chắc, không phải
+        đoán qua nhịp ping có thể bị đóng băng.
+        """
+        from urllib.parse import parse_qs, urlparse
+
+        sent = parse_qs(urlparse(self.path).query).get("t", [""])[0]
+        if not secrets.compare_digest(sent, self.token):
+            self.send_error(403)
+            return
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+
+        if callable(self.on_alive_open):
+            self.on_alive_open()
+        try:
+            while True:
+                self.wfile.write(b": con-song\n\n")
+                self.wfile.flush()
+                time.sleep(_ALIVE_BEAT_SECONDS)
+        except Exception:
+            pass
+        finally:
+            if callable(self.on_alive_close):
+                self.on_alive_close()
 
     def do_POST(self):
         if self.path == "/__ping__":
@@ -198,6 +254,10 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path in ("/", ""):
             path = "/" + self.server.start_page
+
+        if path == "/__alive__":
+            self._giu_ket_noi_song()
+            return
 
         if path.endswith(".html"):
             full = os.path.join(self.directory, path.lstrip("/"))
@@ -372,10 +432,24 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
     Trả về URL đã phục vụ (hữu ích khi test, với open_browser=False).
     """
     token = secrets.token_urlsafe(24)
-    state = {"last_ping": None}
+    state = {"last_ping": None, "n_song": 0, "tung_song": False,
+             "het_song_luc": None}
+    khoa = threading.Lock()
 
     def on_ping():
         state["last_ping"] = time.time()
+
+    def on_alive_open():
+        with khoa:
+            state["n_song"] += 1
+            state["tung_song"] = True
+            state["het_song_luc"] = None
+
+    def on_alive_close():
+        with khoa:
+            state["n_song"] = max(0, state["n_song"] - 1)
+            if state["n_song"] == 0:
+                state["het_song_luc"] = time.time()
 
     def on_closed():
         # shutdown() phai chay o thread KHAC, khong the goi tu trong
@@ -387,6 +461,8 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
         "token": token,
         "on_ping": staticmethod(on_ping),
         "on_closed": staticmethod(on_closed),
+        "on_alive_open": staticmethod(on_alive_open),
+        "on_alive_close": staticmethod(on_alive_close),
     })
     # SimpleHTTPRequestHandler dat self.directory TRONG __init__, nen gan
     # o cap lop se bi ghi de -> phai truyen qua tham so khoi tao.
@@ -397,12 +473,36 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
 
     url = f"http://127.0.0.1:{httpd.server_address[1]}/{start_page}?t={token}"
 
+    def nen_tat(gio) -> bool:
+        """Cửa sổ đã đóng thật chưa?
+
+        Hai chế độ, tuỳ EventSource có dùng được hay không:
+
+        - ĐÃ từng có kết nối sống: socket đứt là tín hiệu CHẮC CHẮN.
+          Chỉ cần không còn kết nối nào VÀ ping cũng tắt trong
+          _GRACE_SECONDS là đóng thật. Ngắn, vì không phải đoán.
+        - CHƯA từng có kết nối nào (trình duyệt quá cũ, hoặc kết nối bị
+          chặn): quay về cách cũ — chờ đủ _PING_TIMEOUT_SECONDS không
+          ping. Dài, vì lúc này chỉ còn cách đoán.
+        """
+        last = state["last_ping"]
+        if last is None:
+            return False            # trang chưa kịp mở
+        if state["tung_song"]:
+            if state["n_song"] > 0:
+                return False        # còn cửa sổ mở
+            het = state["het_song_luc"]
+            return (het is not None
+                    and gio - het > _GRACE_SECONDS
+                    and gio - last > _GRACE_SECONDS)
+        return gio - last > _PING_TIMEOUT_SECONDS
+
     def watchdog():
         while True:
             time.sleep(5)
-            last = state["last_ping"]
-            # Chua co ping nao -> trang chua kip mo, chua tinh gio.
-            if last is not None and time.time() - last > _PING_TIMEOUT_SECONDS:
+            with khoa:
+                tat = nen_tat(time.time())
+            if tat:
                 threading.Thread(target=httpd.shutdown, daemon=True).start()
                 return
 
@@ -413,6 +513,13 @@ def serve(api, resource_dir: str, start_page: str = "index.html",
         httpd.serve_forever()
         httpd.server_close()
     else:
-        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        # Phai dong luon socket lang nghe sau khi dung, khong thi cong van
+        # con mo: ket noi moi van bat tay duoc nhung khong ai tra loi, ben
+        # goi treo vo han thay vi nhan mot loi ro rang.
+        def chay():
+            httpd.serve_forever()
+            httpd.server_close()
+
+        threading.Thread(target=chay, daemon=True).start()
 
     return url
