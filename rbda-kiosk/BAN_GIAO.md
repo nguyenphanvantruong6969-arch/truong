@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 271 test pass
+> Cập nhật lần cuối: 30/08/2026 · 283 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **271 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **283 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 18 file test, 271 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 19 file test, 283 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -140,6 +140,39 @@ thấy là biểu tượng mặc định của trang web, không phải của `.
 
 `tests/test_bieu_tuong.py` (8 test) canh cả hai, kèm một test soát mọi tệp khai
 báo trong `datas` của `kiosk.spec` đều tồn tại thật.
+
+### Vì sao ba phiên phải ĐOÁN lỗi pythonnet (30/08) — đã sửa gốc
+
+`main.py` bắt được ngoại lệ khi pywebview hỏng rồi ghi vết lỗi ra
+**`sys.stderr`** — mà bản đóng gói chạy `console=False` thì **không có stderr nào**.
+Vết lỗi bị vứt đi đúng lúc nó xảy ra. Đó mới là lỗi gốc: không phải pywebview hỏng,
+mà là hỏng **mà không ai biết vì sao**.
+
+Nay có `chan_doan.py`:
+- Ghi mọi thứ vào **`loi_khoi_dong.txt`** cạnh `app.db` — nối thêm, không ghi đè.
+- Ghi cả khi THÀNH CÔNG, để biết lần nào chạy đường nào.
+- Không bao giờ ném lỗi ra ngoài (hỏng phần ghi log mà làm chết app thì tệ hơn).
+
+**Giả thuyết đang thử — chưa kiểm chứng được:** Windows gắn dấu "tải từ Internet"
+(luồng NTFS `Zone.Identifier`) vào mọi tệp giải nén từ `.zip` tải về, và .NET
+Framework **từ chối nạp assembly mang dấu đó**. Khớp đúng triệu chứng: thông báo
+lỗi nêu rõ đường dẫn tới `Python.Runtime.dll`, tức tệp CÓ ở đó, .NET tìm thấy
+nhưng không nạp.
+
+Hai lớp cùng chữa nguyên nhân đó:
+1. `chan_doan.go_dau_tai_ve()` xoá luồng `Zone.Identifier` khỏi mọi `.dll/.exe/.pyd`
+   trong gói, chạy **trước** `import webview`. Không cần quyền Administrator.
+2. `PhanBoCauLacBo.exe.config` với `loadFromRemoteSources enabled="true"` — bảo .NET
+   bỏ qua dấu ngay từ đầu. **Phải nằm cạnh `.exe`**, không phải trong `_internal/`;
+   quy trình build chép nó vào đúng chỗ, có test canh.
+
+**Máy phát triển là Linux — không có .NET Framework lẫn luồng NTFS, nên hai lớp này
+CHƯA CHẠY THẬT lần nào.** Đó chính là lý do phải có lớp ghi log: nếu giả thuyết sai
+thì lần này biết sai ở đâu thay vì đoán lần thứ tư.
+
+**Người dùng nay nhìn thấy đang chạy đường nào:** góc dưới thanh bên hiện
+"Cửa sổ ứng dụng riêng" hoặc "Chế độ dự phòng (trình duyệt)" (màu vàng). Trước đây
+phải mở Task Manager mới biết — và khi không ai biết thì không ai sửa.
 
 ### Cột điểm trong file nhập (30/08) — PHÁ LỆ ĐÓNG BĂNG CÓ CHỦ Ý
 

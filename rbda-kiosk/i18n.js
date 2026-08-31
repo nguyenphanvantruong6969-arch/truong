@@ -442,6 +442,8 @@
       nav_scoring: "Chấm điểm (mù)",
       db_status_loading: "— đang tải —",
       db_connected: "Đã kết nối app.db",
+      display_native: "Cửa sổ ứng dụng riêng",
+      display_browser: "Chế độ dự phòng (trình duyệt)",
       last_run_line: "Chạy gần nhất: {run_at} (seed={seed}, {n_matched}/{n_total} xếp được)",
       never_run: "Chưa chạy pipeline lần nào",
 
@@ -650,6 +652,8 @@
       nav_scoring: "Scoring (blind)",
       db_status_loading: "— loading —",
       db_connected: "Connected to app.db",
+      display_native: "Native application window",
+      display_browser: "Fallback mode (browser)",
       last_run_line: "Last run: {run_at} (seed={seed}, {n_matched}/{n_total} matched)",
       never_run: "Pipeline has never been run",
 

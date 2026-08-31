@@ -36,6 +36,38 @@ Xong. **Windows nhớ lựa chọn này** — những lần sau chạy thẳng, 
 
 ---
 
+## Nếu app mở ra trong cửa sổ Edge thay vì cửa sổ riêng
+
+Nhìn **góc dưới bên trái** app: nếu dòng cuối ghi **“Chế độ dự phòng (trình duyệt)”**
+màu vàng, nghĩa là cửa sổ gốc không mở được và app đang mượn Edge để vẽ.
+
+Nguyên nhân nhiều khả năng nhất: Windows gắn dấu **“tải từ Internet”** vào mọi tệp
+giải nén từ tệp `.zip` tải về, và .NET Framework từ chối nạp thư viện mang dấu đó.
+
+**Cách xử lý — 20 giây, không cần quyền gì:**
+
+1. Chuột phải vào tệp **`.zip`** *(làm trước khi giải nén)* → **Properties**
+2. Cuối tab *General*, nếu có ô **Unblock** thì tích vào → **OK**
+3. Giải nén lại vào một thư mục **mới**, rồi chạy
+
+Đã lỡ giải nén rồi thì mở PowerShell tại thư mục đó và gõ:
+
+```powershell
+Get-ChildItem -Recurse | Unblock-File
+```
+
+Bản mới cũng **tự gỡ dấu** lúc khởi động và kèm sẵn tệp cấu hình bảo .NET bỏ qua
+dấu đó, nên phần lớn trường hợp không phải làm gì. Ba bước trên là để dành cho khi
+hai lớp đó không ăn.
+
+**Nếu vẫn ở chế độ dự phòng:** mở tệp **`loi_khoi_dong.txt`** nằm cạnh
+`PhanBoCauLacBo.exe` — trong đó có nguyên văn lý do. Gửi lại nội dung tệp đó.
+
+> Chạy ở chế độ dự phòng **không thiếu tính năng nào** — mọi thứ hoạt động y hệt.
+> Khác biệt duy nhất là máy phải có sẵn Edge hoặc Chrome.
+
+---
+
 ## Cách 2 — Ký bằng chứng chỉ tự tạo (cần quyền Administrator)
 
 Cách này làm cảnh báo **biến mất hoàn toàn** trên máy đã làm. Phù hợp khi máy kiosk

@@ -243,6 +243,10 @@ button, input {
   color: var(--moss);
 }
 
+.db-status-sub.is-fallback {
+  color: var(--gold);
+}
+
 /* ============================= MAIN ============================= */
 
 .main {

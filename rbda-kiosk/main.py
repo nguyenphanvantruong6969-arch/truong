@@ -14,6 +14,7 @@ import sys
 import traceback
 
 import browser_host
+import chan_doan
 from api import PipelineAPI
 from recovery import RecoveryAPI
 
@@ -73,6 +74,14 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
     nối giả lập). Với cờ `--app=`, người dùng vẫn thấy MỘT CỬA SỔ ỨNG
     DỤNG RIÊNG, không phải một tab lẫn trong trình duyệt.
     """
+    # Gỡ dấu "tải từ Internet" TRƯỚC khi nạp webview. Windows gắn dấu đó
+    # vào mọi tệp giải nén từ .zip tải về, và .NET Framework từ chối nạp
+    # assembly mang dấu — khớp đúng triệu chứng: lỗi nêu rõ đường dẫn tới
+    # Python.Runtime.dll, tức tệp CÓ đó, .NET tìm thấy nhưng không nạp.
+    if getattr(sys, "frozen", False):
+        ket = chan_doan.go_dau_tai_ve(RESOURCE_DIR)
+        chan_doan.ghi(BASE_DIR, "go dau tai-ve trong %s: %r" % (RESOURCE_DIR, ket))
+
     try:
         import webview
 
@@ -84,16 +93,25 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
             # Cho phép các tính năng dùng hộp thoại gốc của hệ điều hành
             # sau này (hiện chưa tính năng nào bắt buộc phải có window ref).
             js_api.set_window(window)
+        chan_doan.ghi(BASE_DIR, "cua so goc (pywebview) mo THANH CONG")
         webview.start()
         return
     except BaseException:
         # Nuot MOI loai loi (ke ca khong phai Exception) roi thu cach 2 —
         # con mot duong chay duoc van hon la chet kem stack trace.
+        #
+        # NHUNG PHAI GHI LAI VET LOI VAO TEP. Truoc day cho ra sys.stderr,
+        # ma ban build console=False khong co stderr nao — vet loi bi vut
+        # di dung luc no xay ra, va ba phien lam viec phai DOAN nguyen
+        # nhan. Ghi ra tep canh app.db thi lan sau doc duoc nguyen van.
+        chan_doan.ghi_ngoai_le(
+            BASE_DIR, "cua so goc (pywebview) HONG, chuyen sang trinh duyet:")
         sys.stderr.write(
             "pywebview khong khoi dong duoc, chuyen sang che do trinh duyet:\n"
             + traceback.format_exc()
         )
 
+    chan_doan.ghi(BASE_DIR, "dang chay bang CHE DO TRINH DUYET (du phong)")
     browser_host.serve(js_api, RESOURCE_DIR, page, width=width, height=height)
 
 

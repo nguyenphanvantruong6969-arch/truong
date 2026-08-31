@@ -174,6 +174,14 @@
       }
     });
     el("dbStatusLine").textContent = t("db_connected");
+    /* Noi thang app dang ve cua so bang duong nao. Khong co dong nay thi
+       phai mo Task Manager moi biet — va khi khong biet thi khong ai sua. */
+    const oCheDo = el("cheDoHienThi");
+    if (oCheDo) {
+      const duPhong = window.__CHE_DO_HIEN_THI === "trinh_duyet";
+      oCheDo.textContent = t(duPhong ? "display_browser" : "display_native");
+      oCheDo.classList.toggle("is-fallback", duPhong);
+    }
   }
 
   /* ------------------------------------------------------------------ *

@@ -101,6 +101,12 @@ _SHIM_TEMPLATE = """
     }),
   };
 
+  /* Danh dau: trang nay dang chay qua CAU NOI TRINH DUYET, khong phai
+     cua so goc pywebview. Giao dien doc co nay de noi thang cho nguoi
+     dung biet dang chay bang duong nao — truoc day phai mo Task Manager
+     moi biet, va do la ly do van de nay lau moi lo ra. */
+  window.__CHE_DO_HIEN_THI = "trinh_duyet";
+
   /* Bao cho may chu biet cua so van dang mo.
 
      Ket noi EventSource nay la tin hieu CHINH. No la mot socket mo, ma
