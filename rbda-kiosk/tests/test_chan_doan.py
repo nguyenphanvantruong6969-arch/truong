@@ -64,6 +64,32 @@ def test_go_dau_tai_ve_chiu_duoc_thu_muc_khong_ton_tai():
 
 
 # ------------------------------------------------------------------ #
+# Thứ tự gọi: gỡ dấu PHẢI chạy trước khi nạp webview
+# ------------------------------------------------------------------ #
+def test_go_dau_tai_ve_duoc_goi_TRUOC_khi_nap_webview():
+    """Đảo thứ tự là mất tác dụng HOÀN TOÀN mà không test nào đỏ.
+
+    .NET quyết định nạp hay từ chối Python.Runtime.dll ngay lúc `import
+    webview`. Gỡ dấu sau đó thì dấu đã bị đọc rồi — quá muộn. Đây đúng
+    loại lỗi im lặng dự án này đã phải sửa mười lần: mã trông vẫn đúng,
+    chạy vẫn không lỗi, chỉ là không còn tác dụng gì.
+    """
+    src = io.open(os.path.join(GOC, "main.py"), encoding="utf-8").read()
+    vi_tri_go_dau = src.index("go_dau_tai_ve")
+    vi_tri_nap_webview = src.index("import webview")
+    assert vi_tri_go_dau < vi_tri_nap_webview, (
+        "go_dau_tai_ve() phải đứng TRƯỚC `import webview` trong main.py")
+
+
+def test_go_dau_tai_ve_chi_chay_o_ban_dong_goi():
+    """Chạy từ mã nguồn thì thư mục là kho mã của lập trình viên, không
+    phải gói tải về — không có gì để gỡ, và đụng vào là sai phạm vi."""
+    src = io.open(os.path.join(GOC, "main.py"), encoding="utf-8").read()
+    doan = src[src.index("go_dau_tai_ve") - 300:src.index("go_dau_tai_ve")]
+    assert 'getattr(sys, "frozen", False)' in doan
+
+
+# ------------------------------------------------------------------ #
 # Người dùng phải NHÌN THẤY app đang chạy bằng đường nào
 # ------------------------------------------------------------------ #
 def test_shim_danh_dau_che_do_trinh_duyet():

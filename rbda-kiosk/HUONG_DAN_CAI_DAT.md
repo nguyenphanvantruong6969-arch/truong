@@ -38,11 +38,14 @@ Xong. **Windows nhớ lựa chọn này** — những lần sau chạy thẳng, 
 
 ## Nếu app mở ra trong cửa sổ Edge thay vì cửa sổ riêng
 
-Nhìn **góc dưới bên trái** app: nếu dòng cuối ghi **“Chế độ dự phòng (trình duyệt)”**
-màu vàng, nghĩa là cửa sổ gốc không mở được và app đang mượn Edge để vẽ.
+**Lẽ ra chuyện này không còn xảy ra** — bản mới tự xử lý lúc khởi động (đã kiểm
+chứng trên máy thật: 173 tệp bị đánh dấu, gỡ xong cửa sổ gốc mở được ngay).
 
-Nguyên nhân nhiều khả năng nhất: Windows gắn dấu **“tải từ Internet”** vào mọi tệp
-giải nén từ tệp `.zip` tải về, và .NET Framework từ chối nạp thư viện mang dấu đó.
+Nhưng nếu vẫn gặp: nhìn **góc dưới bên trái** app. Dòng cuối ghi **“Chế độ dự phòng
+(trình duyệt)”** màu vàng nghĩa là cửa sổ gốc không mở được và app đang mượn Edge.
+
+Nguyên nhân: Windows gắn dấu **“tải từ Internet”** vào mọi tệp giải nén từ tệp
+`.zip` tải về, và .NET Framework từ chối nạp thư viện mang dấu đó.
 
 **Cách xử lý — 20 giây, không cần quyền gì:**
 

@@ -157,9 +157,17 @@ RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize
 from ...\_internal\pythonnet\runtime\Python.Runtime.dll
 ```
 
-(chữ "from" cho thấy tệp DLL **có mặt** — .NET tìm thấy nhưng từ chối nạp;
-nguyên nhân nằm ngoài tầm kiểm soát của mã nguồn). Trước đây lỗi này làm
-cả tiến trình chết kèm hộp thoại khó hiểu, app hoàn toàn không dùng được.
+Chữ "from" cho thấy tệp DLL **có mặt** — .NET tìm thấy nhưng từ chối nạp.
+
+**Nguyên nhân đã tìm ra (31/08):** Windows gắn dấu "tải từ Internet" (luồng NTFS
+`Zone.Identifier`) vào mọi tệp giải nén từ `.zip` tải về, và .NET Framework từ chối
+nạp assembly mang dấu đó. `chan_doan.go_dau_tai_ve()` gỡ dấu lúc khởi động, **trước**
+khi nạp `webview` — đo trên máy thật: 173 tệp mang dấu, gỡ xong pywebview mở được
+ngay. Xem `BAN_GIAO.md` mục 5.
+
+**Chế độ dự phòng dưới đây vì vậy KHÔNG còn là đường đang chạy** — nó là lưới an
+toàn cho máy thiếu WebView2 Runtime, và cho trường hợp lớp gỡ dấu không ăn. Góc dưới
+thanh bên của app nói rõ đang chạy đường nào.
 
 Giờ `main.py` thử theo thứ tự:
 

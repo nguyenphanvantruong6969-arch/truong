@@ -136,20 +136,37 @@ tới — kết quả tính được bằng tay.
 *Lỗi im lặng = phần mềm báo thành công trong khi dữ liệu đã sai.* Danh sách từng
 lỗi và cách phát hiện nằm trong lịch sử Git và `BAN_GIAO.md` mục 5.
 
-## 7. Chạy trên máy Windows thật (30/08/2026)
+## 7. Chạy trên máy Windows thật
 
-| Kiểm tra | Kết quả |
-|---|---|
-| Mở được bản `.exe` | Có |
-| Cửa sổ ứng dụng riêng (không thanh địa chỉ, không thanh tab) | Có |
-| Mục riêng trên thanh tác vụ | Có |
-| Còn sống sau 3–5 phút thu nhỏ | Có |
-| Nạp 4 tệp Excel | Thành công |
-| Số ứng viên mỗi CLB khớp với số đo trên máy phát triển | Khớp cả 10 |
+| Kiểm tra | Kết quả | Ngày |
+|---|---|---|
+| Mở được bản `.exe` | Có | 30/08 |
+| Cửa sổ ứng dụng riêng, không thanh địa chỉ | Có | 30/08 |
+| Mục riêng trên thanh tác vụ | Có | 30/08 |
+| Còn sống sau 3–5 phút thu nhỏ | Có | 30/08 |
+| Nạp 4 tệp Excel | Thành công | 30/08 |
+| Số ứng viên mỗi CLB khớp với số đo trên máy phát triển | Khớp cả 10 | 30/08 |
+| **Cửa sổ gốc (pywebview) mở được** | **Có** | **31/08** |
+| `PhanBoCauLacBo.exe` là tiến trình riêng trong Task Manager | Có | 31/08 |
 
-**Đường hiển thị đang dùng:** chế độ dự phòng bằng nhân Chromium (xác nhận qua
-Task Manager: tiến trình `msedge.exe`, cửa sổ mang tên *"Phân bổ Câu lạc bộ"*),
-**không phải** pywebview. Xem `BAN_GIAO.md` mục 5.
+**Đường hiển thị đang dùng: cửa sổ gốc (pywebview).** Nội dung được vẽ bằng
+**WebView2 Runtime** — thành phần có sẵn của Windows 10/11 — **bên trong** cửa sổ
+của chính phần mềm. Không có trình duyệt nào chạy.
+
+Nguồn: `loi_khoi_dong.txt` trên máy học sinh, 31/08/2026:
+
+```
+[2026-08-31 15:34:42] go dau tai-ve trong ...\_internal:
+                      {'da_go': 173, 'bo_qua': 0, 'loi': 0}
+[2026-08-31 15:34:42] cua so goc (pywebview) mo THANH CONG
+```
+
+`da_go: 173` là số tệp mang dấu "tải từ Internet" mà phần mềm tự gỡ lúc khởi động.
+`bo_qua: 0` nghĩa là **không tệp nào sạch sẵn** — tức việc gỡ dấu do **mã tự làm**,
+không phải người dùng thao tác tay. Xem `BAN_GIAO.md` mục 5.
+
+Chế độ dự phòng bằng trình duyệt vẫn còn trong mã làm lưới an toàn, nhưng **không
+còn là đường đang chạy**.
 
 ---
 

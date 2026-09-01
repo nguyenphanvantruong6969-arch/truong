@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 30/08/2026 · 283 test pass
+> Cập nhật lần cuối: 31/08/2026 · 285 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **283 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **285 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 19 file test, 283 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 19 file test, 285 test case (có 1 file chạy giao diện thật bằng Playwright)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
@@ -135,7 +135,7 @@ Học sinh tự thiết kế, nộp dạng SVG. Nguồn gốc duy nhất là `lo
 
 Gắn ở hai chỗ vì có hai đường hiển thị: `icon="logo.ico"` trong `kiosk.spec` cho
 tệp `.exe`, và `<link rel="icon">` trong `index.html`/`recovery.html` cho cửa sổ
-trình duyệt dự phòng — chính đường này đang chạy, nên quả địa cầu học sinh nhìn
+trình duyệt dự phòng — lúc đó chính đường này đang chạy, nên quả địa cầu học sinh nhìn
 thấy là biểu tượng mặc định của trang web, không phải của `.exe`.
 
 `tests/test_bieu_tuong.py` (8 test) canh cả hai, kèm một test soát mọi tệp khai
@@ -310,34 +310,78 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ## 5. Vấn đề chưa giải quyết
 
-**Bản `.exe` Windows lỗi khi khởi động:**
+### ✅ ĐÃ ĐÓNG (31/08) — lỗi `.exe` Windows, lỗi cũ nhất của dự án
+
+Mở từ 27/08, đóng ngày 31/08. **Nguyên nhân gốc không nằm trong mã nguồn.**
+
 ```
 RuntimeError: Failed to resolve Python.Runtime.Loader.Initialize
 from ...\_internal\pythonnet\runtime\Python.Runtime.dll
 ```
 
-- **Đã loại trừ:** UPX (chưa bao giờ được dùng — máy build GitHub không cài UPX);
-  thiếu file pythonnet (hook chính thức của pythonnet đã chạy sẵn ở bản lỗi).
-- **Bằng chứng quan trọng:** thông báo ghi *"from &lt;đường dẫn&gt;"* → file DLL **có mặt**,
-  .NET tìm thấy nhưng từ chối nạp. Nên hướng "gom thêm file" là **sai hướng**.
-- **Đã xử lý:** chế độ dự phòng giờ mở **cửa sổ ứng dụng riêng** (`--app=`),
-  nên kể cả khi pywebview vẫn hỏng, người dùng vẫn thấy một ứng dụng riêng
-  chứ không phải tab trình duyệt. Đã kiểm chứng chạy thật (xem mục 4.6).
-- **Đã đọc log build run `33124799256`** (commit `b39e426`): build THÀNH CÔNG,
-  không lỗi. Phiên bản thực tế được cài: `pythonnet 3.1.0`, `clr_loader 0.3.1`,
-  `pywebview 6.2.1`, PyInstaller 6.22.2, Python 3.11.9. Hook chính thức
-  `pythonnet/_pyinstaller/hook-clr.py` VÀ `hook-clr_loader.py` đều đã chạy.
-  Nghĩa là lỗi hoàn toàn nằm ở lúc CHẠY, không phải lúc đóng gói.
-- **Đã truy được chỗ ném lỗi:** `clr_loader/netfx.py` dòng 46-49 — `netfx`
-  nghĩa là .NET **Framework** (không phải .NET Core). Trên Windows,
-  `pythonnet/__init__.py` mặc định chọn `netfx`. Lỗi xảy ra khi
-  `pyclr_get_function` trả NULL, tức .NET Framework nạp được DLL nhưng không
-  resolve được hàm `Python.Runtime.Loader.Initialize` trong đó.
-- **CHƯA KIỂM CHỨNG ĐƯỢC:** vì sao .NET Framework từ chối. Sandbox là Linux,
-  không có .NET Framework để thử. Mọi giả thuyết về nguyên nhân gốc lúc này
-  đều là PHỎNG ĐOÁN — đúng thứ đã sai 2 lần trước.
-- **Phương án chưa thử:** khoá phiên bản cụ thể của `pythonnet`/`clr_loader`;
-  hoặc đặt `PYTHONNET_RUNTIME=coreclr` (nhưng đòi máy cài sẵn .NET Core).
+**Nguyên nhân thật:** Windows gắn dấu "tải từ Internet" (luồng NTFS
+`Zone.Identifier`) vào **mọi tệp** giải nén từ `.zip` tải về, và .NET Framework
+**từ chối nạp assembly mang dấu đó**. Vì thế thông báo lỗi nêu rõ đường dẫn — tệp
+CÓ ở đó, .NET tìm thấy, chỉ là không chịu nạp.
+
+**Bằng chứng từ máy học sinh** (`loi_khoi_dong.txt`):
+
+```
+[2026-08-31 15:34:42] go dau tai-ve trong ...\_internal:
+                      {'da_go': 173, 'bo_qua': 0, 'loi': 0}
+[2026-08-31 15:34:42] cua so goc (pywebview) mo THANH CONG
+```
+
+Đọc kỹ ba con số đó:
+- `da_go: 173` — 173 tệp mang dấu, mã tự gỡ hết
+- **`bo_qua: 0`** — không một tệp nào sạch sẵn, tức học sinh **KHÔNG** unblock tay;
+  chính mã làm. Nghĩa là nó tự chạy trên **máy bất kỳ**, kể cả máy giám khảo.
+- Cùng một giây, pywebview mở thành công
+
+Task Manager xác nhận: `PhanBoCauLacBo.exe` là tiến trình riêng; nhóm
+`msedgewebview2.exe` (WebView2 Runtime) vẽ nội dung **bên trong** cửa sổ của nó.
+
+**Cách chữa — hai lớp, xem `chan_doan.py`:**
+1. `go_dau_tai_ve()` xoá luồng `Zone.Identifier` khỏi mọi `.dll/.exe/.pyd` trong
+   gói, chạy **TRƯỚC** `import webview`. Không cần quyền Administrator.
+   **Đảo thứ tự là mất tác dụng hoàn toàn** — có test canh (`test_chan_doan.py`).
+2. `PhanBoCauLacBo.exe.config` với `loadFromRemoteSources enabled="true"` — bảo
+   .NET bỏ qua dấu ngay từ đầu. Phải nằm **cạnh** `.exe`, không phải trong
+   `_internal/`.
+
+### Vì sao ba phiên trước không tìm ra — phần đáng viết vào báo cáo
+
+Lỗi thật không phải pywebview hỏng, mà là **hỏng mà không ai biết vì sao**:
+`main.py` ghi vết lỗi ra `sys.stderr`, còn bản `console=False` **không có stderr**.
+Bằng chứng bị vứt đi đúng lúc nó xảy ra. Ba phiên phải ĐOÁN, và đoán sai hai lần:
+
+- **Lần 1 — đổ cho UPX.** Sai: máy build GitHub chưa bao giờ cài UPX.
+- **Lần 2 — đổ cho thiếu tệp pythonnet.** Sai: hook chính thức đã chạy sẵn ở bản
+  lỗi; log build run `33124799256` cho thấy build THÀNH CÔNG, `pythonnet 3.1.0`,
+  `clr_loader 0.3.1`, `pywebview 6.2.1` đều có mặt.
+- **Truy được chỗ ném lỗi:** `clr_loader/netfx.py` dòng 46–49, khi
+  `pyclr_get_function` trả NULL. Đúng chỗ, nhưng vẫn không biết TẠI SAO.
+
+Chỉ khi **ghi vết lỗi ra tệp** thay vì stderr thì mới kiểm chứng được giả thuyết
+thay vì đoán tiếp. Bài học đáng viết: *thứ hỏng trước tiên không phải tính năng, mà
+là khả năng biết được tính năng đã hỏng thế nào.*
+
+### Câu chữ ĐÚNG cho báo cáo — dùng nguyên văn
+
+> **Được viết:** phần mềm chạy trong cửa sổ ứng dụng của riêng nó; nội dung được vẽ
+> bằng WebView2 Runtime — một thành phần có sẵn của Windows 10/11.
+>
+> **Được viết:** lỗi đóng gói đã tìm ra nguyên nhân gốc và đã chữa.
+>
+> **KHÔNG được viết:** *"không dùng gì của Microsoft"* — WebView2 là của Microsoft.
+> Nói đúng là **dùng thành phần hệ điều hành**, không phải **chạy trong trình duyệt**.
+
+### Còn lại chưa giải quyết
+
+- **`ky_va_tin_cay.ps1` chưa chạy ở đâu bao giờ.** Nếu demo trên máy không có quyền
+  Administrator thì nó vô dụng — cân nhắc bỏ hẳn cho gọn.
+- **Trần cứng 10 nguyện vọng** (`api.py:1281`). Thử tải cho thấy với 50–100 CLB thì
+  đây là giới hạn thật. Đã ghi số, không sửa vì đang đóng băng tính năng.
 
 **Việc tiện lợi CÒN LẠI đã khảo sát nhưng chưa làm** (xem lại nếu học sinh hỏi):
 - ~~Club phải tạo tay từng cái~~ — ĐÃ XONG: `import_clubs_csv` +
@@ -417,22 +461,28 @@ Học sinh báo **không gặp lỗi nào**. 11 cảnh báo trên màn hình là
 nhãn `chinh_sac` — chính là lỗi cố ý trong `TEST_04`, bị bắt lần thứ hai bởi một
 cơ chế khác với lúc nhập tệp.
 
-**ĐÃ LÀM RÕ (30/08, ảnh Task Manager):** đang chạy bằng **chế độ dự phòng nhân
-Chromium**, KHÔNG phải pywebview. Bằng chứng: nhóm tiến trình *Microsoft Edge (8)*
-với một tab tên *"Phân bổ Câu lạc bộ"*, mọi tiến trình con là `msedge.exe`.
+**Diễn biến hai ngày, ghi lại đầy đủ vì đây là phần đáng viết vào báo cáo:**
 
-Nghĩa là **lỗi pythonnet VẪN CÒN, chỉ bị đi vòng**. Đường dự phòng đang gánh toàn
-bộ và gánh tốt: cửa sổ riêng, thanh tác vụ riêng, sống qua 3–5 phút thu nhỏ.
+- **30/08** — ảnh Task Manager cho thấy nhóm *Microsoft Edge (8)*, mọi tiến trình
+  con là `msedge.exe`. Kết luận lúc đó: đang chạy bằng **chế độ dự phòng**, lỗi
+  pythonnet vẫn còn.
+- **31/08** — sau khi thêm phần ghi log và tự gỡ dấu tệp: nhóm đổi thành
+  *WebView2 Manager*, tiến trình `msedgewebview2.exe`, và Task Manager có
+  `PhanBoCauLacBo.exe` **là tiến trình riêng**. Log ghi `da_go: 173, bo_qua: 0` rồi
+  *"cua so goc (pywebview) mo THANH CONG"*.
 
-Hệ quả phải nhớ:
-- Máy demo **bắt buộc có Edge hoặc Chrome**. Mọi máy Windows 10/11 đều có Edge sẵn,
-  nên trên thực tế không phải rủi ro — nhưng đừng viết trong báo cáo là "không phụ
-  thuộc trình duyệt".
-- Trong báo cáo phải mô tả **đúng** kiến trúc: có hai đường hiển thị, đường chính
-  (pywebview) hiện lỗi trên bản đóng gói, đường dự phòng đang chạy. **KHÔNG được
-  viết "đã sửa lỗi đóng gói".**
-- Nguyên nhân gốc của lỗi pythonnet vẫn CHƯA biết (xem đầu mục 5). Đang đóng băng
-  tính năng nên KHÔNG đào tiếp trước 05/09.
+**Lỗi đã đóng.** Xem mục 5 để biết nguyên nhân gốc và bằng chứng đầy đủ.
+
+Phân biệt hai tên tiến trình — chỗ này dễ nhầm và quan trọng cho báo cáo:
+
+| Tiến trình | Là gì | Nghĩa là |
+|---|---|---|
+| `msedge.exe` | **Trình duyệt Edge** | App đang mượn trình duyệt để vẽ (đường dự phòng) |
+| `msedgewebview2.exe` | **WebView2 Runtime** — thành phần hệ điều hành | App vẽ trong cửa sổ của chính nó (đường chính) |
+
+Đường dự phòng **vẫn giữ nguyên trong mã**, làm lưới an toàn cho máy thiếu WebView2
+Runtime. Địa vị của nó đổi từ *"đường đang chạy"* thành *"đường lẽ ra không bao giờ
+chạy"* — góc dưới thanh bên nói rõ đang chạy đường nào.
 
 **Điều kiện dùng thật, học sinh xác nhận 30/08:** dùng **chuột**, không phải màn
 hình cảm ứng → mọi lo ngại về kích thước nút cho ngón tay là **không còn liên quan**.
