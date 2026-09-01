@@ -476,6 +476,35 @@ Chính bộ này lộ ra lỗi thứ mười: `_soat_ma_trung_hoa_thuong` chỉ 
 file với mã **đã có trong CSDL**, nên hai cách viết `HS201`/`hs201` nằm trong **cùng
 một file** (cả hai đều mới) thì lọt hoàn toàn. Đã sửa và có test riêng.
 
+### ✅ TRỌN LUỒNG NẠP → CHẠY → XUẤT ĐÃ CHẠY TRÊN WINDOWS (01/09)
+
+Bước cuối cùng của dự án chưa ai kiểm chứng — *"mở tệp xuất ra trên máy thật"* —
+nay đã đóng. Học sinh chạy bộ `bo_sach/` trên máy Windows rồi gửi lại tệp kết
+quả; đối chiếu với lần chạy trên Linux ở đây.
+
+| Đối chiếu | Kết quả |
+|---|---|
+| Số dòng | 140 — khớp |
+| **Số dòng KHÁC nhau giữa hai máy** | **0** |
+| Phân bố nguyện vọng | 54 · 46 · 21 · 11 · 7 · 1 — khớp |
+| Diện thường / dự trữ | 124 / 16 — khớp |
+| Sức chứa 12 CLB | khớp từng CLB |
+| Dấu BOM `utf-8-sig` | có |
+| Xuống dòng | CRLF (chuẩn Windows) |
+| Tiếng Việt | không dòng nào vỡ dấu; chuẩn hoá **NFC** |
+
+**Điều đáng viết vào báo cáo:** cùng một bộ dữ liệu và cùng `seed = 42` thì
+Windows và Linux cho ra **kết quả phân bổ giống hệt nhau tới từng dòng**. Thuật
+toán tất định, không phụ thuộc hệ điều hành — nghĩa là kết quả **tái lập được**,
+ai cầm dữ liệu cũng dựng lại được đúng bảng đó để kiểm chứng.
+
+*Lưu ý khi đọc bảng kết quả:* dữ liệu mô phỏng có vài em **trùng họ tên**
+(vd `HS009` và `HS021` cùng tên "Phan Đức Phúc"). Đây là ngẫu nhiên khi sinh tên,
+không phải lỗi — hệ thống định danh bằng **mã học sinh**, không bằng tên.
+
+Tệp kết quả **không đưa vào git**: đó là dữ liệu học sinh, dù ở đây là dữ liệu
+mô phỏng thì vẫn giữ đúng quy tắc (mục 4).
+
 ### ✅ ĐÃ CHẠY ĐƯỢC TRÊN MÁY WINDOWS THẬT (30/08) — học sinh xác nhận
 
 Ba câu hỏi chặn cả tuần đã có câu trả lời, học sinh tự quan sát và báo lại:
