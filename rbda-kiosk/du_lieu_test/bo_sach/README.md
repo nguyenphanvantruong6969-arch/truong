@@ -16,6 +16,27 @@ phần mềm kêu đúng như thiết kế, nhưng người chạy thử lại t
 **Thư mục này không chứa file lỗi nào.** Thả cả thư mục vào ô kéo-thả cũng
 không sinh ra một cảnh báo nào. Đó là toàn bộ lý do nó tồn tại.
 
+## Trước hết: phải nạp vào CSDL TRỐNG
+
+**Nạp bộ này lên trên dữ liệu cũ thì vẫn còn cảnh báo** — và cảnh báo đó là của
+dữ liệu cũ, không phải của bộ này. Phần mềm *cộng thêm* học sinh chứ không xoá
+những em đã có; nạp `TEST_04` hôm trước thì `HS204` mang nhãn sai `chinh_sac`
+vẫn nằm nguyên trong CSDL.
+
+Đã đo: nạp cả bộ `TEST_01..04` rồi chồng bộ sạch lên → CSDL có **148** em,
+còn **1 cảnh báo nghiêm trọng**, và chạy phân bổ ra **143/148** chứ không phải
+140/140.
+
+**Cách dọn — 4 bước, không mất gì:**
+
+1. Đóng phần mềm
+2. Tìm tệp `app.db` nằm cạnh `PhanBoCauLacBo.exe`
+3. **Đổi tên** nó thành `app_cu.db` *(đổi tên, đừng xoá — đó là dữ liệu của bạn)*
+4. Mở lại phần mềm — nó tự tạo `app.db` mới, trống
+
+Muốn lấy lại dữ liệu cũ: đóng app, xoá `app.db` mới, đổi `app_cu.db` về lại
+thành `app.db`.
+
 ## Ba file — thả cả ba cùng lúc cũng được
 
 | File | Nội dung |
@@ -51,7 +72,7 @@ phạm quy tắc nào:
 
 | | |
 |---|---|
-| Cảnh báo lúc nạp | **0** |
+| Cảnh báo lúc nạp | **0** — với điều kiện nạp vào CSDL trống |
 | Cảnh báo dữ liệu | **0** |
 | Được xếp | **140 / 140** — không em nào vào `_chua_duoc_xep.csv` |
 | Số vòng chạy | 11 |

@@ -26,6 +26,9 @@ Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file
 >
 > `TEST_04` dưới đây **cố ý sai**. Thả nó cùng lúc với ba file kia là phần mềm
 > kêu — đúng như thiết kế, không phải phần mềm hỏng.
+>
+> Và nhớ **đổi tên `app.db` cũ đi trước khi nạp bộ sạch**: phần mềm cộng thêm
+> học sinh chứ không xoá em cũ, nên `HS204` của `TEST_04` sẽ còn kêu mãi.
 
 ## Hai đường thử khác nhau
 
