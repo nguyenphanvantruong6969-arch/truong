@@ -135,8 +135,9 @@ Học sinh tự thiết kế, nộp dạng SVG. Nguồn gốc duy nhất là `lo
 
 Gắn ở hai chỗ vì có hai đường hiển thị: `icon="logo.ico"` trong `kiosk.spec` cho
 tệp `.exe`, và `<link rel="icon">` trong `index.html`/`recovery.html` cho cửa sổ
-trình duyệt dự phòng — lúc đó chính đường này đang chạy, nên quả địa cầu học sinh nhìn
-thấy là biểu tượng mặc định của trang web, không phải của `.exe`.
+trình duyệt dự phòng. Ảnh chụp ngày 30/08 là lúc đường dự phòng đang chạy, nên quả
+địa cầu học sinh nhìn thấy khi đó là biểu tượng mặc định của trang web, không phải
+của `.exe`. Từ 31/08 đường chính chạy được, biểu tượng lấy từ `logo.ico`.
 
 `tests/test_bieu_tuong.py` (8 test) canh cả hai, kèm một test soát mọi tệp khai
 báo trong `datas` của `kiosk.spec` đều tồn tại thật.
