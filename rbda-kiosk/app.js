@@ -82,6 +82,12 @@
   // đọc LẠI mỗi lần reset (qua data-i18n hoặc dataset.originalLabel) thay
   // vì chụp 1 lần lúc gắn sự kiện — để đổi ngôn ngữ giữa chừng không làm
   // nút "hồi" lại nhãn cũ khi bấm lần kế tiếp.
+  /* Danh sach ham "nha" cua MOI nut xac nhan 2 buoc dang song. Trang thai
+     armed nam trong closure nen ben ngoai khong voi toi duoc — doi ngon
+     ngu giua chung thi nut dang cho xac nhan ket lai o tieng cu. Dang ky
+     ham nha vao day de nhaMoiNutXacNhan() goi duoc. */
+  const nutXacNhanDangSong = [];
+
   function armTwoStepConfirm(button, getConfirmLabel, onConfirmed, windowMs) {
     let armed = false;
     let timer = null;
@@ -92,24 +98,41 @@
       return button.dataset.originalLabel || button.textContent;
     }
 
+    /* Nha nhan VA nha trang thai. Nha moi nhan ma quen armed la bien nut
+       hai buoc thanh nut MOT buoc — bam mot phat la xoa that. */
+    function nha() {
+      clearTimeout(timer);
+      armed = false;
+      button.textContent = currentOriginalLabel();
+      button.classList.remove("is-confirming");
+    }
+
+    nutXacNhanDangSong.push({ button, nha });
+
     button.addEventListener("click", () => {
       if (!armed) {
         armed = true;
         button.textContent = typeof getConfirmLabel === "function" ? getConfirmLabel() : getConfirmLabel;
         button.classList.add("is-confirming");
-        timer = setTimeout(() => {
-          armed = false;
-          button.textContent = currentOriginalLabel();
-          button.classList.remove("is-confirming");
-        }, windowMs || 4000);
+        timer = setTimeout(nha, windowMs || 4000);
       } else {
-        clearTimeout(timer);
-        armed = false;
-        button.textContent = currentOriginalLabel();
-        button.classList.remove("is-confirming");
+        nha();
         onConfirmed();
       }
     });
+  }
+
+  function nhaMoiNutXacNhan() {
+    /* Nut trong bang duoc tao lai moi lan ve — cai cu roi khoi DOM nhung
+       van con trong mang. Bo chung di, dung goi nha() tren xac cu. */
+    for (let i = nutXacNhanDangSong.length - 1; i >= 0; i--) {
+      const muc = nutXacNhanDangSong[i];
+      if (!muc.button.isConnected) {
+        nutXacNhanDangSong.splice(i, 1);
+        continue;
+      }
+      muc.nha();
+    }
   }
 
   function debounce(fn, ms) {
@@ -557,16 +580,17 @@
         reader.onload = () => {
           callApi("xlsx_to_csv_text", bufferSangBase64(reader.result), "").then(
             (res) => {
-              if (!res.ok) resolve({ loi: trErrs(res.errors).join("; ") });
+              if (!res.ok) resolve({ loiRaw: res.errors });
               else resolve({ text: res.data.csv_text });
             }
           );
         };
-        reader.onerror = () => resolve({ loi: String(reader.error || "") });
+        // Loi cua chinh trinh duyet: khong co khoa i18n nao, giu nguyen chuoi.
+        reader.onerror = () => resolve({ loiText: String(reader.error || "") });
         reader.readAsArrayBuffer(file);
       } else {
         reader.onload = () => resolve({ text: String(reader.result || "") });
-        reader.onerror = () => resolve({ loi: String(reader.error || "") });
+        reader.onerror = () => resolve({ loiText: String(reader.error || "") });
         /* UTF-8 doc duoc ca file co BOM cua Excel — backend cat BOM. */
         reader.readAsText(file, "UTF-8");
       }
@@ -578,10 +602,10 @@
     if (!files.length) return;
     files.forEach((file) => {
       docFileThanhCsv(file).then((doc) => {
-        if (doc.loi) {
+        if (doc.loiRaw || doc.loiText) {
           importQueue.push({
             ten: file.name, text: "", kind: "", confident: false,
-            candidates: [], loi: doc.loi,
+            candidates: [], loiRaw: doc.loiRaw, loiText: doc.loiText,
           });
           veHangDoi();
           return;
@@ -590,7 +614,7 @@
           if (!res.ok) {
             importQueue.push({
               ten: file.name, text: doc.text, kind: "", confident: false,
-              candidates: [], loi: trErrs(res.errors).join("; "),
+              candidates: [], loiRaw: res.errors,
             });
           } else {
             const d = res.data;
@@ -613,6 +637,23 @@
     }[kind] || t("csv_kind_unknown_label");
   }
 
+  /* Canh bao cua lan nhap gan nhat — giu DANG GOC (mang doi tuong loi),
+     dich lai moi lan ve. Truoc day chung duoc dich mot lan roi nhet thang
+     vao DOM, nen doi ngon ngu xong ca o canh bao ket lai o tieng cu. */
+  let canhBaoNhapGanNhat = [];
+
+  function veCanhBaoNhap() {
+    const box = el("importWarnings");
+    if (!box) return;
+    clear(box);
+    box.hidden = canhBaoNhapGanNhat.length === 0;
+    canhBaoNhapGanNhat.forEach((w) => {
+      const div = document.createElement("div");
+      div.textContent = "• " + trErr(w);
+      box.appendChild(div);
+    });
+  }
+
   function veHangDoi() {
     const box = el("importQueue");
     const actions = el("importActions");
@@ -625,7 +666,7 @@
       const row = document.createElement("div");
       row.className = "queue-row";
       if (muc.xong) row.classList.add("is-done");
-      else if (muc.loi || muc.kind === "unknown") row.classList.add("is-unknown");
+      else if (muc.loiRaw || muc.loiText || muc.kind === "unknown") row.classList.add("is-unknown");
       else if (!muc.confident) row.classList.add("is-ambiguous");
 
       const trai = document.createElement("div");
@@ -634,8 +675,11 @@
       ten.textContent = muc.ten;
       const chiTiet = document.createElement("div");
       chiTiet.className = "queue-detail";
-      if (muc.xong) chiTiet.textContent = muc.ketQua;
-      else if (muc.loi) chiTiet.textContent = muc.loi;
+      // Dich LUC VE, khong cat cau da dich. Cat cau da dich thi ve lai bao
+      // nhieu lan cung ra nguyen tieng cu sau khi doi ngon ngu.
+      if (muc.xong) chiTiet.textContent = t(muc.ketQuaKhoa, muc.ketQuaSo);
+      else if (muc.loiRaw) chiTiet.textContent = trErrs(muc.loiRaw).join("; ");
+      else if (muc.loiText) chiTiet.textContent = muc.loiText;
       else if (muc.kind === "unknown") chiTiet.textContent = t("queue_unknown");
       else if (!muc.confident) chiTiet.textContent = t("queue_ambiguous");
       else chiTiet.textContent = t("queue_detected", { kind: tenLoai(muc.kind) });
@@ -671,7 +715,7 @@
 
   function nhapTatCa() {
     const canNhap = importQueue.filter(
-      (m) => !m.xong && !m.loi && m.kind && m.kind !== "unknown"
+      (m) => !m.xong && !m.loiRaw && !m.loiText && m.kind && m.kind !== "unknown"
     );
     if (!canNhap.length) {
       feedback(el("feedbackImportAll"), t("feedback_no_file_selected"), true);
@@ -682,9 +726,9 @@
 
     const btn = el("btnImportAll");
     btn.disabled = true;
-    clear(el("importWarnings"));
-    el("importWarnings").hidden = true;
-    const canhBao = [];
+    canhBaoNhapGanNhat = [];
+    veCanhBaoNhap();
+    const canhBao = canhBaoNhapGanNhat;
 
     /* Nhap TUAN TU, khong song song: file CLB phai ghi xong truoc khi
        file hoc sinh doc bang clubs de kiem tra club_id. */
@@ -694,24 +738,28 @@
           chuoi.then(() =>
             callApi("import_csv_auto", muc.text, muc.kind).then((res) => {
               if (!res.ok) {
-                muc.loi = trErrs(res.errors).join("; ");
+                muc.loiRaw = Array.isArray(res.errors) ? res.errors : [res.errors];
                 return;
               }
               const d = res.data;
               muc.xong = true;
-              muc.ketQua =
-                d.kind === "clubs"
-                  ? t("queue_result_clubs", {
-                      n_created: d.n_clubs_created, n_updated: d.n_clubs_updated,
-                      n_skipped: d.n_rows_skipped,
-                    })
-                  : t("queue_result_students", {
-                      n_written:
-                        d.n_students_with_preferences_written ??
-                        d.n_students_with_selection_written ?? 0,
-                      n_created: d.n_students_created,
-                      n_skipped: d.n_students_skipped,
-                    });
+              // Cat KHOA + SO, khong cat cau da dich — xem veHangDoi().
+              if (d.kind === "clubs") {
+                muc.ketQuaKhoa = "queue_result_clubs";
+                muc.ketQuaSo = {
+                  n_created: d.n_clubs_created, n_updated: d.n_clubs_updated,
+                  n_skipped: d.n_rows_skipped,
+                };
+              } else {
+                muc.ketQuaKhoa = "queue_result_students";
+                muc.ketQuaSo = {
+                  n_written:
+                    d.n_students_with_preferences_written ??
+                    d.n_students_with_selection_written ?? 0,
+                  n_created: d.n_students_created,
+                  n_skipped: d.n_students_skipped,
+                };
+              }
               (d.warnings || []).forEach((w) => canhBao.push(w));
             })
           ),
@@ -724,15 +772,7 @@
         feedback(el("feedbackImportAll"), t("feedback_import_done", { n: soXong }), false);
         showToast(t("feedback_import_done", { n: soXong }), "success");
 
-        const warnBox = el("importWarnings");
-        if (canhBao.length) {
-          warnBox.hidden = false;
-          canhBao.forEach((w) => {
-            const div = document.createElement("div");
-            div.textContent = "• " + trErr(w);
-            warnBox.appendChild(div);
-          });
-        }
+        veCanhBaoNhap();
         refreshDashboardStats();
         loadHealthReport(); // du lieu vua doi -> canh bao co the da khac
       });
@@ -1371,6 +1411,19 @@
       confirmBar.remove();
       forceRedrawArmed = false;
     }
+
+    /* Nut dang cho xac nhan ket lai o tieng cu: applyStaticText() co y bo
+       qua phan tu .is-confirming de nhan hien thi khong lech khoi trang
+       thai ben trong. Ly do dung, nhung cach xu ly la NHA nut ra — giong
+       het cach runConfirmBar bi go o tren. */
+    nhaMoiNutXacNhan();
+
+    /* Hang cho nap tep khong thuoc tab nao nen vong lap theo tab ben duoi
+       khong cham toi. Day chinh la cho nguoi dung cham vao dau tien. */
+    veHangDoi();
+    veCanhBaoNhap();
+    const oTomTat = el("feedbackImportAll");
+    if (oTomTat) oTomTat.textContent = "";
 
     refreshSidebarStatus();
     if (lastRenderedSteps) renderSteps(lastRenderedSteps);

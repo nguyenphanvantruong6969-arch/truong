@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 31/08/2026 · 285 test pass
+> Cập nhật lần cuối: 01/09/2026 · 335 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **285 test, tất cả pass** (`./.venv/bin/python -m pytest -q`) |
+| Test | **335 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,13 +58,22 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 19 file test, 285 test case (có 1 file chạy giao diện thật bằng Playwright)
+- `tests/` — 24 file test, 335 test case (3 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
-- `du_lieu_test/` — 4 file Excel **dữ liệu mô phỏng** ở quy mô thật (120 học sinh,
-  10 CLB) + 1 file cố ý sai 5 chỗ, kèm `tao_du_lieu_test.py` (seed = 2026) và
-  `README.md` ghi rõ kết quả đúng phải ra thế nào, kèm `NHAP_TAY.md` — kịch bản
-  gõ tay 8 học sinh / 3 CLB cho các màn hình mà đường nạp tệp không chạm tới
+- `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
+  - `TEST_01..04` (120 em, 10 CLB) + 1 tệp **cố ý sai 6 chỗ** — kiểm tra phần mềm
+    có cảnh báo không. Sinh bằng `tao_du_lieu_test.py`, seed 2026
+  - `bo_sach/` (140 em, 12 CLB) — chạy thử quy mô gần thật, **0 cảnh báo**,
+    xếp 140/140. Seed 9090
+  - `vi_du_huong_dan/` (10 em, 4 CLB) — bộ dạy học đi kèm `HUONG_DAN_SU_DUNG.md`,
+    số liệu **viết tay** để in trọn vào hướng dẫn. Xem README của nó
+  - `NHAP_TAY.md` — kịch bản gõ tay 8 em / 3 CLB cho các màn hình mà đường nạp
+    tệp không chạm tới
+- `HUONG_DAN_SU_DUNG.md` — hướng dẫn vận hành 13 mục, viết cho người **chưa từng
+  mở phần mềm**. Có bản trang web để gửi cho giám khảo (xem nhật ký AI).
+  Mọi con số trong đó lấy từ số đo thật của `vi_du_huong_dan/`, và
+  `tests/test_vi_du_huong_dan.py` khoá lại — bộ mẫu lệch là hướng dẫn nói dối
 
 ---
 
@@ -310,6 +319,34 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 ---
 
 ## 5. Vấn đề chưa giải quyết
+
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi đổi ngôn ngữ ở ô nạp tệp
+
+Học sinh báo "chuyển tiếng Việt/tiếng Anh bị lỗi". Dò bằng Chromium thật, quét cả
+5 tab và đối chiếu 145 cặp chuỗi vi/en: **đổi tab bình thường không sót chuỗi
+nào**. Lỗi chỉ hiện ở những trạng thái **đang dang dở**, và đúng ở khu vực người
+dùng chạm vào đầu tiên.
+
+| # | Tái hiện | Hiện tượng |
+|---|---|---|
+| 16 | Thả tệp → đổi ngôn ngữ | Hàng chờ vẫn ghi *"Nhận diện: Danh sách CLB"* |
+| 17 | Nhập xong → đổi ngôn ngữ | Tóm tắt vẫn ghi *"Xong: 5 CLB mới…"* |
+| 18 | Nút xoá đang chờ xác nhận → đổi ngôn ngữ | Nút vẫn ghi *"Bấm lần nữa để xoá…"* |
+
+**Nguyên nhân chung, và đây là phần đáng viết vào báo cáo:** mã **dịch một lần
+rồi cất câu đã dịch**. Vẽ lại bao nhiêu lần cũng ra nguyên tiếng cũ. Chữa bằng
+cách cất **khoá + tham số**, gọi `t()` lúc vẽ — đúng khuôn mẫu `lastRenderedSteps`
+đã dùng cho stepper từ trước, không nghĩ cách mới.
+
+Lỗi 18 vốn **do thiết kế**: `applyStaticText()` cố ý bỏ qua phần tử
+`.is-confirming` để nhãn không lệch khỏi trạng thái bên trong. Lý do đúng, cách
+xử lý sai — nay **nhả hẳn nút** ra khi đổi ngôn ngữ.
+
+`tests/test_giao_dien_doi_ngon_ngu.py` (4 test, Chromium thật). **Đã chạy thử với
+bản chưa vá: 3 test đỏ.** Bản test đầu tiên của tôi xanh giả vì hạn chờ 8 giây
+rộng hơn bộ đếm tự nhả 4 giây của chính nút — siết xuống 1,5 giây mới bắt được.
+Test thứ tư là lưới an toàn cho tương lai, xanh cả hai bên là đúng.
+
 
 ### ✅ ĐÃ ĐÓNG (01/09) — hai lỗi lộ ra khi học sinh chạy thử bộ sạch
 
