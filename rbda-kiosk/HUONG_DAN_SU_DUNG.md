@@ -218,6 +218,10 @@ Với bộ ví dụ, chỗ này phải ghi **0 cảnh báo**. Nếu có, tra [m�
 
 Tab **05 · Chấm điểm (mù)**. Chọn CLB, nhập điểm cho từng em, bấm lưu.
 
+> Ô điểm nhận **cả hai cách viết**: `8,5` (kiểu Việt) và `8.5` đều lưu thành
+> cùng một giá trị. Lưu xong màn hình hiện lại `8.5` — đó là cùng con số, không
+> phải máy sửa gì.
+
 Bộ ví dụ đã có sẵn điểm trong tệp 2, nên bước này bỏ qua.
 
 ### Bước 4 — Chạy phân bổ

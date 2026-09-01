@@ -1363,8 +1363,16 @@
         const tr = document.createElement("tr");
         const tdInput = document.createElement("td");
         const input = document.createElement("input");
-        input.type = "number";
-        input.step = "0.1";
+        /* KHONG dung type="number". Trinh duyet NUOT mat dau phay va con
+           bao la hop le: go "8,5" thi .value tra ve "85" va
+           validity.valid === true. Diem bi nhan len 10 lan, im lang. Da
+           do trong Chromium that, ca locale en-US lan vi-VN.
+
+           Ma "8,5" la cach viet thap phan BINH THUONG cua tieng Viet —
+           khong phai go nham, ma go dung thoi quen rồi máy hiểu sai.
+           Backend doc bang _doc_diem() nen nhan ca dau phay lan dau cham. */
+        input.type = "text";
+        input.inputMode = "decimal";   // may cam ung van hien ban phim so
         input.className = "score-input";
         input.dataset.studentId = a.student_id;
         if (a.score !== null && a.score !== undefined) input.value = a.score;

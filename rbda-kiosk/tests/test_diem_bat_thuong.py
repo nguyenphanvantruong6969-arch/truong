@@ -185,3 +185,69 @@ def test_bo_du_lieu_that_khong_sinh_canh_bao_nao(api):
             a.import_csv_auto(d["csv_text"] if isinstance(d, dict) else d)
         h = a.get_data_health_report()["data"]
         assert h["n_warnings"] == 0, (bo, h["warnings"])
+
+
+# ------------------------------------------------------------------ #
+# Dấu phẩy thập phân kiểu Việt — hai cửa phải cùng một luật
+# ------------------------------------------------------------------ #
+
+def _mot_thi_sinh(api):
+    api.create_or_update_club("clb_a", "CLB A", 5, 0, "")
+    api.create_student_if_missing("HS01", "Em")
+    api.submit_test_selection("HS01", ["clb_a"])
+    api.submit_preferences("HS01", ["clb_a"])
+    return api
+
+
+@pytest.mark.parametrize("go,mong_doi", [
+    ("8,5", 8.5),      # cách viết thập phân của tiếng Việt
+    ("8.5", 8.5),      # cách viết quốc tế
+    ("9",   9.0),
+    (" 7,5 ", 7.5),    # thừa khoảng trắng khi dán từ Excel
+    (8.5,   8.5),      # gọi thẳng bằng số, không qua giao diện
+])
+def test_man_hinh_cham_diem_nhan_ca_hai_cach_viet(api, go, mong_doi):
+    _mot_thi_sinh(api)
+    res = api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": go}])
+    assert res["data"]["n_saved"] == 1, (go, res["data"]["warnings"])
+    assert _diem_da_luu(api, "HS01") == mong_doi
+
+
+@pytest.mark.parametrize("go", ["abc", "1,234.5", "", "8,5,5", "inf", "nan"])
+def test_gia_tri_khong_doc_duoc_thi_khong_ghi_de_diem_cu(api, go):
+    """`1,234.5` là cách viết NGHÌN, không phải thập phân — không đoán bừa.
+    `inf`/`nan` thì `float()` cũ nhận, `_doc_diem` loại."""
+    _mot_thi_sinh(api)
+    api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": "7,5"}])
+    assert _diem_da_luu(api, "HS01") == 7.5
+
+    res = api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": go}])
+    assert res["data"]["n_saved"] == 0, go
+    if go != "":
+        assert [w["code"] for w in res["data"]["warnings"]] == ["score_not_a_number"]
+    # Điểm cũ phải còn nguyên (ô rỗng là lệnh XOÁ, nên bỏ qua ca đó).
+    if go != "":
+        assert _diem_da_luu(api, "HS01") == 7.5
+
+
+def test_diem_am_viet_bang_dau_phay_van_bi_chan(api):
+    """Hai luật phải cộng dồn được: đọc được dấu phẩy KHÔNG có nghĩa là
+    thôi kiểm tra số âm."""
+    _mot_thi_sinh(api)
+    api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": "7,5"}])
+    res = api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": "-8,5"}])
+    assert [w["code"] for w in res["data"]["warnings"]] == ["score_negative"]
+    assert _diem_da_luu(api, "HS01") == 7.5
+
+
+def test_hai_cua_cho_cung_ket_qua_voi_dau_phay(api, tmp_path):
+    """Cùng giá trị '8,5' vào bằng hai đường phải ra cùng một số."""
+    _mot_thi_sinh(api)
+    api.submit_club_scores("clb_a", [{"student_id": "HS01", "score": "8,5"}])
+
+    api2 = PipelineAPI(str(tmp_path / "qua_tep.db"))
+    api2.create_or_update_club("clb_a", "CLB A", 5, 0, "")
+    api2.import_test_selection_csv(
+        "student_id,name,test_club_1,score_1\nHS01,Em,clb_a,\"8,5\"\n")
+
+    assert _diem_da_luu(api, "HS01") == _diem_da_luu(api2, "HS01") == 8.5

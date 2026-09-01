@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 01/09/2026 · 363 test pass
+> Cập nhật lần cuối: 01/09/2026 · 381 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **363 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
+| Test | **381 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 27 file test, 363 test case (4 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 28 file test, 381 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -319,6 +319,51 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 ---
 
 ## 5. Vấn đề chưa giải quyết
+
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi 23: ô điểm nuốt mất dấu phẩy, `8,5` thành `85`
+
+Tìm ra khi dò lại sau khi đã sửa lỗi 21–22. **Nặng hơn cả hai lỗi đó.**
+
+Đo trong Chromium thật, cả locale `en-US` lẫn `vi-VN`:
+
+```
+Gõ "8,5" vào ô điểm  ->  .value === "85"
+                         validity.valid === true
+```
+
+Ô điểm là `<input type="number">`. Trình duyệt **nuốt dấu phẩy** rồi **báo là hợp
+lệ** — không gạch đỏ, không thông báo. Điểm bị nhân lên **10 lần**, im lặng.
+
+Khác mọi lỗi điểm khác ở một chỗ quyết định: **không cần ai gõ nhầm.** `8,5` là
+cách viết thập phân bình thường của tiếng Việt. Gõ đúng thói quen, máy hiểu sai.
+
+**Nghịch lý ngay trong dự án:** nạp tệp Excel thì `8,5` lưu đúng thành 8.5, vì
+`_doc_diem()` xử lý dấu phẩy và chú thích ghi rõ *"Excel bản tiếng Việt lưu 8,5"*.
+Nhưng `submit_club_scores` gọi `float()` thẳng, không dùng hàm đó. Lại là
+**"hai cửa, hai luật"** — cùng loại với lỗi 21.
+
+**Sửa hai nửa:**
+
+1. `app.js` — `type="number"` → `type="text"` + `inputMode="decimal"`. Trình duyệt
+   hết cơ hội đụng vào dấu phẩy; máy cảm ứng vẫn hiện bàn phím số. Mất mấy nút
+   mũi tên tăng/giảm, với kiosk thì không tiếc. `.score-input` không có luật CSS
+   nào phụ thuộc `type=number` (đã soát).
+2. `api.py` — `submit_club_scores` dùng `_doc_diem()` thay `float()`. Sau đó hai
+   cửa cùng một luật: `8,5` và `8.5` đều đúng, `abc` sai ở cả hai. `_doc_diem`
+   còn chặt hơn `float()` ở chỗ loại `inf`/`nan`.
+
+**Vì sao 363 test không bắt được:** tầng Python **mù hoàn toàn** — API chưa bao
+giờ nhìn thấy dấu phẩy, vì trình duyệt đã xoá trước khi gửi. API nhận `"85"` và
+lưu đúng `85`. Chỉ Chromium thật mới thấy. Đây là file test giao diện thứ **năm**
+của dự án, và là lần thứ ba trong ngày một lỗi chỉ lộ ra ở trình duyệt.
+
+`tests/test_giao_dien_cham_diem.py` kiểm **giá trị trong CSDL**, không kiểm
+`.value` của ô — chính `.value` là chỗ lỗi ẩn nấp. Chạy với bản chưa vá: 3 test
+đỏ, và một test cho thấy gõ `7,5` lưu ra **75,0**.
+
+**Tác động lên kết quả đã công bố: không có.** Mọi bộ dữ liệu nạp qua tệp, không
+qua màn hình chấm điểm.
+
 
 ### ✅ ĐÃ ĐÓNG (01/09) — lỗi 21 và 22: điểm không có chốt chặn nào
 

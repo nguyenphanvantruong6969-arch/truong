@@ -1668,11 +1668,16 @@ class PipelineAPI:
                         (sid, club_id),
                     )
                     continue
-                try:
-                    score = float(score)
-                except (TypeError, ValueError):
+                # Dùng CHUNG bộ đọc số với đường nạp tệp, thay vì float()
+                # thẳng. `_doc_diem` nhận cả dấu phẩy thập phân kiểu Việt
+                # ("8,5") lẫn dấu chấm, và loại inf/nan. Trước đây hai cửa
+                # hai luật: nạp tệp hiểu "8,5" là 8.5, còn màn hình chấm
+                # điểm thì không — mà đó mới là cửa giáo viên gõ tay.
+                so = self._doc_diem(score if isinstance(score, str) else str(score))
+                if so is None:
                     skipped.append(err("score_not_a_number", student_id=sid, score=score))
                     continue
+                score = so
                 # Điểm âm: đường NẠP TỆP đã từ chối từ trước
                 # (csv_score_negative), nhưng màn hình chấm điểm thì nhận.
                 # Cùng một lỗi thừa dấu trừ, bắt được hay không lại tuỳ
