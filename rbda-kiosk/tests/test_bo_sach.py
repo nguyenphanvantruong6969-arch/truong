@@ -162,3 +162,69 @@ def test_xuat_ket_qua_doc_duoc_bang_excel(api, tmp_path):
         dong = f.readlines()
     assert len(dong) == SO_HOC_SINH + 1
     assert "Mã học sinh" in dong[0]
+
+
+# ------------------------------------------------------------------ #
+# Kịch bản THẬT đã làm hỏng việc: nạp chồng lên dữ liệu cũ
+# ------------------------------------------------------------------ #
+
+TEST_DIR = os.path.dirname(BO_SACH)
+
+BO_TEST = [
+    "TEST_01_danh_sach_CLB.xlsx",
+    "TEST_02_chon_CLB_muon_thi.xlsx",
+    "TEST_03_xep_hang_nguyen_vong.xlsx",
+    "TEST_04_CO_LOI_CO_Y.xlsx",      # cố ý sai
+]
+
+
+def _nap_bo_test(api):
+    for ten in BO_TEST:
+        with open(os.path.join(TEST_DIR, ten), "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        r = api.xlsx_to_csv_text(b64, "")
+        assert r["ok"], r
+        d = r["data"]
+        api.import_csv_auto(d["csv_text"] if isinstance(d, dict) else d)
+
+
+def test_nap_chong_len_du_lieu_cu_van_con_canh_bao(api):
+    """Khẳng định lỗi CÓ THẬT trước khi khẳng định bản vá chữa được nó.
+
+    Nạp file chỉ cộng thêm học sinh. HS204 của TEST_04 mang nhãn sai
+    `chinh_sac` vẫn nằm nguyên, nên bộ sạch nạp đè lên vẫn kêu — và số
+    học sinh vượt quá 140, làm lệch kết quả phân bổ.
+    """
+    _nap_bo_test(api)
+    _nap(api, ".xlsx")
+
+    h = api.get_data_health_report()["data"]
+    nhan_la = [w for w in h["warnings"]
+               if w["code"] == "health_orphan_student_group"]
+    assert nhan_la, h["warnings"]
+    assert nhan_la[0]["params"]["reserve_group"] == "chinh_sac"
+    # Và cảnh báo phải chỉ đích danh em nào — đó là nửa còn lại của bản vá.
+    assert "HS204" in nhan_la[0]["params"]["sample"]
+
+    r = api.run_pipeline(seed=42)
+    assert r["data"]["n_total"] > SO_HOC_SINH
+
+
+def test_xoa_du_lieu_roi_nap_lai_thi_sach_han(api):
+    """Bản vá phải đưa được đúng tình huống trên về 0 cảnh báo, 140/140."""
+    _nap_bo_test(api)
+    _nap(api, ".xlsx")
+    assert api.run_pipeline(seed=42)["ok"]
+
+    xoa = api.reset_data("hoc_sinh", "XOA")
+    assert xoa["ok"], xoa
+    # Giữ CLB nên không phải nạp lại file danh sách CLB.
+    assert xoa["data"]["n_clubs_con_lai"] > 0
+
+    assert _nap(api, ".xlsx") == 0
+    h = api.get_data_health_report()["data"]
+    assert h["n_warnings"] == 0, h["warnings"]
+
+    r = api.run_pipeline(seed=42)
+    assert r["data"]["n_total"] == SO_HOC_SINH
+    assert r["data"]["n_matched"] == SO_HOC_SINH

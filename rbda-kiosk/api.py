@@ -229,8 +229,12 @@ class PipelineAPI:
                      sample=", ".join(r["student_id"] for r in no_pref[:self._HEALTH_SAMPLE_LIMIT]))
 
             # --- 4. Nhãn dự trữ của học sinh mà không club nào dùng -------
+            # Kèm MÃ HỌC SINH như hai mục trên. Không có mã thì cảnh báo
+            # bảo "kiểm tra xem có gõ sai chính tả không" mà người dùng
+            # phải tự dò tay qua cả danh sách mới biết dò em nào.
             for row in cur.execute("""
-                SELECT s.reserve_group AS g, COUNT(*) AS n
+                SELECT s.reserve_group AS g, COUNT(*) AS n,
+                       GROUP_CONCAT(s.student_id) AS ids
                 FROM students s
                 WHERE s.reserve_group IS NOT NULL AND TRIM(s.reserve_group) <> ''
                   AND s.reserve_group NOT IN (
@@ -239,8 +243,13 @@ class PipelineAPI:
                   )
                 GROUP BY s.reserve_group ORDER BY s.reserve_group
             """).fetchall():
+                # GROUP_CONCAT không hứa thứ tự — phải sắp TRƯỚC khi cắt,
+                # nếu không mỗi lần bấm "Kiểm tra lại" lại ra một mẫu khác
+                # và người dùng tưởng dữ liệu vừa đổi.
+                ids = sorted((row["ids"] or "").split(","))
                 warn("high", "health_orphan_student_group",
-                     reserve_group=row["g"], n=row["n"])
+                     reserve_group=row["g"], n=row["n"],
+                     sample=", ".join(ids[:self._HEALTH_SAMPLE_LIMIT]))
 
             # --- 5. Club có suất dự trữ nhưng chưa đặt nhãn ---------------
             for row in cur.execute("""
@@ -2268,3 +2277,95 @@ class PipelineAPI:
             return _ok({"student_id": student_id, "deleted": True})
         except Exception as e:
             return _fail(err("error_deleting_student", detail=str(e)))
+
+    # -----------------------------------------------------------------
+    # XOÁ DỮ LIỆU ĐỂ LÀM LẠI TỪ ĐẦU
+    #
+    # Nạp file CỘNG THÊM học sinh, không bao giờ xoá — đúng như phải thế,
+    # vì trường nạp khối 10 rồi nạp khối 11 thì không được mất khối 10.
+    # Nhưng trước đây KHÔNG có đường nào đưa dữ liệu về trống: cách duy
+    # nhất là đóng app rồi đổi tên app.db ngoài File Explorer, việc mà
+    # không ai tìm ra. Hậu quả không phải chuyện hình thức — học sinh của
+    # lần chạy thử trước vẫn chiếm suất và làm lệch kết quả, im lặng.
+    # -----------------------------------------------------------------
+
+    _RESET_CONFIRM = "XOA"
+
+    # Xoá theo đúng thứ tự phụ thuộc: bảng con trước, students sau cùng.
+    _RESET_BANG = {
+        "hoc_sinh": ["match_results", "club_scores", "preferences",
+                     "club_test_selection", "students"],
+        "tat_ca":   ["match_results", "club_scores", "preferences",
+                     "club_test_selection", "students", "clubs"],
+    }
+
+    def reset_data(self, pham_vi: str = "hoc_sinh", xac_nhan: str = ""):
+        """Xoá dữ liệu để chạy thử lại từ đầu. LUÔN sao lưu trước.
+
+        pham_vi:
+            "hoc_sinh" — xoá học sinh và mọi thứ gắn với học sinh, GIỮ
+                         nguyên danh sách CLB (trường hợp thường gặp:
+                         giữ CLB, thay khối học sinh khác vào).
+            "tat_ca"   — xoá cả CLB.
+
+        xac_nhan phải đúng chuỗi "XOA". Một hàm xoá sạch CSDL mà gọi
+        nhầm được từ JS là chuyện không chấp nhận được.
+
+        KHÔNG đụng vào run_history: lược đồ ghi rõ bảng đó "không bao giờ
+        xoá/ghi đè" vì đó là nhật ký kiểm toán. Xoá dữ liệu không được
+        phép xoá dấu vết đã từng chạy những gì.
+        """
+        try:
+            # Kiểm tra TRƯỚC, sao lưu SAU. Đảo thứ tự thì một lần gọi
+            # nhầm vẫn đẻ ra một tệp sao lưu rác mỗi lần.
+            if xac_nhan != self._RESET_CONFIRM:
+                return _fail(err("reset_confirmation_mismatch",
+                                 can_go=self._RESET_CONFIRM))
+            bang = self._RESET_BANG.get(pham_vi)
+            if bang is None:
+                return _fail(err("reset_scope_unknown", pham_vi=pham_vi,
+                                 hop_le=", ".join(sorted(self._RESET_BANG))))
+
+            backup_path = self._backup_db()
+
+            conn = connect_db(self.db_path)
+            cur = conn.cursor()
+            # Đếm TRƯỚC khi xoá — báo sau khi xoá thì con số nào cũng 0.
+            da_xoa = {
+                ten: cur.execute("SELECT COUNT(*) FROM %s" % ten).fetchone()[0]
+                for ten in bang
+            }
+            for ten in bang:
+                cur.execute("DELETE FROM %s" % ten)
+
+            # run_meta mô tả lần chạy gần nhất, mà lần chạy đó nay không
+            # còn dữ liệu nào phía sau.
+            cur.execute("DELETE FROM run_meta")
+
+            # Mở khoá STB. Bỏ bước này thì lần chạy sau đi vào nhánh "đã
+            # khoá" và ghi nhật ký là "tái sử dụng STB" cho một bộ số bốc
+            # thăm không còn tồn tại — sai cho phần kiểm toán.
+            cur.execute(
+                "UPDATE stb_lock SET is_locked = 0, unlocked_at = ? WHERE id = 1",
+                (_now(),),
+            )
+            # Đếm CLB CÒN LẠI ở đây chứ không để giao diện tự suy ra từ
+            # phạm vi — suy ra là đoán, và đoán sai thì toast báo một con
+            # số không ai kiểm chứng được.
+            n_clb_con_lai = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
+            conn.commit()
+            conn.close()
+
+            return _ok({
+                "pham_vi": pham_vi,
+                "backup_path": backup_path,
+                "backup_name": os.path.basename(backup_path),
+                "da_xoa": da_xoa,
+                "n_students": da_xoa.get("students", 0),
+                "n_clubs": da_xoa.get("clubs", 0),
+                "n_clubs_con_lai": n_clb_con_lai,
+                "giu_lai_run_history": True,
+            })
+        except Exception as e:
+            return _fail([err("error_resetting_data", detail=str(e)),
+                          traceback.format_exc()])

@@ -1033,11 +1033,19 @@
   let adminStudentPage = 1;
   const ADMIN_PAGE_SIZE = 50;
 
+  /* Da co ket qua chay chua — quyet dinh nhan xac nhan cua hai nut xoa
+     noi ro "mat ca ket qua da chay" hay khong. Doc mot lan luc mo tab
+     vi armTwoStepConfirm goi nhan dong bo, khong cho duoc promise. */
+  let adminCoKetQua = false;
+
   function loadAdminTab() {
     loadAdminClubs();
     loadReserveGroupOptions();
     adminStudentPage = 1;
     loadAdminStudents();
+    callApi("get_last_run_info").then((res) => {
+      adminCoKetQua = !!(res.ok && res.data);
+    });
   }
 
   function loadAdminClubs() {
@@ -1195,6 +1203,43 @@
         }
       });
     });
+
+    /* --- Vung nguy hiem: xoa du lieu de lam lai tu dau --------------- *
+       Chuoi "XOA" la xac nhan bat buoc o phia Python. No KHONG phai thu
+       nguoi dung go — nut da co xac nhan hai buoc roi. No de mot lenh
+       goi API nham (vd tu console) khong xoa duoc gi. */
+    function noiNutXoa(idNut, phamVi, khoaNhanThuong, khoaNhanCoKetQua, khoaToast) {
+      armTwoStepConfirm(
+        el(idNut),
+        () => t(adminCoKetQua ? khoaNhanCoKetQua : khoaNhanThuong),
+        () => {
+          callApi("reset_data", phamVi, "XOA").then((res) => {
+            if (!res.ok) {
+              showToast(t("feedback_error_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
+              return;
+            }
+            showToast(
+              t(khoaToast, {
+                n_students: res.data.n_students,
+                n_clubs: res.data.n_clubs,
+                n_clubs_left: res.data.n_clubs_con_lai,
+                backup_name: res.data.backup_name,
+              }),
+              "success"
+            );
+            loadAdminTab();
+            loadHealthReport();
+          });
+        }
+      );
+    }
+
+    noiNutXoa("btnResetStudents", "hoc_sinh",
+              "confirm_reset_students", "confirm_reset_students_has_results",
+              "toast_reset_students_done");
+    noiNutXoa("btnResetAll", "tat_ca",
+              "confirm_reset_all", "confirm_reset_all_has_results",
+              "toast_reset_all_done");
   }
 
   /* ------------------------------------------------------------------ *

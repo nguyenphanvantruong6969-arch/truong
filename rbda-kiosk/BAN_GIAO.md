@@ -311,6 +311,40 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ## 5. Vấn đề chưa giải quyết
 
+### ✅ ĐÃ ĐÓNG (01/09) — hai lỗi lộ ra khi học sinh chạy thử bộ sạch
+
+Học sinh nạp bộ `bo_sach/` (bộ được thiết kế để **không** sinh cảnh báo nào) rồi
+vẫn thấy **1 cảnh báo nghiêm trọng**. Truy ra hai lỗi khác nhau.
+
+**Tái hiện được, và đây là số đo:** nạp `TEST_01..04` (có file lỗi cố ý) rồi
+chồng bộ sạch lên, không xoá gì → CSDL có **148** học sinh thay vì 140, còn đúng
+**1 cảnh báo**, và chạy phân bổ ra **143/148** chứ không phải 140/140.
+
+| # | Lỗi | Chữa thế nào |
+|---|---|---|
+| 14 | Cảnh báo "nhãn dự trữ không club nào dùng" nói có gõ sai chính tả nhưng **không nói em nào**. Hai cảnh báo ngay trên nó đều kèm mã học sinh; mục này bị bỏ sót | Thêm `sample` (tối đa 5 mã, đã sắp xếp) vào `get_data_health_report()` mục 4, và bổ sung câu chỉ đường tới chỗ chữa |
+| 15 | **Không có đường nào trong app đưa dữ liệu về trống.** Nạp file cộng thêm học sinh, không bao giờ xoá — đúng như phải thế, nhưng khi đó cách duy nhất làm lại từ đầu là đóng app rồi đổi tên `app.db` ngoài File Explorer, việc không ai tìm ra | `reset_data(pham_vi, xac_nhan)` + khối **Vùng nguy hiểm** cuối tab Quản lý |
+
+Lỗi 15 nguy hiểm ở chỗ **im lặng**: học sinh của lần chạy trước vẫn chiếm suất và
+làm lệch kết quả mà không có dấu hiệu nào.
+
+**Ba điều `reset_data()` bắt buộc làm, và lý do:**
+
+1. **Kiểm tra xác nhận TRƯỚC, sao lưu SAU.** Đảo lại thì mỗi lần gọi nhầm vẫn đẻ
+   ra một tệp `.bak` rác. Có test canh riêng cho thứ tự này.
+2. **Tự sao lưu** bằng `_backup_db()` đã có sẵn (SQLite Backup API, không copy
+   tệp thô). Test mở bản sao lưu ra đếm lại, chứ không chỉ kiểm tra tệp tồn tại.
+3. **Mở khoá STB.** Bỏ qua thì lần chạy sau ghi nhật ký là "tái sử dụng STB" cho
+   một bộ số bốc thăm không còn tồn tại — sai cho phần kiểm toán.
+
+**Không xoá `run_history`** ở bất kỳ phạm vi nào: lược đồ ghi rõ bảng đó "không
+bao giờ xoá/ghi đè". Xoá dữ liệu không được phép xoá dấu vết.
+
+Sau bản vá, đúng tình huống trên: xoá → nạp lại → **0 cảnh báo, 140/140**.
+`tests/test_bo_sach.py` khoá cả hai vế (khẳng định lỗi có thật, rồi khẳng định
+bản vá chữa được), và `tests/test_giao_dien_xoa_du_lieu.py` mở Chromium thật để
+bắt lỗi đặt nhầm bảng i18n — loại lỗi chỉ lộ ra ở trình duyệt.
+
 ### ✅ ĐÃ ĐÓNG (31/08) — lỗi `.exe` Windows, lỗi cũ nhất của dự án
 
 Mở từ 27/08, đóng ngày 31/08. **Nguyên nhân gốc không nằm trong mã nguồn.**

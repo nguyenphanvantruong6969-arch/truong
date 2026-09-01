@@ -36,6 +36,24 @@ Xong. **Windows nhớ lựa chọn này** — những lần sau chạy thẳng, 
 
 ---
 
+## Muốn chạy thử lại từ đầu với bộ dữ liệu khác
+
+Nạp file chỉ **cộng thêm** học sinh, không xoá em cũ. Nạp bộ mới đè lên bộ cũ thì
+học sinh của lần trước vẫn chiếm suất và làm lệch kết quả — mà không báo gì.
+
+Tab **Quản lý** → cuối trang, khối **Vùng nguy hiểm**:
+
+| Nút | Xoá gì |
+|---|---|
+| Xoá toàn bộ học sinh (giữ CLB) | Học sinh, nguyện vọng, điểm, kết quả — **giữ** danh sách CLB |
+| Xoá toàn bộ dữ liệu | Như trên, và xoá cả danh sách CLB |
+
+Phải bấm **hai lần** mới xoá thật. Cả hai nút đều **tự sao lưu `app.db`** trước
+khi xoá và báo tên tệp sao lưu, nên không mất gì. Nhật ký các lần chạy
+(`run_history`) không bao giờ bị xoá.
+
+---
+
 ## Nếu app mở ra trong cửa sổ Edge thay vì cửa sổ riêng
 
 **Lẽ ra chuyện này không còn xảy ra** — bản mới tự xử lý lúc khởi động (đã kiểm

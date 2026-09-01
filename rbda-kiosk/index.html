@@ -355,6 +355,20 @@
           <button class="btn btn-ghost" id="btnAdminNextPage" data-i18n="btn_next_page">Sau ›</button>
         </div>
       </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="danger_zone_title">Vùng nguy hiểm — xoá dữ liệu để làm lại từ đầu</h2></div>
+        <p class="hint-text" data-i18n="danger_zone_desc">
+          Nạp file chỉ CỘNG THÊM học sinh, không xoá em cũ. Muốn chạy thử lại từ đầu với bộ dữ liệu khác thì xoá ở đây, nếu không học sinh của lần trước vẫn chiếm suất và làm lệch kết quả.
+        </p>
+        <p class="hint-text" data-i18n="danger_zone_safety">
+          Cả hai nút đều TỰ SAO LƯU app.db trước khi xoá, và đều KHÔNG xoá nhật ký các lần chạy (run_history) — dấu vết kiểm toán được giữ nguyên.
+        </p>
+        <div class="search-row">
+          <button class="btn btn-danger" id="btnResetStudents" data-i18n="btn_reset_students">Xoá toàn bộ học sinh (giữ CLB)</button>
+          <button class="btn btn-danger" id="btnResetAll" data-i18n="btn_reset_all">Xoá toàn bộ dữ liệu (cả CLB)</button>
+        </div>
+      </div>
     </section>
 
     <!-- ---------- TAB 5: CHẤM ĐIỂM (MÙ) ---------- -->

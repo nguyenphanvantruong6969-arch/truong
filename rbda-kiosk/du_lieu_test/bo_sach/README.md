@@ -27,15 +27,19 @@ vẫn nằm nguyên trong CSDL.
 còn **1 cảnh báo nghiêm trọng**, và chạy phân bổ ra **143/148** chứ không phải
 140/140.
 
-**Cách dọn — 4 bước, không mất gì:**
+**Cách dọn — trong chính phần mềm:**
 
-1. Đóng phần mềm
-2. Tìm tệp `app.db` nằm cạnh `PhanBoCauLacBo.exe`
-3. **Đổi tên** nó thành `app_cu.db` *(đổi tên, đừng xoá — đó là dữ liệu của bạn)*
-4. Mở lại phần mềm — nó tự tạo `app.db` mới, trống
+Tab **Quản lý** → cuối trang, khối **Vùng nguy hiểm** → bấm
+**“Xoá toàn bộ học sinh (giữ CLB)”** → bấm lần nữa để xác nhận.
 
-Muốn lấy lại dữ liệu cũ: đóng app, xoá `app.db` mới, đổi `app_cu.db` về lại
-thành `app.db`.
+Phần mềm **tự sao lưu `app.db`** trước khi xoá và báo tên tệp sao lưu trong thông
+báo, nên không mất gì. Nhật ký các lần chạy (`run_history`) cũng được giữ nguyên.
+
+Muốn xoá cả danh sách CLB thì dùng nút thứ hai, **“Xoá toàn bộ dữ liệu”**.
+
+*Phương án hai, nếu vì lý do gì đó không vào được phần mềm:* đóng app, đổi tên
+`app.db` nằm cạnh `PhanBoCauLacBo.exe` thành `app_cu.db`, mở lại — app tự tạo
+tệp mới, trống.
 
 ## Ba file — thả cả ba cùng lúc cũng được
 

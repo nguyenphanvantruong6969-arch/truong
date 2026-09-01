@@ -128,9 +128,53 @@ def test_flags_reserve_label_no_club_uses(api):
     res = api.get_data_health_report()
     w = _by_code(res, "health_orphan_student_group")
     assert w["severity"] == "high"
-    assert w["params"] == {"reserve_group": "chinhsach", "n": 1}
+    # The sample names WHICH student. Without it the warning says "check
+    # for a typo" and leaves you to hunt the whole roster by hand.
+    assert w["params"] == {"reserve_group": "chinhsach", "n": 1, "sample": "s1"}
     # and the club's own label now matches nobody
     assert "health_club_group_no_students" in _codes(res)
+
+
+def test_orphan_label_sample_is_capped_and_stable(api):
+    """More students than the sample limit: n counts them all, the sample
+    shows the first few IN SORTED ORDER.
+
+    Sorting matters. GROUP_CONCAT makes no promise about order, so slicing
+    before sorting would show a different handful on each re-check and the
+    user would think the data had changed under them."""
+    api.create_or_update_club("A", "Club A", 50, 1, "chinh_sach")
+    ids = ["s%02d" % i for i in range(1, 10)]
+    for sid in ids:
+        api.create_student_if_missing(sid, "Student " + sid)
+        api.submit_preferences(sid, ["A"])
+    api.bulk_set_reserve_group(ids, "chinhsach")        # 9 students, same typo
+
+    w = _by_code(api.get_data_health_report(), "health_orphan_student_group")
+    assert w["params"]["n"] == 9
+    mau = w["params"]["sample"].split(", ")
+    assert len(mau) == api._HEALTH_SAMPLE_LIMIT
+    assert mau == sorted(ids)[:api._HEALTH_SAMPLE_LIMIT]
+    # Chạy lại phải ra đúng mẫu đó.
+    lai = _by_code(api.get_data_health_report(), "health_orphan_student_group")
+    assert lai["params"]["sample"] == w["params"]["sample"]
+
+
+def test_orphan_label_groups_are_reported_separately(api):
+    """Two different bad labels must not be merged into one warning —
+    each names its own students."""
+    api.create_or_update_club("A", "Club A", 50, 1, "chinh_sach")
+    for sid, nhan in [("s1", "chinhsach"), ("s2", "khoi10")]:
+        api.create_student_if_missing(sid, "Student " + sid)
+        api.submit_preferences(sid, ["A"])
+        api.bulk_set_reserve_group([sid], nhan)
+
+    res = api.get_data_health_report()
+    theo_nhan = {
+        w["params"]["reserve_group"]: w["params"]["sample"]
+        for w in res["data"]["warnings"]
+        if w["code"] == "health_orphan_student_group"
+    }
+    assert theo_nhan == {"chinhsach": "s1", "khoi10": "s2"}
 
 
 def test_flags_club_with_reserve_seats_but_no_label(api):

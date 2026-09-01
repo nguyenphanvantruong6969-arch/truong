@@ -209,6 +209,18 @@ MESSAGES = {
         "vi": "Lỗi xoá học sinh: {detail}",
         "en": "Error deleting student: {detail}",
     },
+    "reset_confirmation_mismatch": {
+        "vi": "Chưa xoá gì cả — thiếu xác nhận. Muốn xoá thật thì phải gửi đúng chữ \"{can_go}\".",
+        "en": "Nothing was deleted — confirmation missing. A real reset must send exactly \"{can_go}\".",
+    },
+    "reset_scope_unknown": {
+        "vi": "Chưa xoá gì cả — không hiểu phạm vi \"{pham_vi}\". Chỉ nhận: {hop_le}.",
+        "en": "Nothing was deleted — unknown scope \"{pham_vi}\". Accepted values: {hop_le}.",
+    },
+    "error_resetting_data": {
+        "vi": "Lỗi khi xoá dữ liệu: {detail}. Bản sao lưu (nếu đã tạo) vẫn nằm cạnh app.db.",
+        "en": "Error resetting data: {detail}. The backup, if one was made, is still beside app.db.",
+    },
 
     # --- CSV ---
     "csv_empty": {
@@ -413,8 +425,8 @@ MESSAGES = {
         "en": "{n} student(s) have not ranked any preference — they cannot be placed in any club. For example: {sample}",
     },
     "health_orphan_student_group": {
-        "vi": "Nhãn dự trữ \"{reserve_group}\" đang gán cho {n} học sinh nhưng KHÔNG club nào dùng nhãn này. Các em đó sẽ không được ưu tiên ở đâu cả — kiểm tra xem có gõ sai chính tả không.",
-        "en": "Reserve label \"{reserve_group}\" is assigned to {n} student(s) but NO club uses it. Those students get no priority anywhere — check for a typo.",
+        "vi": "Nhãn dự trữ \"{reserve_group}\" đang gán cho {n} học sinh nhưng KHÔNG club nào dùng nhãn này. Ví dụ: {sample}. Các em đó sẽ không được ưu tiên ở đâu cả — kiểm tra xem có gõ sai chính tả không. Sửa ở tab Quản lý: tìm mã em, tick vào, để trống ô nhãn rồi bấm \"Gán cho học sinh đã tick\".",
+        "en": "Reserve label \"{reserve_group}\" is assigned to {n} student(s) but NO club uses it. For example: {sample}. Those students get no priority anywhere — check for a typo. Fix it in the Admin tab: search for the student id, tick it, leave the label box empty and click \"Apply to ticked students\".",
     },
     "health_club_reserve_no_group": {
         "vi": "Club {club_id} có {reserve_capacity} suất dự trữ nhưng chưa đặt nhãn dự trữ. Các suất này sẽ âm thầm chuyển thành suất phổ thông.",
