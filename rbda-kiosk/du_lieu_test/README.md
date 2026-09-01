@@ -18,6 +18,15 @@
 
 Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file.
 
+> ### Chỉ muốn thử đường nạp → chạy → xuất, không muốn thấy cảnh báo nào?
+>
+> Dùng thư mục **[`bo_sach/`](bo_sach/README.md)** — 3 file, 140 học sinh,
+> 12 CLB, **không có file lỗi nào lẫn vào**. Thả cả thư mục cũng ra **0 cảnh
+> báo** và xếp được **140/140** em.
+>
+> `TEST_04` dưới đây **cố ý sai**. Thả nó cùng lúc với ba file kia là phần mềm
+> kêu — đúng như thiết kế, không phải phần mềm hỏng.
+
 ## Hai đường thử khác nhau
 
 - **Nạp tệp** — bốn tệp `.xlsx` ở trên, dùng ô kéo-thả. Đường mà nhà trường
@@ -27,7 +36,7 @@ Mỗi file có sheet **“Ghi chú”** giải thích nội dung ngay trong file
   màn hình mà đường nạp tệp **không** đụng tới. Bộ này nhỏ đủ để tự tính kết quả
   bằng tay rồi đối chiếu với máy.
 
-## Chạy thử bộ sạch
+## Chạy thử bộ cạnh tranh (TEST_01–03)
 
 1. Kéo cả ba file `TEST_01`, `TEST_02`, `TEST_03` vào ô thả file — thứ tự nạp
    phần mềm tự sắp, không cần kéo đúng thứ tự.
@@ -90,6 +99,7 @@ Dựng sẵn tới ngay trước bước cuối: dữ liệu đã nạp, điểm
 ```bash
 ./.venv/bin/python du_lieu_test/tao_du_lieu_test.py   # 4 tệp Excel
 ./.venv/bin/python du_lieu_test/tao_db_demo.py        # CSDL demo
+./.venv/bin/python du_lieu_test/bo_sach/tao_bo_sach.py  # bộ sạch (seed 9090)
 ```
 
 Seed cố định (`SEED = 2026`) nên chạy bao nhiêu lần cũng ra đúng bộ này.
