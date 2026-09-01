@@ -11,8 +11,16 @@
   const t = window.I18N.t;
   const trErr = window.I18N.translateError;
 
+  /* Xem chu thich day du o app.js: pywebview dung `window.pywebview` TRUOC
+     voi `api: {}` RONG, mot lenh run_js THU HAI moi do ham vao. Hoi
+     `window.pywebview` khong thoi la hoi sai cau hoi. */
+  function apiSanSang(name) {
+    return !!(window.pywebview && window.pywebview.api
+              && typeof window.pywebview.api[name] === "function");
+  }
+
   function callApi(name, ...args) {
-    if (!window.pywebview || !window.pywebview.api || typeof window.pywebview.api[name] !== "function") {
+    if (!apiSanSang(name)) {
       return Promise.resolve({ ok: false, data: null, errors: [`Backend not ready yet (${name})`] });
     }
     return window.pywebview.api[name](...args).catch((e) => ({ ok: false, data: null, errors: [String(e)] }));
@@ -155,15 +163,40 @@
     });
   }
 
-  if (window.pywebview) {
+  /* CUNG BAN VA VOI app.js muc 9 — day la ban sao nguyen van cua cung mot
+     cong khoi dong, va man hinh nay la man hinh hien ra KHI CSDL DA HONG:
+     hong not o day thi khong con duong nao. Rieng o day, khoi dong hai lan
+     con lam nut "Bat dau lai voi CSDL trong" (start_fresh) chay HAI LUOT
+     cho mot chuoi bam hai buoc. */
+  const HAM_THU = "get_status";
+  const NHIP_MS = 50;
+  const HIEN_DANG_CHO_SAU_MS = 400;
+  const HAN_MS = Number(window.__HAN_BACKEND_MS) || 20000;
+
+  let daKhoiDong = false;
+  let daNoiDangCho = false;
+
+  function khoiDongMotLan() {
+    if (daKhoiDong) return;
+    daKhoiDong = true;
+    document.body.dataset.appInit = "1";
     init();
-  } else {
-    window.addEventListener("pywebviewready", init);
-    setTimeout(() => {
-      if (window.pywebview && !document.body.dataset.appInit) {
-        document.body.dataset.appInit = "1";
-        init();
-      }
-    }, 300);
   }
+
+  const batDau = Date.now();
+  (function cho() {
+    if (apiSanSang(HAM_THU)) {
+      khoiDongMotLan();
+      return;
+    }
+    if (Date.now() - batDau > HAN_MS) {
+      showStatus("error", t("backend_qua_han"));
+      return;
+    }
+    if (!daNoiDangCho && Date.now() - batDau > HIEN_DANG_CHO_SAU_MS) {
+      daNoiDangCho = true;
+      showStatus("pending", t("backend_dang_ket_noi"));
+    }
+    setTimeout(cho, NHIP_MS);
+  })();
 })();

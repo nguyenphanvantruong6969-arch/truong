@@ -23,8 +23,24 @@
    * 0. TIỆN ÍCH DÙNG CHUNG
    * ------------------------------------------------------------------ */
 
+  /* Backend goi duoc CHUA? Tach rieng de cong khoi dong (muc 9) hoi CHINH
+     dieu kien nay, chu khong viet mot luat thu hai.
+
+     KHONG duoc chi hoi `window.pywebview`. pywebview dung doi tuong do
+     TRUOC voi `api: {}` RONG (webview/js/api.js), roi mot lenh run_js THU
+     HAI moi do ham vao va ban su kien (webview/js/finish.js) — hai lenh
+     tach roi, tren mot luong rieng, co phan chieu Python xen giua
+     (webview/util.py, generate_js_object). Trong khe ho do
+     `window.pywebview` da that ma goi ham nao cung truot. Tren Windows
+     viec nay con chay SAU khi trang da tai xong
+     (webview/platforms/edgechromium.py, on_navigation_completed). */
+  function apiSanSang(name) {
+    return !!(window.pywebview && window.pywebview.api
+              && typeof window.pywebview.api[name] === "function");
+  }
+
   function callApi(name, ...args) {
-    if (!window.pywebview || !window.pywebview.api || typeof window.pywebview.api[name] !== "function") {
+    if (!apiSanSang(name)) {
       return Promise.resolve({
         ok: false,
         data: null,
@@ -1488,16 +1504,62 @@
     loadPipelineTab(); // tab mặc định đang mở khi khởi động
   }
 
-  if (window.pywebview) {
+  /* Ham chac chan co trong PipelineAPI va init() goi ngay — dung lam phep
+     thu "backend da goi duoc chua". */
+  const HAM_THU = "get_last_run_info";
+  const NHIP_MS = 50;
+  const HIEN_DANG_CHO_SAU_MS = 400;   // duoi nguong nay khong ai kip thay
+  /* Test rut ngan han cho, vi de nguyen 20 giay thi rieng ca "backend khong
+     bao gio toi" phai ngoi doi 20 giay (tests/test_khoi_dong_backend.py).
+     Ban chay that khong bao gio dat bien nay. */
+  const HAN_MS = Number(window.__HAN_BACKEND_MS) || 20000;
+
+  let daKhoiDong = false;
+  let daNoiDangCho = false;
+
+  /* CO DAT NGAY TRONG DAY, nen MOI duong vao deu di qua no. Cong cu dat co
+     trong nhanh hen gio thoi, nen duong su kien khoi dong ma khong danh dau
+     gi, roi hen gio khoi dong lan hai — va vi ca 40 cho gan su kien trong
+     file nay deu dung addEventListener (khong cho nao dung .onclick), khoi
+     dong hai lan la GAN DOI TOAN BO nut: mot cu bam doi ngon ngu goi setLang
+     hai luot (vi->en->vi, nut trong nhu chet), mot chuoi bam hai buoc goi
+     reset_data hai lan. Ca hai deu da do duoc. */
+  function khoiDongMotLan() {
+    if (daKhoiDong) return;
+    daKhoiDong = true;
+    document.body.dataset.appInit = "1";
     init();
-  } else {
-    window.addEventListener("pywebviewready", init);
-    // dự phòng nếu sự kiện đã bắn trước khi script này chạy
-    setTimeout(() => {
-      if (window.pywebview && !document.body.dataset.appInit) {
-        document.body.dataset.appInit = "1";
-        init();
-      }
-    }, 300);
   }
+
+  function baoVaoOSucKhoe(cau) {
+    const o = el("healthSummary");
+    if (o) {
+      o.className = "health-summary is-warn";
+      o.textContent = cau;
+    }
+  }
+
+  /* CHI HOI VONG, KHONG NGHE `pywebviewready`. Dieu kien hoi vong
+     (apiSanSang) MANH HON su kien: su kien chi bao "_createApi da chay",
+     con cai ta thuc su can la "ham goi duoc". Mot duong vao thi kiem chung
+     duoc; hai duong vao cho cung mot viec chinh la cach loi nay sinh ra
+     lan dau. Cham nhat la tre NHIP_MS, khong ai thay. */
+  const batDau = Date.now();
+  (function cho() {
+    if (apiSanSang(HAM_THU)) {
+      khoiDongMotLan();
+      return;
+    }
+    if (Date.now() - batDau > HAN_MS) {
+      baoVaoOSucKhoe(t("backend_qua_han"));
+      const oDb = el("dbStatusLine");
+      if (oDb) oDb.textContent = t("backend_khong_ket_noi");
+      return;
+    }
+    if (!daNoiDangCho && Date.now() - batDau > HIEN_DANG_CHO_SAU_MS) {
+      daNoiDangCho = true;
+      baoVaoOSucKhoe(t("backend_dang_ket_noi"));
+    }
+    setTimeout(cho, NHIP_MS);
+  })();
 })();

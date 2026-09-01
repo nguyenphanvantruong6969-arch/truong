@@ -401,6 +401,22 @@ hiện hai dòng, mã nghi bị Excel cắt mất số 0 đứng đầu, mã CLB
 
 ## 11. Sự cố hay gặp
 
+### Màn hình ghi "Đang kết nối với phần lõi chương trình…"
+
+Bình thường. Lần mở **đầu tiên sau khi cài** hay lâu hơn những lần sau, vì
+Windows còn đang dựng bộ hiển thị và quét tệp mới. Cứ để yên, đừng bấm gì.
+
+Nếu sau đó hiện câu **"Không kết nối được với phần lõi chương trình"**:
+
+1. Đóng hẳn cửa sổ rồi mở lại phần mềm — phần lớn trường hợp hết ngay.
+2. Vẫn vậy thì gửi tệp **`loi_khoi_dong.txt`** (nằm cùng thư mục với `app.db`)
+   cho người phụ trách. Tệp đó ghi rõ phần mềm hỏng ở bước nào — không có nó thì
+   chỉ còn cách đoán.
+
+> Bản trước có lỗi ở chỗ này: đôi khi màn hình hiện câu tiếng Anh
+> *"Backend not ready yet"*. Đã sửa. Nếu vẫn thấy câu tiếng Anh đó, nghĩa là bản
+> `.exe` đang dùng là **bản cũ** — cần lấy bản mới.
+
 ### Mở tệp xuất ra bằng Excel thì vỡ dấu tiếng Việt
 
 Không nên xảy ra — phần mềm ghi kèm dấu nhận dạng (BOM) để Excel hiểu đúng.

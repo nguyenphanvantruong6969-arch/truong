@@ -320,6 +320,79 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ## 5. Vấn đề chưa giải quyết
 
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi 24: cổng khởi động hỏi sai câu hỏi
+
+Triệu chứng học sinh báo: *"mới cài, mở lần đầu thì thường bị lỗi backend không
+kết nối được"*. Câu đó khớp đúng một chuỗi có thật trong mã (`app.js`,
+`callApi`): `` `Backend not ready yet (${name})` `` — và chuỗi này **không đi qua
+`I18N`**, nên nó hiện thẳng bằng tiếng Anh vào giao diện tiếng Việt.
+
+**Nguyên nhân đọc được từ mã nguồn pywebview 6.2.1 trong `.venv`, không phải suy
+đoán.** pywebview **không** dựng `window.pywebview` trong một nhịp:
+
+| Tệp | Việc |
+|---|---|
+| `webview/js/api.js` | `window.pywebview = { …, api: {} }` — **api RỖNG** |
+| `webview/js/finish.js` | `_createApi(…)` rồi mới `dispatch pywebviewready` |
+
+`webview/util.py`, `generate_js_object()` chạy hai nhịp đó bằng **hai lệnh
+`run_js` tách rời, trên một luồng riêng, có phản chiếu Python xen giữa**. Trong
+khe hở đó `window.pywebview` **đã có thật** mà gọi hàm nào cũng trượt. Trên
+Windows việc này còn chạy **sau khi trang đã tải xong**
+(`webview/platforms/edgechromium.py`, trong `on_navigation_completed`).
+
+Cổng cũ chỉ hỏi `if (window.pywebview)` rồi hẹn giờ **một phát 300 ms**. Gọi T1 =
+lúc nhịp 1 xong, T3 = lúc sự kiện bắn:
+
+| | Điều kiện | Chuyện xảy ra |
+|---|---|---|
+| A | 300 ms < T1 | đúng — nhưng chỉ xảy ra khi máy **chậm** |
+| **B** | T1 < 300 ms < T3 | `init()` chạy với **api rỗng** → `"Backend not ready yet"` |
+| **C** | T3 < 300 ms | `init()` chạy **hai lần** — cờ `appInit` chỉ được đặt ở nhánh hẹn giờ, nên đường sự kiện không đánh dấu gì |
+
+**Đo được cả bốn hậu quả** (`tests/test_khoi_dong_backend.py`, bản chưa vá):
+
+| Đo | Kết quả |
+|---|---|
+| Ca B | `Không đọc được trạng thái tổng quan: Backend not ready yet (get_dashboard_status)` |
+| Ca C | `init()` chạy **2 lần** |
+| Nút đổi ngôn ngữ | bấm **một** cái, ngôn ngữ **không đổi** |
+| Nút xoá hai bước | `reset_data` chạy **2 lần** |
+
+Hai dòng cuối là vì cả **40** chỗ gắn sự kiện trong `app.js` đều dùng
+`addEventListener`, **không chỗ nào** dùng `.onclick` (đã đếm) — khởi động hai
+lần là **gắn đôi toàn bộ nút**. Nút đổi ngôn ngữ gọi `setLang` hai lượt
+(vi→en→vi) nên **trông như chết**; `armTwoStepConfirm` sinh hai bao đóng, mỗi cái
+một biến `armed` riêng, nên bấm lần hai là `onConfirmed()` chạy hai lượt.
+
+> **Lỗi này giải thích luôn báo cáo "đổi ngôn ngữ bị giật" của phiên trước.** Lần
+> đó đã sửa một nguyên nhân có thật (cất câu đã dịch), nhưng đây là nguyên nhân
+> **thứ hai, độc lập** — và nó mới giải thích được phần "lúc được lúc không".
+
+**Sửa:** tách `apiSanSang(name)` để cổng khởi động hỏi **chính** điều kiện mà
+`callApi` đòi hỏi (hàm gọi được, không phải đối tượng tồn tại); thay hẹn giờ
+một-phát bằng **hỏi vòng 50 ms, hạn 20 giây**; đặt cờ **ngay trong**
+`khoiDongMotLan()` nên mọi đường vào đều qua nó; quá hạn thì báo bằng tiếng Việt
+và **chỉ tên tệp `loi_khoi_dong.txt`** để lần sau không phải đoán. `recovery.js`
+là **bản sao nguyên văn** của cùng cổng đó nên vá y hệt — riêng ở đó, gắn đôi làm
+`start_fresh` (nút xoá sạch để bắt đầu lại) chạy hai lượt, **đã đo, đã đóng**.
+
+Cố tình **không** nghe `pywebviewready` song song với hỏi vòng: điều kiện hỏi
+vòng mạnh hơn sự kiện, và hai đường vào cho cùng một việc chính là cách lỗi này
+sinh ra lần đầu.
+
+**Vì sao 381 test không bắt được — quan trọng, đừng để người sau vấp lại:** mọi
+test giao diện đều đi qua `browser_host.serve(...)`, mà `browser_host` chèn cầu
+nối giả lập **trước `</head>`**, đồng bộ, `api` là Proxy luôn sẵn sàng. Nghĩa là
+**không test nào từng chạy qua con đường người dùng Windows thật đi**. Có test
+giao diện **không** đồng nghĩa với đã phủ đường khởi động. File test mới phục vụ
+trang bằng `http.server` tĩnh rồi **mô phỏng đúng hai nhịp của pywebview** bằng
+`add_init_script`, có kiểm soát thời điểm.
+
+**Tác động lên kết quả đã công bố: không có.** Lỗi thuần tầng khởi động giao diện,
+không đụng thuật toán.
+
+
 ### ✅ ĐÃ ĐÓNG (01/09) — lỗi 23: ô điểm nuốt mất dấu phẩy, `8,5` thành `85`
 
 Tìm ra khi dò lại sau khi đã sửa lỗi 21–22. **Nặng hơn cả hai lỗi đó.**
