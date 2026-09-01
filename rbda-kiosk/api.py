@@ -1672,9 +1672,16 @@ class PipelineAPI:
             conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
+            # matched_reserve: SỐ EM THỰC SỰ VÀO BẰNG SUẤT DỰ TRỮ — khác
+            # với reserve_capacity là chỉ tiêu dự trữ của CLB. Biểu đồ
+            # trước đây vẽ theo chỉ tiêu, tức là vẽ một thuộc tính của
+            # CLB chứ không phải điều đã xảy ra. Dữ liệu vốn có sẵn ở
+            # match_results.matched_tier, chỉ là câu lệnh chưa lấy.
             rows = cur.execute("""
                 SELECT c.club_id, c.name, c.capacity, c.reserve_capacity,
-                       COUNT(m.student_id) as matched
+                       COUNT(m.student_id) as matched,
+                       SUM(CASE WHEN m.matched_tier = 'reserve' THEN 1 ELSE 0 END)
+                           AS matched_reserve
                 FROM clubs c
                 LEFT JOIN match_results m ON m.club_id = c.club_id
                 GROUP BY c.club_id

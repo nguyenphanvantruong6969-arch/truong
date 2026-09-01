@@ -447,7 +447,17 @@ def generate_stb_lottery(student_ids: list[str], seed: int) -> dict[str, int]:
     import random
 
     rng = random.Random(seed)
-    shuffled = student_ids.copy()
+    # SẮP XẾP trước khi xáo. random.shuffle xáo ĐÚNG danh sách được đưa
+    # vào, mà load_from_sqlite đọc bảng students không có ORDER BY nên
+    # trả về theo thứ tự CHÈN. Không sắp thì cùng một trường, cùng seed,
+    # nhập học sinh theo thứ tự khác là ra kết quả khác — đo được 6/10 em
+    # đổi CLB. Thứ tự nhập không ai ghi lại và không màn hình nào hiện,
+    # nên đó là một điều kiện ngầm không thể tái lập.
+    #
+    # Sắp xếp KHÔNG làm mã học sinh quyết định kết quả: xáo xong thì mã
+    # không còn vai trò gì, hoán vị vẫn ngẫu nhiên đều. Nó chỉ khiến bộ
+    # số bốc thăm phụ thuộc đúng hai thứ: TẬP mã học sinh và seed.
+    shuffled = sorted(student_ids)
     rng.shuffle(shuffled)
     return {sid: idx for idx, sid in enumerate(shuffled)}
 

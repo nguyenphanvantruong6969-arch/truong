@@ -797,20 +797,35 @@
         return;
       }
       res.data.forEach((c) => {
-        const pct = c.capacity > 0 ? Math.min(100, Math.round((c.matched / c.capacity) * 100)) : 0;
-        const reservePct = c.capacity > 0 ? Math.min(100, Math.round((c.reserve_capacity / c.capacity) * 100)) : 0;
+        /* Hai doan LIEN NHAU trong mot mang flex, khong chong mo len
+           nhau: vang = so em vao BANG SUAT DU TRU, xanh = so em vao o
+           chi tieu chung. Cong lai dung bang ti le lap day in ben phai,
+           va khop voi cot "Dien trung tuyen" trong tep xuat ra.
+
+           Ban cu ve doan vang theo reserve_capacity — tuc la chi tieu du
+           tru cua CLB, mot thuoc tinh cua CLB chu khong phai dieu da xay
+           ra. Chu giai ghi "Co suat du tru" nen doc len khong ai biet no
+           dang noi ve cai nao. */
+        const suc = c.capacity > 0 ? c.capacity : 0;
+        const duTru = Math.min(c.matched_reserve || 0, c.matched);
+        const chung = Math.max(0, c.matched - duTru);
+        /* Tinh be rong tu SO GOC. Lam tron tung doan roi cong lai thi
+           tong co the vuot 100%. */
+        const phanTram = (n) => (suc > 0 ? Math.min(100, (n / suc) * 100) : 0);
+
         const row = document.createElement("div");
         row.className = "fill-row";
         row.innerHTML =
           `<span class="fill-name">${esc(c.name || c.club_id)}</span>` +
           `<span class="fill-track">` +
-          `<span class="fill-bar" style="width:${pct}%"></span>` +
-          (reservePct > 0
-            ? `<span class="fill-bar is-reserve" style="width:${reservePct}%; position:absolute; left:0; top:0; opacity:0.55;"></span>`
+          (duTru > 0
+            ? `<span class="fill-bar is-reserve" style="width:${phanTram(duTru)}%"></span>`
+            : "") +
+          (chung > 0
+            ? `<span class="fill-bar" style="width:${phanTram(chung)}%"></span>`
             : "") +
           `</span>` +
           `<span class="fill-count">${c.matched}/${c.capacity}</span>`;
-        row.querySelector(".fill-track").style.position = "relative";
         box.appendChild(row);
       });
     });

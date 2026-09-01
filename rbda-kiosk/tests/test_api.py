@@ -451,3 +451,54 @@ def test_import_test_selection_csv_long_format(api):
 
     state = api.get_student_entry_state("s1")["data"]
     assert state["tested_clubs"] == ["A"]
+
+
+def test_fill_stats_tach_rieng_so_em_vao_bang_suat_du_tru(api):
+    """`matched_reserve` là số em THỰC SỰ vào bằng suất dự trữ.
+
+    Khác hẳn `reserve_capacity` — chỉ tiêu dự trữ của CLB. Biểu đồ lấp
+    đầy trước đây vẽ theo chỉ tiêu, tức là vẽ một thuộc tính của CLB chứ
+    không phải điều đã xảy ra, trong khi chú giải lại ghi như thể đang
+    nói về học sinh.
+    """
+    api.create_or_update_club("clb_dt", "CLB Dự trữ", 2, 1, "chinh_sach")
+    api.create_or_update_club("clb_thuong", "CLB Thường", 2, 0, "")
+    for sid, nhom, clb, diem in (
+        ("HS01", "", "clb_dt", 9.0),
+        ("HS02", "chinh_sach", "clb_dt", 5.0),   # thấp điểm nhất, vào bằng dự trữ
+        ("HS03", "", "clb_thuong", 8.0),
+    ):
+        api.create_student_if_missing(sid, "Em " + sid)
+        if nhom:
+            api.set_student_reserve_group(sid, nhom)
+        api.submit_test_selection(sid, [clb])
+        api.submit_preferences(sid, [clb])
+        api.submit_club_scores(clb, [{"student_id": sid, "score": diem}])
+    assert api.run_pipeline(seed=42)["ok"]
+
+    theo_ma = {f["club_id"]: f for f in api.get_club_fill_stats()["data"]}
+
+    dt = theo_ma["clb_dt"]
+    assert dt["matched"] == 2
+    assert dt["matched_reserve"] == 1
+    assert dt["reserve_capacity"] == 1
+
+    # CLB không có ai diện dự trữ -> 0, không phải None (biểu đồ sẽ vẽ
+    # một đoạn rộng 0 px nếu để lọt None qua phép so sánh).
+    thuong = theo_ma["clb_thuong"]
+    assert thuong["matched"] == 1
+    assert thuong["matched_reserve"] == 0
+
+    # Không bao giờ được vượt quá số em đã xếp.
+    for f in theo_ma.values():
+        assert 0 <= f["matched_reserve"] <= f["matched"]
+
+
+def test_fill_stats_clb_chua_ai_vao_thi_khong_tra_ve_None(api):
+    """CLB rỗng: LEFT JOIN không khớp dòng nào nên SUM(...) trả NULL nếu
+    câu lệnh viết hớ. Biểu đồ nhận None rồi làm phép tính là ra NaN."""
+    api.create_or_update_club("clb_rong", "CLB Rỗng", 3, 1, "chinh_sach")
+    f = api.get_club_fill_stats()["data"][0]
+    assert f["matched"] == 0
+    assert f["matched_reserve"] in (0, None)
+    # Dù SQLite trả về gì, phía JS đã có `c.matched_reserve || 0`.

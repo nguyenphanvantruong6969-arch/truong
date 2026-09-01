@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 01/09/2026 · 335 test pass
+> Cập nhật lần cuối: 01/09/2026 · 348 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **335 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
+| Test | **348 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 24 file test, 335 test case (3 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 26 file test, 348 test case (4 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -319,6 +319,78 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 ---
 
 ## 5. Vấn đề chưa giải quyết
+
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi 19: bốc thăm phụ thuộc THỨ TỰ NHẬP học sinh
+
+Học sinh hỏi *"chạy trên máy khác có ra cùng kết quả không?"* — hỏi đúng chỗ hiểm.
+
+`load_from_sqlite` đọc `SELECT student_id, stb_number, reserve_group FROM students`
+**không có `ORDER BY`**. Truy vấn cần cột ngoài chỉ mục nên SQLite quét bảng, trả
+về theo **thứ tự chèn**. `generate_stb_lottery` rồi `shuffle` đúng danh sách đó,
+mà `shuffle` phụ thuộc thứ tự đầu vào.
+
+| Thử nghiệm (10 em điểm bằng nhau, `seed=42`) | Kết quả |
+|---|---|
+| Chèn HS01→HS10 vs HS10→HS01, **trước bản vá** | **6/10 em khác CLB** |
+| Cùng thử nghiệm, **sau bản vá** | **0 em khác** |
+
+Chữa bằng **một dòng**: `sorted(student_ids)` trước khi xáo, đặt **trong hàm**
+`generate_stb_lottery` chứ không ở chỗ gọi — chính hàm đó hứa *"seed cố định để
+tái lập kết quả khi kiểm tra/audit"*, nên nó phải tự giữ lời hứa, và hàm có hai
+chỗ gọi.
+
+**Không đổi bản chất thuật toán.** RB-DA không sửa dòng nào. Xáo trên danh sách
+đã sắp vẫn cho hoán vị ngẫu nhiên đều — đo được: `HS01` nhận số 9/12, số 0 rơi
+vào `HS08`. Đã đo trên hai bộ dữ liệu đã công bố: **0 em đổi CLB**, bảng trong
+hướng dẫn khớp từng dòng.
+
+> **Câu chữ cho báo cáo — chỗ này rất dễ nói sai:**
+> **KHÔNG viết** "số bốc thăm dựa trên mã học sinh" — nghe như em tên A có lợi
+> hơn em tên Z, và không đúng.
+> **Viết đúng:** *bốc thăm không phụ thuộc thứ tự nhập liệu*. Mã học sinh chỉ
+> dùng để danh sách đầu vào luôn ở một trật tự cố định; xáo xong thì mã không
+> còn vai trò gì.
+
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi 20: biểu đồ lấp đầy chưa bao giờ vẽ được thanh chính
+
+Học sinh gửi ảnh: CLB đầy **14/14** mà máng trắng trơn, còn đúng 4 CLB có suất
+dự trữ thì hiện một đoạn vàng ngắn.
+
+`.fill-bar` là `<span>` mà CSS chỉ đặt `height` và `background`, **không đặt
+`display`**. `width`/`height` **không áp dụng cho phần tử inline** → thanh không
+có kích thước. Đoạn dự trữ vẽ được **chỉ vì** JS gắn `position:absolute` nội
+tuyến, mà absolute thì bị ép thành block.
+
+Đo trong Chromium thật, trước bản vá:
+
+| CLB | Số | Thanh chính |
+|---|---|---|
+| Âm nhạc | 14/14 | `display:inline`, css `100%` → **vẽ ra 0 px** |
+| Khoa học | 5/10 | `display:inline`, css `50%` → **vẽ ra 0 px** |
+
+Ba việc đi cùng nhau:
+
+1. **Máng thành `display:flex`** — con của flex tự động thành block, nên không
+   đoạn nào có thể rơi lại vào inline. Chọn flex thay vì thêm `display:block` là
+   có chủ ý: triệt **cả lớp lỗi**, không chỉ ca đang gặp.
+2. **`get_club_fill_stats` trả thêm `matched_reserve`** — số em **thực sự** vào
+   bằng suất dự trữ. Bản cũ vẽ theo `reserve_capacity`, tức chỉ tiêu của CLB,
+   một thuộc tính của CLB chứ không phải điều đã xảy ra.
+3. **Vẽ hai đoạn liền nhau**, không chồng mờ: vàng = vào bằng dự trữ, xanh = vào
+   ở chỉ tiêu chung, cộng lại đúng bằng tỉ lệ lấp đầy in bên phải.
+
+Chú giải cũng sai theo nên sửa: *"Có suất dự trữ"* → *"Vào bằng suất dự trữ"*.
+
+Đo lại trên bộ 140 em: mọi thanh khớp con số của nó, và bốn đoạn vàng cộng lại
+đúng **16 em** — bằng số em vào bằng dự trữ đã ghi trong tài liệu.
+
+**Vì sao sống sót lâu vậy:** `test_api.py` và `test_kich_ban_nhap_tay.py` có gọi
+`get_club_fill_stats`, và **API luôn trả về đúng số**. Sai nằm ở tầng CSS, nơi
+tầng Python mù hoàn toàn — y hệt lỗi i18n cùng ngày. Nay có
+`tests/test_giao_dien_bieu_do.py` đo **bề rộng vẽ ra thật**
+(`getBoundingClientRect`), không đo thuộc tính CSS: chính `width:100%` mà vẽ ra
+0 px là cái bẫy đã giấu lỗi này từ đầu.
+
 
 ### ✅ ĐÃ ĐÓNG (01/09) — lỗi đổi ngôn ngữ ở ô nạp tệp
 

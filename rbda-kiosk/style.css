@@ -618,18 +618,23 @@ button, input {
   color: var(--ink-soft);
 }
 
+/* display:flex, khong phai block. Con cua flex container TU DONG bi ep
+   thanh block, nen khong doan nao co the roi lai vao trang thai inline —
+   ma inline thi width bi bo qua va thanh ve ra 0 px. Chon flex la de
+   triet CA LOP LOI do, khong chi ca dang gap. */
 .fill-track {
   height: 10px;
   background: var(--paper);
   border: 1px solid var(--hairline);
   border-radius: 5px;
   overflow: hidden;
-  position: relative;
+  display: flex;
 }
 
 .fill-bar {
   height: 100%;
   background: var(--moss);
+  flex: 0 0 auto;
 }
 
 .fill-bar.is-reserve {

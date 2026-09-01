@@ -231,8 +231,12 @@ Màn hình hiện tiến trình 5 bước: sao lưu → kiểm tra dữ liệu �
 thuật toán → ghi kết quả.
 
 > **Ô `seed`** là hạt giống bốc thăm, mặc định `42`. Cùng dữ liệu và cùng `seed`
-> thì **luôn ra cùng kết quả** — kể cả trên máy khác, hệ điều hành khác. Đó là
-> cách kiểm chứng lại kết quả sau này. Đừng đổi nếu không có lý do.
+> thì **luôn ra cùng kết quả** — kể cả trên máy khác, hệ điều hành khác, và
+> **kể cả khi nhập học sinh theo thứ tự khác**. Đó là cách kiểm chứng lại kết quả
+> sau này. Đừng đổi nếu không có lý do.
+>
+> Bốc thăm vẫn hoàn toàn ngẫu nhiên: mã học sinh **không** quyết định ai được số
+> tốt. Em `HS01` không hề có lợi thế nào so với em cuối danh sách.
 
 ### Bước 5 — Xuất kết quả
 
@@ -283,6 +287,11 @@ Chạy với `seed = 42`:
 | **HS10** | Dương Bá Minh | *(trống)* | — | — |
 
 Sức chứa: Bóng rổ **3/3** · Mỹ thuật **2/2** · Tin học **2/2** · Nấu ăn **2/3**
+
+Ở tab **02 · Kết quả** còn có biểu đồ *Tỉ lệ lấp đầy theo club*. Mỗi thanh đọc
+như sau: phần **vàng** là số em vào **bằng suất dự trữ**, phần **xanh** là số em
+vào ở chỉ tiêu chung, phần **trắng còn lại** là chỗ chưa lấp đầy. Hai phần màu
+cộng lại đúng bằng con số in bên phải thanh.
 
 **Ra khác bảng này là có gì đó đã đổi** — dữ liệu, `seed`, hoặc phiên bản phần mềm.
 
