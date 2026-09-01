@@ -9,5 +9,13 @@ app.db
 match_results.csv
 ket_qua*.csv
 ket_qua*_theo_club/
+
+# NGOAI LE: ket_qua_thu_tai.csv la SO DO THU TAI, khong phai du lieu hoc
+# sinh. Ca 18 cot deu la so dem va thoi gian (so hoc sinh, so CLB, giay,
+# MB); cot chu duy nhat chi nhan hai gia tri "chia_deu"/"theo_nhu_cau".
+# Day la du lieu THO dung sau bao cao thu tai — thieu no thi
+# bao_cao_thu_tai.html khong ai dung lai duoc, ma README lai dang tro
+# toi. Luat ket_qua*.csv o tren chan nham no chi vi trung tien to ten.
+!du_lieu_test/thu_tai/ket_qua_thu_tai.csv
 build/
 dist/
