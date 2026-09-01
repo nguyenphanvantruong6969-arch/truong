@@ -119,3 +119,44 @@ def test_bam_lan_hai_moi_xoa_that_va_bao_ten_tep_sao_luu(trang):
     assert conn.execute("SELECT COUNT(*) FROM clubs").fetchone()[0] == 1
     conn.close()
     assert not loi, loi
+
+
+def test_moi_o_so_tren_man_hinh_cap_nhat_ngay_sau_khi_xoa(trang):
+    """Sau khi xoá, KHÔNG chỗ nào trên màn hình được nói số cũ nữa.
+
+    Thanh bên luôn hiện dù đang ở tab nào. Trước bản vá, ngay sau khi
+    xoá nó vẫn ghi "Chạy gần nhất: … 2/2 xếp được" cho một lần chạy mà
+    dữ liệu đằng sau đã bị xoá sạch — màn hình nói một điều không đúng,
+    ngay sau thao tác nguy hiểm nhất trong app.
+    """
+    page, loi, api = trang
+    assert api.run_pipeline(seed=42)["ok"]
+    page.locator('[data-tab="pipeline"]').click()
+    page.wait_for_function(
+        "document.querySelector('#statStudents').textContent !== '—'"
+    )
+    assert page.locator("#statStudents").inner_text() == "2"
+    assert "Chạy gần nhất" in page.locator("#lastRunLine").inner_text()
+
+    page.locator('[data-tab="admin"]').click()
+    nut = page.locator("#btnResetStudents")
+    nut.click()
+    page.wait_for_function(
+        "document.querySelector('#btnResetStudents').classList.contains('is-confirming')"
+    )
+    nut.click()
+    page.wait_for_function("document.querySelectorAll('.toast').length > 0", timeout=10000)
+
+    # Vẫn đang đứng ở tab Quản lý — không được bắt người dùng chuyển tab
+    # mới thấy sự thật.
+    page.wait_for_function(
+        "document.querySelector('#lastRunLine').textContent.indexOf('gần nhất') === -1",
+        timeout=10000,
+    )
+    page.wait_for_function(
+        "document.querySelector('#statStudents').textContent === '0'", timeout=10000
+    )
+    assert page.locator("#statMatched").inner_text() == "0"
+    # CLB giữ nguyên vì phạm vi là "học sinh".
+    assert page.locator("#statClubs").inner_text() == "1"
+    assert not loi, loi

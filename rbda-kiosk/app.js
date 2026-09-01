@@ -1227,8 +1227,14 @@
               }),
               "success"
             );
+            /* Phai lam moi CA nhung thu KHONG nam tren tab nay. Thanh ben
+               luon hien, va sau khi xoa no van noi "Chay gan nhat: 6/6 xep
+               duoc" cho mot lan chay ma du lieu da khong con — man hinh noi
+               mot dieu khong dung, ngay sau thao tac nguy hiem nhat. */
             loadAdminTab();
             loadHealthReport();
+            refreshDashboardStats();
+            refreshSidebarStatus();
           });
         }
       );
