@@ -387,6 +387,7 @@ Bảy quy tắc rà soát. Mỗi cảnh báo nói một điều **vẫn để ph
 | **CLB … có suất dự trữ nhưng chưa đặt nhãn** | Các suất đó âm thầm thành suất phổ thông | Tab 04: sửa CLB |
 | **CLB … dành suất cho nhãn chưa em nào mang** | Suất dự trữ sẽ không dùng đến | Kiểm tra lại cột `reserve_group` ở tệp 2 hoặc 3 |
 | **Tổng chỗ ít hơn số học sinh** | Chắc chắn có em không có chỗ. Đây là thông tin, không phải lỗi | Tăng chỉ tiêu, hoặc chấp nhận |
+| **Club … có n điểm lệch hẳn** | Một điểm cách xa hẳn các điểm còn lại của chính CLB đó — thường là gõ `70` thay vì `7.0`. Điểm sai đẩy em đó lên đầu bảng và kéo em khác tụt xuống | Tab 05 · Chấm điểm |
 
 Ngoài ra, **lúc nạp tệp** còn có cảnh báo riêng: mã trùng hoa/thường, một mã xuất
 hiện hai dòng, mã nghi bị Excel cắt mất số 0 đứng đầu, mã CLB không tồn tại, cột
@@ -502,7 +503,7 @@ Ghi ra để người dùng biết trước, không phải để bào chữa.
 | Giới hạn | Ảnh hưởng |
 |---|---|
 | **Tối đa 10 nguyện vọng mỗi em** | Em xếp từ 11 nguyện vọng trở lên sẽ bị **bỏ qua cả hồ sơ**, có cảnh báo. Trường có trên 10 CLB cần lưu ý |
-| **Điểm chưa có chốt chặn** | Gõ nhầm `85` thay vì `8.5` thì phần mềm vẫn nhận, không cảnh báo. Điểm chỉ có ý nghĩa so sánh trong cùng một CLB, nên một số lệch hẳn sẽ đẩy em đó lên đầu bảng |
+| **Điểm bất thường chỉ được CẢNH BÁO, không bị chặn** | Phần mềm không đặt trần cứng (trường có thể chấm thang 100), mà so mỗi điểm với trung vị của chính CLB đó. Lệch quá 3 lần thì báo — bắt được cả `70` lẫn `0.85`. Nhưng một điểm sai *vừa phải*, ví dụ 9 thay vì 8, thì không cách nào phát hiện được |
 | **Chưa có nút "Sao lưu ngay"** | Phần mềm tự sao lưu trước mỗi lần chạy và trước khi xoá. Sao lưu thường ngày vẫn phải chép tay tệp `app.db` |
 | **Windows cảnh báo nhà phát hành không xác định** | Do chưa mua chứng chỉ ký số thương mại, không phải lỗi phần mềm |
 

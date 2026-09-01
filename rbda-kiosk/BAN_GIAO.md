@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 01/09/2026 · 348 test pass
+> Cập nhật lần cuối: 01/09/2026 · 363 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **348 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
+| Test | **363 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 26 file test, 348 test case (4 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 27 file test, 363 test case (4 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -319,6 +319,51 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 ---
 
 ## 5. Vấn đề chưa giải quyết
+
+### ✅ ĐÃ ĐÓNG (01/09) — lỗi 21 và 22: điểm không có chốt chặn nào
+
+Lỗi duy nhất còn lại có thể làm **sai người trúng tuyển**. Đo trên bộ ví dụ 10 em,
+gõ `70` thay vì `7.0` cho HS10:
+
+| Em | Trước | Sau |
+|---|---|---|
+| HS10 | *(chưa xếp)* | **CLB Bóng rổ** |
+| HS02 | CLB Bóng rổ | **CLB Mỹ thuật** |
+| HS08 | CLB Mỹ thuật | **CLB Nấu ăn** |
+
+**Một lỗi gõ, ba em đổi chỗ** — em bị đẩy ra lại đi đẩy em khác. Và 0 cảnh báo.
+
+**Lỗi 21 — hai cửa, hai luật.** Cùng giá trị `-9`: đường nạp tệp từ chối
+(`csv_score_negative`), màn hình Chấm điểm **nhận**. Bắt được hay không tuỳ giáo
+viên đi cửa nào. Nay `submit_club_scores` từ chối điểm âm, mã lỗi `score_negative`,
+và **điểm cũ không bị ghi đè** — có test canh riêng chỗ đó.
+
+**Lỗi 22 — không có quy tắc nào soát điểm bất thường.** Nay có quy tắc rà soát
+thứ 8: so mỗi điểm với **trung vị của chính CLB đó**.
+
+> **KHÔNG đặt trần cứng ở 10.** Trường có thể chấm thang 100, chặn cứng là chặn
+> nhầm. So với trung vị thì thang nào cũng đúng, và bắt được cả hai phía.
+
+**Ngưỡng 3,0 chọn bằng số đo, không phải cảm tính:**
+
+| | |
+|---|---|
+| Tỉ lệ (điểm cao nhất / trung vị) trong một CLB — cao nhất trên **579 ô điểm thật** | **1,42** |
+| Tỉ lệ khi gõ lệch dấu chấm | **≈ 10** |
+| Quét thử hệ số 1,5 | **11 cảnh báo giả** |
+| Quét thử hệ số 2,0 · 2,5 · 3,0 | **0 cảnh báo giả** |
+
+Lấy 3,0 để cách ca thật tệ nhất 2,1 lần mà vẫn thừa sức bắt lỗi gõ. Bắt được
+`70`, `85` và `0.85`; không báo với `6.0` (điểm thấp thật) và không báo với
+trường chấm thang 100. CLB dưới 3 điểm thì bỏ qua — chưa có phân bố nào để so.
+
+**Tác động lên kết quả đã công bố: không có.** Lỗi 21 chỉ từ chối thứ chắc chắn
+sai (không bộ dữ liệu nào có điểm âm); lỗi 22 chỉ **thêm cảnh báo**, không chặn
+ai chạy. Cả hai bộ dữ liệu vẫn **0 cảnh báo**, kết quả không đổi một dòng.
+
+**Còn lại không sửa được:** một điểm sai *vừa phải* — 9 thay vì 8 — thì không
+cách nào phát hiện. Đã ghi vào mục *Giới hạn đã biết* của hướng dẫn.
+
 
 ### ✅ ĐÃ ĐÓNG (01/09) — lỗi 19: bốc thăm phụ thuộc THỨ TỰ NHẬP học sinh
 

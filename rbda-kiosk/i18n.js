@@ -387,6 +387,10 @@
       vi: "{student_id}: điểm '{score}' không phải số",
       en: "{student_id}: score '{score}' is not a number",
     },
+    score_negative: {
+      vi: "{student_id}: điểm '{score}' là số ÂM — gần như chắc chắn thừa dấu trừ. Ô điểm đó KHÔNG được lưu.",
+      en: "{student_id}: score '{score}' is NEGATIVE — almost certainly a stray minus sign. That score was NOT saved.",
+    },
     health_scoring_none: {
       vi: "Club {club_id}: có {n_applicants} học sinh đăng ký thi nhưng CHƯA CHẤM ĐIỂM AI. Toàn bộ các em này sẽ rơi xuống Tầng 2 và chỉ được xét bằng số bốc thăm — vòng thi coi như không có tác dụng.",
       en: "Club {club_id}: {n_applicants} student(s) registered for the tryout but NOBODY has been scored. All of them drop to Tier 2 and will be decided by lottery only — the tryout will have no effect.",
@@ -414,6 +418,10 @@
     health_club_group_no_students: {
       vi: "Club {club_id} dành {reserve_capacity} suất cho nhãn \"{reserve_group}\", nhưng chưa học sinh nào mang nhãn đó. Suất dự trữ sẽ không dùng đến.",
       en: "Club {club_id} reserves {reserve_capacity} seat(s) for label \"{reserve_group}\", but no student carries that label. The reserve seats will go unused.",
+    },
+    health_score_outlier: {
+      vi: "Club {club_id}: có {n} điểm lệch hẳn khỏi các điểm còn lại (trung vị của club này là {trung_vi}). Ví dụ: {sample}. Gõ 70 thay vì 7.0 là chuyện thường gặp, và điểm sai đẩy em đó lên đầu bảng — kéo theo cả những em khác tụt xuống. Kiểm tra lại ở tab Chấm điểm.",
+      en: "Club {club_id}: {n} score(s) sit far outside the rest (this club's median is {trung_vi}). For example: {sample}. Typing 70 instead of 7.0 is a common slip, and a wrong score pushes that student to the top of the ranking — displacing others in turn. Check them on the Scoring tab.",
     },
     health_oversubscribed: {
       vi: "Tổng chỗ toàn hệ thống là {n_seats}, trong khi có {n_students} học sinh đã nộp nguyện vọng. Ít nhất {n_short} em chắc chắn không có chỗ.",

@@ -44,6 +44,7 @@ from rbda_priority_pipeline import (
 from i18n_errors import err
 
 import sqlite3
+import statistics
 
 
 def _now() -> str:
@@ -157,6 +158,17 @@ class PipelineAPI:
     # -----------------------------------------------------------------
 
     _HEALTH_SAMPLE_LIMIT = 5
+
+    # Nguong bao "diem la": gap bao nhieu lan TRUNG VI cua chinh CLB do.
+    #
+    # Chon 3.0 bang so do, khong phai cam tinh. Do tren 579 o diem that
+    # cua hai bo du lieu: ti le (diem cao nhat / trung vi) trong mot CLB
+    # cao nhat la 1.42. Loi go lech dau cham thi lech gap ~10 lan. Giua
+    # 1.42 va 10 la mot khoang trong gan mot bac do lon.
+    #
+    # Quet thu: he so 1.5 -> 11 canh bao GIA; tu 2.0 tro len -> 0. Lay
+    # 3.0 de cach xa ca that te nhat 2.1 lan ma van thua suc bat loi go.
+    _NGUONG_DIEM_LA = 3.0
 
     def get_data_health_report(self):
         """
@@ -287,6 +299,42 @@ class PipelineAPI:
                 warn("info", "health_oversubscribed",
                      n_seats=n_seats, n_students=n_with_prefs,
                      n_short=n_with_prefs - n_seats)
+
+            # --- 8. Điểm lệch hẳn khỏi phân bố của chính CLB đó ----------
+            # Gõ 70 thay vì 7.0 thì phần mềm vẫn nhận, và em đó nhảy lên
+            # đầu bảng. Đo trên bộ ví dụ: MỘT lỗi gõ làm BA em đổi chỗ,
+            # vì em bị đẩy ra lại đi đẩy em khác.
+            #
+            # KHÔNG đặt trần cứng ở 10 — trường có thể chấm thang 100, và
+            # chặn cứng là chặn nhầm. So với TRUNG VỊ CỦA CHÍNH CLB đó thì
+            # thang nào cũng đúng, và bắt được cả hai phía: 70 (thừa) lẫn
+            # 0.85 (thiếu).
+            diem_theo_clb: dict = {}
+            for row in cur.execute("""
+                SELECT club_id, student_id, score FROM club_scores
+                ORDER BY club_id, student_id
+            """).fetchall():
+                diem_theo_clb.setdefault(row["club_id"], []).append(
+                    (row["student_id"], row["score"])
+                )
+            for club_id in sorted(diem_theo_clb):
+                cap = diem_theo_clb[club_id]
+                # Dưới 3 điểm thì không có phân bố nào để mà so.
+                if len(cap) < 3:
+                    continue
+                giua = statistics.median([s for _, s in cap])
+                if giua <= 0:
+                    continue
+                la = [(sid, s) for sid, s in cap
+                      if s > self._NGUONG_DIEM_LA * giua
+                      or s * self._NGUONG_DIEM_LA < giua]
+                if la:
+                    warn("high", "health_score_outlier",
+                         club_id=club_id, n=len(la),
+                         trung_vi=("%g" % giua),
+                         sample=", ".join(
+                             "%s (%g)" % (sid, s)
+                             for sid, s in la[:self._HEALTH_SAMPLE_LIMIT]))
 
             conn.close()
             return _ok({
@@ -1624,6 +1672,14 @@ class PipelineAPI:
                     score = float(score)
                 except (TypeError, ValueError):
                     skipped.append(err("score_not_a_number", student_id=sid, score=score))
+                    continue
+                # Điểm âm: đường NẠP TỆP đã từ chối từ trước
+                # (csv_score_negative), nhưng màn hình chấm điểm thì nhận.
+                # Cùng một lỗi thừa dấu trừ, bắt được hay không lại tuỳ
+                # giáo viên đi cửa nào — đo được: -9 vào lọt ở đây, và em
+                # điểm cao nhất tụt xuống dưới tất cả, mất chỗ.
+                if score < 0:
+                    skipped.append(err("score_negative", student_id=sid, score=score))
                     continue
                 cur.execute(
                     "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
