@@ -60,6 +60,13 @@ jobs:
           gh release view $tag 2>$null | Out-Null
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title "RB-DA Kiosk - ban moi nhat" --notes-file ../.github/mo_ta_ban_phat_hanh.md
+          } else {
+            # BAT BUOC phai co nhanh nay. `gh release create` chi chay khi ban
+            # phat hanh CHUA ton tai, nen sau lan dau tien, sua
+            # mo_ta_ban_phat_hanh.md la sua vao khoang khong: trang tai ve van
+            # hien nguyen mo ta cu. Da dinh that — mo ta con ghi bo du lieu
+            # "120 hoc sinh / 10 CLB" rat lau sau khi goi da doi.
+            gh release edit $tag --notes-file ../.github/mo_ta_ban_phat_hanh.md
           }
           gh release upload $tag PhanBoCauLacBo-windows.zip --clobber
         shell: pwsh

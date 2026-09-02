@@ -147,3 +147,14 @@ def test_quy_trinh_build_chep_ca_huong_dan_su_dung_vao_goi():
     yml = io.open(p, encoding="utf-8").read()
     assert "HUONG_DAN_SU_DUNG.md dist/PhanBoCauLacBo/" in yml
     assert os.path.exists(os.path.join(GOC, "HUONG_DAN_SU_DUNG.md"))
+
+
+def test_quy_trinh_build_cap_nhat_lai_mo_ta_ban_phat_hanh():
+    """`gh release create` CHỈ chạy khi bản phát hành chưa tồn tại. Nếu chỉ có
+    mỗi nhánh đó thì sau lần đầu, sửa mo_ta_ban_phat_hanh.md là sửa vào khoảng
+    không — trang tải về giữ nguyên mô tả cũ mãi mãi. Đã dính thật: mô tả còn
+    ghi bộ dữ liệu "120 học sinh / 10 CLB" rất lâu sau khi gói đã đổi."""
+    p = os.path.join(os.path.dirname(GOC), ".github", "workflows",
+                     "build-windows-exe.yml")
+    yml = io.open(p, encoding="utf-8").read()
+    assert "gh release edit $tag --notes-file" in yml
