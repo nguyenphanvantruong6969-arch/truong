@@ -260,6 +260,36 @@
   }
   .why b { color: var(--ink); font-weight: 600; }
 
+  .dl {
+    display: block;
+    margin: 10px 0;
+    padding: 12px 14px;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .dl:hover, .dl:focus-visible { border-color: var(--pine); }
+  .dl:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+  .dl-name {
+    display: block;
+    font-family: var(--f-head);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--pine);
+    margin-bottom: 3px;
+  }
+  .dl-what { display: block; font-size: 14px; color: var(--ink-soft); }
+  .dl-url {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    word-break: break-all;
+  }
+
   /* ---------- callouts ---------- */
   .note {
     border-left: 3px solid var(--rule);
@@ -786,6 +816,24 @@
 
   <!-- ============ CÀI ĐẶT FORMS ============ -->
   <h2>Nhập vào Microsoft Forms</h2>
+
+  <h3>Tải hai tệp Word</h3>
+  <p class="lede">
+    Bấm nút <b>Download raw file</b> ở góc trên bên phải khung tệp. Cần đăng nhập GitHub. Muốn tải
+    thẳng không qua trang xem thì đổi <code>/blob/</code> thành <code>/raw/</code>.
+  </p>
+  <a class="dl" href="https://github.com/nguyenphanvantruong6969-arch/truong/blob/claude/project-testing-development-zf9ajs/rbda-kiosk/KHAO_SAT_NHAP_FORMS.docx">
+    <span class="dl-name">① KHAO_SAT_NHAP_FORMS.docx</span>
+    <span class="dl-what">Tệp <b>đem nhập</b> — 16 câu hỏi</span>
+    <span class="dl-url">github.com/…/rbda-kiosk/KHAO_SAT_NHAP_FORMS.docx</span>
+  </a>
+  <a class="dl" href="https://github.com/nguyenphanvantruong6969-arch/truong/blob/claude/project-testing-development-zf9ajs/rbda-kiosk/KHAO_SAT_HUONG_DAN_FORMS.docx">
+    <span class="dl-name">② KHAO_SAT_HUONG_DAN_FORMS.docx</span>
+    <span class="dl-what">Tệp <b>đọc, đừng nhập</b> — cài đặt, rẽ nhánh, danh sách soát</span>
+    <span class="dl-url">github.com/…/rbda-kiosk/KHAO_SAT_HUONG_DAN_FORMS.docx</span>
+  </a>
+
+  <h3>Các bước</h3>
   <ol class="reasons">
     <li>Mở <b>forms.office.com</b> bằng tài khoản trường.</li>
     <li>Chọn <b>Quick import</b> (Nhập nhanh) trên trang chủ.</li>

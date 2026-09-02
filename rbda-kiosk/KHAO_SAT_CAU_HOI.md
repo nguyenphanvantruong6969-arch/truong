@@ -20,6 +20,19 @@ lòng với việc phân bổ CLB*.
 | `KHAO_SAT_HUONG_DAN_FORMS.docx` | **Đọc, KHÔNG nhập** — các bước dựng form, cài đặt, rẽ nhánh |
 | Tệp này (`.md`) và bản trang web | Bộ câu hỏi kèm lý do thiết kế từng câu |
 
+### Tải hai tệp Word ở đâu
+
+Hai tệp `.docx` nằm trong kho mã nguồn, cùng thư mục với tệp này. Tải trực tiếp:
+
+```
+https://github.com/nguyenphanvantruong6969-arch/truong/blob/claude/project-testing-development-zf9ajs/rbda-kiosk/KHAO_SAT_NHAP_FORMS.docx
+https://github.com/nguyenphanvantruong6969-arch/truong/blob/claude/project-testing-development-zf9ajs/rbda-kiosk/KHAO_SAT_HUONG_DAN_FORMS.docx
+```
+
+Mở đường dẫn → bấm nút **Download raw file** ở góc trên bên phải khung tệp. Cần
+đăng nhập GitHub. Muốn tải thẳng không qua trang xem thì đổi `/blob/` thành
+`/raw/` trong đường dẫn.
+
 ---
 
 ## Vì sao khảo sát này cần thiết
