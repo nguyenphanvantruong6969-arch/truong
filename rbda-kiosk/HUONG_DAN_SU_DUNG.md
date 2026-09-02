@@ -618,6 +618,7 @@ Bỏ trống nguyện vọng là tự bỏ cơ hội của chính mình.
 > hai đều hết chỗ, thì không có suất là câu trả lời trung thực.
 
 Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
+Ba câu hỏi hay gặp nhất về bốc thăm, kèm số đo: **`GIAI_DAP_BOC_THAM.md`**.
 
 ---
 

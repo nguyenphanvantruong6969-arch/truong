@@ -191,6 +191,10 @@ python du_lieu_test/do_anh_huong_seed.py --so-seed 200
 
 Chạy hai lần ra **đúng cùng một bảng** — đã kiểm.
 
+> Ba câu hỏi hay gặp về **bản thân phép bốc thăm** (đổi seed có còn công
+> bằng không, thứ tự nhập có ảnh hưởng không, những gì ảnh hưởng tới bộ
+> số) được trả lời riêng, kèm số đo, ở **`GIAI_DAP_BOC_THAM.md`**.
+
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
 Xem `NHAP_TAY.md` — 8 học sinh, 3 CLB.
