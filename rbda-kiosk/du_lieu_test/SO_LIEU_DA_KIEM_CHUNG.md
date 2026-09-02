@@ -122,12 +122,62 @@ ngoài hai nhóm đó.
 `vi_du_huong_dan/` là ca đối chứng sạch nhất: bộ này **không có em hoà điểm và
 không có em tầng 2**, và kết quả là **0 em đổi chỗ trên cả 200 seed**.
 
-Hai điều cũng đo được, và cần nói rõ vì chúng đi ngược trực giác:
+### Seed có đổi được việc một em CÓ SUẤT hay không?
+
+Có — và đây là câu hỏi quan trọng hơn hẳn chuyện đổi CLB. Đổi CLB là đổi chỗ
+ngồi; mất suất là ra khỏi cuộc chơi. Đã tách ra đếm riêng:
+
+| Bộ dữ liệu | Luôn có suất | Luôn không có suất | **Bấp bênh — seed quyết định** |
+|---|---|---|---|
+| `vi_du_huong_dan/` (10 em) | 9 (90,0%) | 1 (10,0%) | **0 (0,0%)** |
+| `bo_sach/` (140 em) | 139 (99,3%) | 0 | **1 (0,7%)** |
+| `TEST_0*` (120 em) | 107 (89,2%) | 11 (9,2%) | **2 (1,7%)** |
+| **Gộp ba bộ (270 em)** | | | **3 (1,1%)** |
+
+Ba em đó, và chỉ ba em đó, là toàn bộ chỗ mà may rủi quyết định chuyện có suất
+hay không. Phân bố số em được xếp trên 200 seed:
+
+| Bộ | Phân bố |
+|---|---|
+| `vi_du_huong_dan/` | 9 em: **200/200 seed** — không dao động chút nào |
+| `bo_sach/` | 139 em: 46 seed · 140 em: 154 seed |
+| `TEST_0*` | 107 em: 49 · 108 em: 101 · 109 em: 50 |
+
+### Trong trường hợp nào thì một em rơi vào nhóm bấp bênh
+
+Theo dấu từng em qua 200 seed:
+
+| Em | Nguyện vọng | Kết cục |
+|---|---|---|
+| `HS122` (bộ sạch) | 6 nguyện vọng | `clb_vanhoc` **154/200** (77%) · không suất **46/200** (23%) |
+| `HS037` (TEST) | **chỉ 2 nguyện vọng** | `clb_bongda` **107/200** (54%) · không suất **93/200** (46%) |
+| `HS045` (TEST) | 4 nguyện vọng | không suất **106/200** (53%) · `clb_mythuat` **94/200** (47%) |
+
+Điểm chung: em đó bị từ chối hết các nguyện vọng trên, **rơi xuống nguyện vọng
+cuối cùng còn với tới được**, và ở đúng đó lại đứng ngay ranh giới chỉ tiêu
+trong một nhóm hoà nhau. Thua lượt bốc thăm ở chỗ đó thì **không còn nguyện
+vọng nào phía dưới** để rơi tiếp — nên mất suất luôn.
+
+`HS122` rơi tới nguyện vọng thứ **5** (`clb_vanhoc`, một CLB em không thi, tức
+tầng 2 xếp thuần theo bốc thăm). `HS037` chỉ có **2** nguyện vọng nên không có
+lưới nào đỡ.
+
+**Một điều đã thử và KHÔNG kết luận được:** ranh giới này **không** đoán trước
+được bằng cách so điểm thô. Ví dụ `HS122` ở `clb_tinhoc` có 34 em điểm cao hơn
+trong khi chỉ tiêu là 14 — nhìn tĩnh thì em đứng ngoài rất xa, nhưng phần lớn
+34 em kia lại đỗ nguyện vọng trên của họ, nên ranh giới thật tụt xuống tới em.
+Ranh giới ở đây **sinh ra từ chuỗi dây chuyền** của thuật toán, không phải từ
+bảng điểm. Bộ dò ranh giới tĩnh đã viết thử **không bắt được ca nào**.
+
+Cũng cần nói rõ **cái chưa kết luận được**: cả ba em bấp bênh đều rơi vào bộ có
+nguyện vọng ngắn hơn, và `HS037` chỉ có 2 nguyện vọng. Nhìn thì hợp lý là
+"nguyện vọng càng ngắn càng dễ bấp bênh", nhưng **ba trường hợp thì chưa đủ để
+kết luận** — cần quét nhiều bộ dữ liệu hơn mới nói được.
+
+Còn một điều nữa:
 
 - **Mọi seed đều cho 0 cặp phá vỡ.** Đổi seed đổi *ai* được suất trong nhóm hoà
   nhau, chứ không bao giờ làm kết quả mất tính ổn định.
-- **Seed đổi được cả việc một em có suất hay không**, chứ không chỉ đổi CLB — số
-  em được xếp dao động 139–140 (bộ sạch) và 107–109 (bộ TEST).
 
 Trên `bo_sach/` thì 138/140 em có hoà điểm ở đâu đó và cả 140 em đều có ít nhất
 một CLB mình không thi, nên câu "không em nào đổi ngoài hai nhóm" ở bộ này gần

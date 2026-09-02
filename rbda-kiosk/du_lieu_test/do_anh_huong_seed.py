@@ -25,6 +25,7 @@ KHÔNG đụng `app.db` thật: mọi thứ nằm trong thư mục tạm, xoá s
 """
 
 import argparse
+import collections
 import os
 import shutil
 import statistics
@@ -133,6 +134,7 @@ def do_mot_bo(ten, files, so_seed):
         duong_db = nap_bo(thu_muc, files)
         du_lieu = loi.load_from_sqlite(duong_db)
         students = du_lieu[0]
+        nguyen_vong = du_lieu[4]
         n_hs = len(students)
 
         moc, cap_moc = xep_theo_seed(du_lieu, SEED_MOC)
@@ -143,15 +145,33 @@ def do_mot_bo(ten, files, so_seed):
         so_duoc_xep = []        # mỗi seed: bao nhiêu em có suất
         tung_doi = set()        # em nào TỪNG đổi chỗ ở ít nhất một seed
         cap_pha_vo_toi_da = 0
+        # Đếm riêng chuyện CÓ SUẤT HAY KHÔNG — khác hẳn chuyện đổi CLB.
+        # Đổi CLB là đổi chỗ ngồi; mất suất là ra khỏi cuộc chơi.
+        so_lan_co_suat = collections.Counter()
+        phan_bo_so_xep = collections.Counter()
+        di_dau = collections.defaultdict(collections.Counter)
 
-        seeds = [s for s in range(1, so_seed + 1) if s != SEED_MOC]
+        seeds = [SEED_MOC] + [s for s in range(1, so_seed + 1) if s != SEED_MOC]
         for seed in seeds:
             xep, cap = xep_theo_seed(du_lieu, seed)
             cap_pha_vo_toi_da = max(cap_pha_vo_toi_da, len(cap))
-            khac = {sid for sid in students if xep.get(sid) != moc.get(sid)}
-            so_doi.append(len(khac))
-            tung_doi |= khac
-            so_duoc_xep.append(sum(1 for sid in students if xep.get(sid)))
+            if seed != SEED_MOC:
+                khac = {sid for sid in students if xep.get(sid) != moc.get(sid)}
+                so_doi.append(len(khac))
+                tung_doi |= khac
+            n_xep = sum(1 for sid in students if xep.get(sid))
+            so_duoc_xep.append(n_xep)
+            phan_bo_so_xep[n_xep] += 1
+            for sid in students:
+                if xep.get(sid):
+                    so_lan_co_suat[sid] += 1
+                di_dau[sid][xep.get(sid) or "(không có suất)"] += 1
+
+        n_seed = len(seeds)
+        bap_benh = sorted(sid for sid in students
+                          if 0 < so_lan_co_suat[sid] < n_seed)
+        luon_co = sum(1 for sid in students if so_lan_co_suat[sid] == n_seed)
+        luon_khong = sum(1 for sid in students if so_lan_co_suat[sid] == 0)
 
         khong_bao_gio_doi = n_hs - len(tung_doi)
         hoa = em_hoa_diem(du_lieu)
@@ -163,7 +183,7 @@ def do_mot_bo(ten, files, so_seed):
         print("=" * 74)
         print("  Số học sinh                          %8d" % n_hs)
         print("  Số seed đã chạy                      %8d  (1..%d, mốc là %d)"
-              % (len(seeds) + 1, so_seed, SEED_MOC))
+              % (n_seed, so_seed, SEED_MOC))
         print()
         print("  Em đổi CLB so với seed mốc:")
         print("    ít nhất                            %8d em" % min(so_doi))
@@ -179,6 +199,22 @@ def do_mot_bo(ten, files, so_seed):
         print("  Em dự tuyển CLB mình KHÔNG thi       %8d em" % len(tier2))
         print("  Em từng đổi mà KHÔNG thuộc hai nhóm  %8d em"
               % len(tung_doi - hoa - tier2))
+        print()
+        print("  CÓ SUẤT HAY KHÔNG — khác với chuyện đổi CLB:")
+        print("    luôn có suất, mọi seed              %8d em  (%.1f%%)"
+              % (luon_co, 100.0 * luon_co / n_hs))
+        print("    luôn KHÔNG có suất, mọi seed        %8d em  (%.1f%%)"
+              % (luon_khong, 100.0 * luon_khong / n_hs))
+        print("    BẤP BÊNH — seed quyết định          %8d em  (%.1f%%)"
+              % (len(bap_benh), 100.0 * len(bap_benh) / n_hs))
+        print("    phân bố số em được xếp: %s"
+              % dict(sorted(phan_bo_so_xep.items())))
+        for sid in bap_benh:
+            print("      %s — nguyện vọng: %s"
+                  % (sid, " > ".join(nguyen_vong.get(sid, []))))
+            for cid, lan in di_dau[sid].most_common():
+                print("          %-24s %4d/%d seed  (%.0f%%)"
+                      % (cid, lan, n_seed, 100.0 * lan / n_seed))
         print()
         print("  Số em được xếp: ít nhất %d, nhiều nhất %d"
               % (min(so_duoc_xep), max(so_duoc_xep)))
@@ -196,6 +232,7 @@ def do_mot_bo(ten, files, so_seed):
             "hoa": len(hoa), "tier2": len(tier2),
             "ngoai_hai_nhom": len(tung_doi - hoa - tier2),
             "xep_min": min(so_duoc_xep), "xep_max": max(so_duoc_xep),
+            "bap_benh": len(bap_benh),
         }
     finally:
         shutil.rmtree(thu_muc, ignore_errors=True)
@@ -218,13 +255,19 @@ def main():
     print("=" * 74)
     print("TÓM TẮT")
     print("=" * 74)
-    print("%-36s %10s %12s %12s" % ("Bộ dữ liệu", "số em", "không đổi", "cặp phá vỡ"))
-    print("-" * 74)
+    print("%-36s %7s %14s %14s %8s"
+          % ("Bộ dữ liệu", "số em", "không đổi CLB", "bấp bênh suất", "phá vỡ"))
+    print("-" * 84)
     for d in bang:
-        print("%-36s %10d %9d (%3.0f%%) %12s"
-              % (d["ten"], d["n_hs"], d["khong_doi"],
-                 100.0 * d["khong_doi"] / d["n_hs"], "0  ✓"))
-    print("-" * 74)
+        print("%-36s %7d %8d (%3.0f%%) %8d (%4.1f%%) %8s"
+              % (d["ten"], d["n_hs"],
+                 d["khong_doi"], 100.0 * d["khong_doi"] / d["n_hs"],
+                 d["bap_benh"], 100.0 * d["bap_benh"] / d["n_hs"], "0  ✓"))
+    tong_hs = sum(d["n_hs"] for d in bang)
+    tong_bb = sum(d["bap_benh"] for d in bang)
+    print("-" * 84)
+    print("Gộp ba bộ: %d/%d em (%.1f%%) có suất hay không PHỤ THUỘC seed."
+          % (tong_bb, tong_hs, 100.0 * tong_bb / tong_hs))
     print("Mọi seed đều cho kết quả ỔN ĐỊNH (không có cặp phá vỡ nào).")
     print()
 

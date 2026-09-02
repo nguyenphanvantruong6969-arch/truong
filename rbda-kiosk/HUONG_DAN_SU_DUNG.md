@@ -516,9 +516,18 @@ Hai điều nữa đã đo:
 - **Mọi seed đều cho kết quả ổn định** — không có cặp phá vỡ nào ở bất kỳ seed
   nào trong 200 seed. Đổi seed đổi *ai* được suất trong nhóm hoà nhau, chứ không
   làm kết quả sai.
-- **Seed có thể đổi cả việc một em có suất hay không**, không chỉ đổi CLB. Trên
-  bộ sạch, số em được xếp dao động 139–140; trên bộ TEST là 107–109. Con số nhỏ,
-  nhưng có thật.
+- **Seed có thể đổi cả việc một em có suất hay không**, không chỉ đổi CLB. Đã
+  đếm riêng: trên **270 em của cả ba bộ, đúng 3 em (1,1%)** rơi vào diện này —
+  0 em ở bộ ví dụ, 1 em (0,7%) ở bộ sạch, 2 em (1,7%) ở bộ TEST. Còn lại thì
+  hoặc luôn có suất, hoặc luôn không, bất kể seed.
+
+**Ba em đó rơi vào diện bấp bênh trong trường hợp nào:** em bị từ chối hết các
+nguyện vọng trên, rơi xuống **nguyện vọng cuối cùng còn với tới được**, và ở
+đúng đó lại đứng ngay ranh giới chỉ tiêu trong một nhóm hoà nhau. Thua lượt bốc
+thăm ở chỗ đó thì không còn nguyện vọng nào phía dưới để rơi tiếp.
+
+Một em trong số đó chỉ đăng ký **2 nguyện vọng**, nên không có lưới nào đỡ. Số
+liệu chi tiết từng em ở `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
 
 Tái lập: `python du_lieu_test/do_anh_huong_seed.py --so-seed 200`
 
