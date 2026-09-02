@@ -169,10 +169,40 @@ trong khi chỉ tiêu là 14 — nhìn tĩnh thì em đứng ngoài rất xa, nh
 Ranh giới ở đây **sinh ra từ chuỗi dây chuyền** của thuật toán, không phải từ
 bảng điểm. Bộ dò ranh giới tĩnh đã viết thử **không bắt được ca nào**.
 
-Cũng cần nói rõ **cái chưa kết luận được**: cả ba em bấp bênh đều rơi vào bộ có
-nguyện vọng ngắn hơn, và `HS037` chỉ có 2 nguyện vọng. Nhìn thì hợp lý là
-"nguyện vọng càng ngắn càng dễ bấp bênh", nhưng **ba trường hợp thì chưa đủ để
-kết luận** — cần quét nhiều bộ dữ liệu hơn mới nói được.
+### "Nguyện vọng càng ngắn càng dễ bấp bênh" — đã kiểm, và chỉ đúng một nửa
+
+Cả ba em bấp bênh đều ở bộ có nguyện vọng ngắn hơn, và `HS037` chỉ có 2 nguyện
+vọng. Ba ca thì chưa kết luận được, nên làm thí nghiệm đối chứng: **cùng bộ sạch,
+cùng điểm, cùng chỉ tiêu — chỉ cắt danh sách nguyện vọng của mọi em xuống k**,
+50 seed mỗi mức.
+
+| Cắt còn | Em **chưa được xếp** (TB) | Nhiều nhất | Em **bấp bênh** |
+|---|---|---|---|
+| 1 nguyện vọng | **48,0** | 48 | 2 (1,4%) |
+| 2 nguyện vọng | 26,2 | 27 | 7 (5,0%) |
+| 3 nguyện vọng | 14,8 | 16 | 3 (2,1%) |
+| 4 nguyện vọng | 7,5 | 8 | 3 (2,1%) |
+| 5 nguyện vọng | 1,2 | 3 | 4 (2,9%) |
+| 6 nguyện vọng | **0,3** | 1 | 1 (0,7%) |
+
+**Hai cột cuối kể hai câu chuyện khác nhau, đừng gộp:**
+
+- **Chưa được xếp**: hiệu ứng rất mạnh và rất đều — **48 → 0,3**.
+- **Bấp bênh**: **không có quy luật nào** — 1,4 / 5,0 / 2,1 / 2,1 / 2,9 / 0,7,
+  nhảy loạn. Danh sách dài hơn **không** làm em bớt bấp bênh.
+
+Phỏng đoán ban đầu **đúng mạnh** cho vế thứ nhất, **sai** cho vế thứ hai.
+
+> **⚠️ Đừng đọc bảng này thành "bắt học sinh điền tối đa số CLB".** Thí nghiệm
+> **CẮT BỚT** nguyện vọng của em vốn đã khai đủ, tức nó đo *"em mất gì khi không
+> khai hết những CLB mình VẪN CHẤP NHẬN"*. Nó **không** đo chuyện thêm CLB em
+> **không** muốn — mà thêm CLB không muốn thì em có thể bị xếp đúng vào đó, và
+> với em như thế còn tệ hơn không có suất. Xem `BAN_GIAO.md` mục 5, khối "CẢNH
+> BÁO DIỄN GIẢI".
+
+```
+python du_lieu_test/do_do_dai_nguyen_vong.py
+```
 
 Còn một điều nữa:
 
