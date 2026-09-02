@@ -1,0 +1,441 @@
+<title>Năm Lớp Cơ Chế RB-DA</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Bảng màu và bộ chữ lấy nguyên từ style.css của chính phần mềm, giống
+   trang GIAI_DAP_BOC_THAM — để hai trang gửi giám khảo là một thể. */
+:root {
+  --ink:#1C2321; --ink-soft:#3A423F; --slate:#5B6570;
+  --paper:#F3F4F1; --raised:#FFFFFF; --hairline:#DBDCD5;
+  --gold:#B07C15; --gold-soft:#F1DFB8;
+  --moss:#18704A; --moss-soft:#DCE9E0;
+  --rust:#B84A3E; --rust-soft:#F3DCD9;
+  --band:#E7E8E2;
+  --shadow:0 1px 2px rgba(28,35,33,.06), 0 8px 24px -16px rgba(28,35,33,.28);
+  --f-display:"Be Vietnam Pro","Inter",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono","Noto Sans Mono","DejaVu Sans Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#E9EAE4; --ink-soft:#C3C7C0; --slate:#949C96;
+    --paper:#141816; --raised:#1D2320; --hairline:#333B37;
+    --gold:#E0A93F; --gold-soft:#3A2F16;
+    --moss:#6FB58F; --moss-soft:#1B2B22;
+    --rust:#E08076; --rust-soft:#3A211E;
+    --band:#252C28;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#E9EAE4; --ink-soft:#C3C7C0; --slate:#949C96;
+  --paper:#141816; --raised:#1D2320; --hairline:#333B37;
+  --gold:#E0A93F; --gold-soft:#3A2F16;
+  --moss:#6FB58F; --moss-soft:#1B2B22;
+  --rust:#E08076; --rust-soft:#3A211E;
+  --band:#252C28;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);
+     font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:800px;margin:0 auto;padding:40px 22px 90px}
+
+/* ---------- masthead ---------- */
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--moss);margin:0 0 12px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,6vw,42px);
+   line-height:1.1;letter-spacing:-.02em;margin:0 0 16px;text-wrap:balance}
+.standfirst{font-size:17px;color:var(--ink-soft);margin:0 0 22px;max-width:62ch}
+.standfirst strong{color:var(--ink);font-weight:600}
+
+.scope{border-left:3px solid var(--slate);background:var(--band);
+  padding:13px 16px;border-radius:0 4px 4px 0;font-size:14.5px;
+  color:var(--ink-soft);margin:0 0 30px}
+.scope b{color:var(--ink)}
+
+/* ---------- headings ---------- */
+h2{font-family:var(--f-display);font-weight:700;font-size:23px;letter-spacing:-.015em;
+   margin:54px 0 14px;padding-bottom:9px;border-bottom:2px solid var(--ink);
+   text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:17px;margin:28px 0 10px}
+p{margin:0 0 14px}
+.lede{color:var(--ink-soft);max-width:64ch}
+
+/* ---------- alarm ---------- */
+.alarm{border:2px solid var(--rust);background:var(--rust-soft);
+  border-radius:5px;padding:18px 20px;margin:22px 0}
+.alarm h2{margin:0 0 10px;border:0;padding:0;color:var(--rust);font-size:20px}
+.alarm p:last-child{margin-bottom:0}
+
+/* ---------- layer cards ---------- */
+.layer{background:var(--raised);border:1px solid var(--hairline);
+  border-radius:5px;padding:18px 20px;margin:14px 0;box-shadow:var(--shadow)}
+.layer.missing{border-left:5px solid var(--rust)}
+.layer.present{border-left:5px solid var(--moss)}
+.layer-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:2px}
+.layer-n{font-family:var(--f-display);font-weight:800;font-size:26px;
+  line-height:1;color:var(--slate);font-variant-numeric:tabular-nums}
+.layer.missing .layer-n{color:var(--rust)}
+.layer.present .layer-n{color:var(--moss)}
+.layer-t{font-family:var(--f-display);font-weight:700;font-size:18px;
+  letter-spacing:-.01em;flex:1 1 auto;min-width:0}
+.tag{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap}
+.tag.miss{color:var(--rust);background:var(--rust-soft);border:1px solid var(--rust)}
+.tag.ok{color:var(--moss);background:var(--moss-soft)}
+.where{font-family:var(--f-mono);font-size:12.5px;color:var(--slate);
+  margin:2px 0 12px;word-break:break-word}
+.why{margin-top:12px;padding-top:11px;border-top:1px dashed var(--hairline);
+  font-size:14.5px;color:var(--ink-soft)}
+.why b{color:var(--ink);font-weight:600}
+
+/* ---------- two passes ---------- */
+.passes{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:14px 0}
+.pass{flex:1 1 230px;background:var(--band);border-radius:4px;padding:12px 14px}
+.pass-n{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--slate);margin:0 0 5px}
+.pass p{margin:0;font-size:14.5px;color:var(--ink-soft)}
+.spill{background:var(--gold-soft);border-radius:4px;padding:11px 14px;
+  font-size:14.5px;color:var(--ink-soft);margin:10px 0 0}
+.spill b{color:var(--ink)}
+
+/* ---------- tables ---------- */
+.table-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:440px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--hairline);
+  vertical-align:top}
+thead th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--slate);font-weight:500;
+  border-bottom:1.5px solid var(--ink)}
+tbody tr:last-child td{border-bottom:0}
+.zero{font-family:var(--f-mono);font-weight:500;color:var(--rust);font-size:16px}
+.yes{color:var(--moss);font-weight:600}
+.no{color:var(--rust);font-weight:600}
+.lech{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
+  color:var(--rust);font-weight:500}
+.khop{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--slate)}
+td.pick{font-family:var(--f-mono);font-size:13.5px}
+tr.hl td{background:var(--rust-soft)}
+
+code{font-family:var(--f-mono);font-size:.88em;background:var(--band);
+  padding:1px 5px;border-radius:3px;color:var(--ink)}
+pre{background:var(--band);border:1px solid var(--hairline);border-radius:4px;
+  padding:12px 14px;overflow-x:auto;font-family:var(--f-mono);font-size:13px;
+  margin:12px 0;color:var(--ink)}
+
+blockquote{margin:16px 0;padding:14px 18px;background:var(--raised);
+  border:1px solid var(--hairline);border-radius:4px;font-size:15px;
+  color:var(--ink-soft)}
+blockquote p:last-child{margin-bottom:0}
+
+.warn{border-left:3px solid var(--gold);background:var(--gold-soft);
+  padding:13px 16px;border-radius:0 4px 4px 0;font-size:14.5px;
+  color:var(--ink-soft);margin:14px 0}
+.warn b{color:var(--ink)}
+
+footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
+  font-size:13.5px;color:var(--slate);font-style:italic}
+
+@media (max-width:520px){
+  .wrap{padding:26px 15px 60px}
+  .layer{padding:15px 16px}
+}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Mô tả phần mềm · không phải cơ sở lý thuyết</p>
+  <h1>Phần mềm chạy năm lớp cơ chế. Báo cáo mới mô tả một.</h1>
+  <p class="standfirst">
+    Trang này ghi <strong>phần mềm làm gì</strong> và <strong>chỗ nào trong mã kiểm chứng
+    được</strong> — để viết phần cơ sở lý thuyết theo. Mỗi con số đều mở đúng dòng mã ra đối
+    chiếu được.
+  </p>
+
+  <div class="scope">
+    <b>Trang này KHÔNG chứa:</b> phần Kết luận, phần Hướng phát triển, phần Tính mới, hay bất kỳ
+    nhận định nào về ý nghĩa khoa học của kết quả. Những phần đó học sinh tự viết — Phụ lục 1
+    của Sở GD&amp;ĐT cấm AI viết bất kỳ phần nào của bài nghiên cứu.
+  </div>
+
+  <!-- ============ CẢNH BÁO ============ -->
+  <div class="alarm">
+    <h2>⚠ Báo cáo và phần mềm đang lệch</h2>
+    <p>Quét cả hai bản báo cáo <code>.docx</code>, đếm số lần xuất hiện:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:62%">Từ khoá</th><th>Số lần trong báo cáo</th></tr></thead>
+        <tbody>
+          <tr><td>"dự trữ"</td><td class="zero">0</td></tr>
+          <tr><td>"bốc thăm" / "ngẫu nhiên"</td><td class="zero">0</td></tr>
+          <tr><td>"Reserve" / "RB-DA"</td><td class="zero">0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Báo cáo mô tả <strong>Gale–Shapley nhiều-một thuần tuý</strong>: mỗi CLB có
+      <em>"một danh sách ưu tiên học sinh (Q_j)"</em> và một sức chứa. Phần mềm làm nhiều hơn thế.
+    </p>
+    <p>
+      <strong>Hệ quả đi cả hai chiều.</strong> Không viết ra thì không được điểm cho phần khó
+      nhất của phần mềm — mà vẫn mang trọn rủi ro nếu giám khảo mở mã nguồn ra và thấy phần mềm
+      làm điều báo cáo không mô tả.
+    </p>
+  </div>
+
+  <!-- ============ NĂM LỚP ============ -->
+  <h2>Năm lớp cơ chế</h2>
+  <p class="lede">
+    Lớp 1 là phần báo cáo đã có. Lớp 2, 3, 4 là phần chưa có. Lớp 5 là hệ quả kỹ thuật
+    <em>bắt buộc</em> của Lớp 2 — có Lớp 2 thì không tránh được Lớp 5.
+  </p>
+
+  <!-- lớp 1 -->
+  <div class="layer present">
+    <div class="layer-head">
+      <span class="layer-n">1</span>
+      <span class="layer-t">Deferred Acceptance, học sinh đề xuất</span>
+      <span class="tag ok">Báo cáo đã có</span>
+    </div>
+    <p class="where">run_rbda · rbda_priority_pipeline.py dòng 207</p>
+    <p>
+      Học sinh lần lượt đề xuất vào CLB theo thứ tự nguyện vọng. CLB <strong>giữ tạm</strong>
+      những em tốt nhất trong số đang có mặt, từ chối phần còn lại. Em bị từ chối đề xuất tiếp
+      nguyện vọng sau. Hết đề xuất thì dừng.
+    </p>
+    <p>
+      Chữ <em>"trì hoãn"</em> nằm ở chỗ <strong>giữ tạm</strong>: CLB không chốt ai cho tới vòng
+      cuối, nên một em giỏi xuất hiện muộn vẫn đẩy được em kém hơn ra.
+    </p>
+    <p class="why"><b>Vì sao dự án cần:</b> đây là lớp thay thế cách xét theo thứ tự đăng ký.</p>
+  </div>
+
+  <!-- lớp 2 -->
+  <div class="layer missing">
+    <div class="layer-head">
+      <span class="layer-n">2</span>
+      <span class="layer-t">Dự trữ mềm — xét hai lượt</span>
+      <span class="tag miss">Báo cáo chưa có</span>
+    </div>
+    <p class="where">club_choice_function · dòng 136</p>
+    <p>
+      Mỗi CLB có thể để riêng một số suất cho một nhóm học sinh. Khi xét, CLB chạy
+      <strong>hai lượt</strong>, không phải một lần sắp xếp:
+    </p>
+    <div class="passes">
+      <div class="pass">
+        <p class="pass-n">Lượt 1 — dự trữ</p>
+        <p>Chỉ xét em thuộc diện. Lấy tối đa bằng số suất dự trữ.</p>
+      </div>
+      <div class="pass">
+        <p class="pass-n">Lượt 2 — chung</p>
+        <p>Xét toàn bộ số còn lại — kể cả em thuộc diện chưa được suất dự trữ. Lấp nốt sức chứa.</p>
+      </div>
+    </div>
+    <p class="spill">
+      <b>"Mềm" nghĩa là gì:</b> suất dự trữ <b>không khoá cứng</b>. Không đủ em thuộc diện thì
+      phần thừa <b>tự chuyển sang lượt chung</b> — CLB vẫn tuyển đủ. Có test canh đúng điều này.
+    </p>
+    <p class="why">
+      <b>Một chi tiết trong mã, ghi ở dòng 120–134:</b> việc phân nhóm dự trữ/chung phải
+      <b>tính lại ở mỗi vòng</b>, theo đúng tập em đang có mặt lúc đó. Bản đầu tiên gộp thành
+      một thứ tự tổng thể tính một lần — <b>sai</b>, và đã sửa sau khi đối chiếu với bản tham chiếu.
+    </p>
+    <p class="why">
+      <b>Vì sao dự án cần:</b> để CLB giữ được chỗ cho nhóm mình hướng tới, mà không phải bỏ
+      cơ chế xét chung.
+    </p>
+  </div>
+
+  <!-- lớp 3 -->
+  <div class="layer missing">
+    <div class="layer-head">
+      <span class="layer-n">3</span>
+      <span class="layer-t">Bốc thăm dùng chung mọi CLB (STB)</span>
+      <span class="tag miss">Báo cáo chưa có</span>
+    </div>
+    <p class="where">generate_stb_lottery · dòng 441</p>
+    <p>
+      Mỗi học sinh nhận <strong>một</strong> số bốc thăm, <strong>dùng chung cho mọi CLB</strong>.
+      Đó là nghĩa của <em>"single"</em> — trái với việc mỗi CLB bốc một bộ số riêng.
+    </p>
+    <h3>Ba tính chất đã đo, không phải khẳng định suông</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:52%">Tính chất</th><th>Số đo</th></tr></thead>
+        <tbody>
+          <tr><td>Cùng dữ liệu, cùng seed → cùng kết quả, <strong>kể cả đổi thứ tự nhập liệu</strong></td><td><code>sorted()</code> trước khi xáo — dòng 460</td></tr>
+          <tr><td>Mã học sinh <strong>không</strong> kéo thứ hạng</td><td>tương quan <strong>đổi dấu</strong> qua 8 khối seed → là nhiễu</td></tr>
+          <tr><td>Đổi seed đổi kết cục bao nhiêu em</td><td><strong>1,1%</strong> · và <strong>0 cặp phá vỡ ở mọi seed</strong> trong 600 lần chạy</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="warn">
+      <b>KHÔNG viết:</b> <em>"số bốc thăm dựa trên mã học sinh"</em> — sai, và nghe như em tên A
+      có lợi hơn em tên Z. <b>Viết đúng:</b> <em>"bốc thăm không phụ thuộc thứ tự nhập liệu"</em>.
+    </div>
+    <p class="why">
+      <b>Vì sao dự án cần:</b> ở tầng không thi tuyển, nhiều em ngang nhau hoàn toàn. Phải có
+      cách phá hoà, và cách đó phải tái lập được để kiểm toán.
+    </p>
+  </div>
+
+  <!-- lớp 4 -->
+  <div class="layer missing">
+    <div class="layer-head">
+      <span class="layer-n">4</span>
+      <span class="layer-t">Ưu tiên hai tầng: đã thi / không thi</span>
+      <span class="tag miss">Báo cáo chưa có</span>
+    </div>
+    <p class="where">compute_club_priority · dòng 48</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:18%">Tầng</th><th style="width:38%">Gồm ai</th><th>Xếp theo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Tầng 1</strong></td><td>Em <strong>đã được chấm điểm</strong> cho CLB đó</td><td>Điểm giảm dần; <strong>hoà điểm mới tới</strong> số bốc thăm</td></tr>
+          <tr><td><strong>Tầng 2</strong></td><td>Em có đăng ký nhưng <strong>không thi</strong> CLB đó</td><td><strong>Thuần</strong> số bốc thăm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Tầng 1 <strong>luôn đứng trọn trước</strong> Tầng 2 — không xen kẽ.</p>
+    <p class="why">
+      <b>Một ràng buộc cứng ghi ngay trong mã, dòng 63–72:</b> hàm này <b>không được</b> nhận bất
+      kỳ tham số nào liên quan tới <b>thứ hạng nguyện vọng</b>. Nếu CLB biết em xếp mình là
+      nguyện vọng mấy rồi ưu tiên theo đó, tính <em>khai thật có lợi nhất</em> của thuật toán bị phá.
+    </p>
+    <p class="why">
+      <b>Vì sao dự án cần — đây là lớp sinh ra từ hoàn cảnh trường:</b> có CLB tổ chức thi tuyển,
+      có CLB không. Một bài toán ghép cặp chuẩn không có chỗ cho tình huống hai loại CLB cùng tồn
+      tại trong một đợt phân bổ.
+    </p>
+  </div>
+
+  <!-- lớp 5 -->
+  <div class="layer missing">
+    <div class="layer-head">
+      <span class="layer-n">5</span>
+      <span class="layer-t">Kiểm chứng ổn định bằng chính hàm lựa chọn</span>
+      <span class="tag miss">Báo cáo mô tả khác</span>
+    </div>
+    <p class="where">verify_stability · dòng 322</p>
+    <p>
+      Cách thường làm: so kết quả với một bảng ưu tiên tĩnh. <strong>Không dùng được ở đây</strong>
+      — lý do ở ngay phần dưới.
+    </p>
+    <p>
+      Cách phần mềm làm: với mỗi cặp (học sinh <code>s</code>, câu lạc bộ <code>c</code>) mà
+      <code>s</code> thích <code>c</code> hơn chỗ hiện tại — <strong>thêm <code>s</code> vào tập
+      <code>c</code> đang giữ, rồi chạy lại hàm lựa chọn của <code>c</code></strong>. Nếu
+      <code>s</code> nằm trong tập được chọn thì đó là một <strong>cặp phá vỡ</strong>.
+    </p>
+    <p class="why">
+      <b>Vì sao dự án cần:</b> đây là định nghĩa tổng quát, đúng cả khi hàm lựa chọn không phải
+      một thứ tự tuyến tính. Cách cũ dùng bảng tĩnh <b>đã bị phát hiện sai</b> khi đối chiếu với
+      bản tham chiếu.
+    </p>
+  </div>
+
+  <!-- ============ HAI CẢNH ============ -->
+  <h2>Chỗ mô hình trong báo cáo không mô tả được phần mềm</h2>
+  <p class="lede">
+    Báo cáo viết mỗi CLB có <strong>một danh sách ưu tiên <code>Q_j</code></strong>. Hàm lựa chọn
+    thật <strong>không phải</strong> một thứ tự tuyến tính. Chạy lại để tự xem:
+  </p>
+  <pre>python du_lieu_test/do_hai_canh_du_tru.py</pre>
+
+  <blockquote>
+    <p>
+      CLB sức chứa <strong>3</strong>, trong đó <strong>1 suất dự trữ</strong>.<br>
+      Ưu tiên: <strong>A &gt; B &gt; C &gt; D</strong>. D thuộc diện dự trữ.<br>
+      Ưu tiên <strong>giữ nguyên</strong> ở cả hai cảnh — chỉ đổi <em>ai đang có mặt</em>.
+    </p>
+  </blockquote>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%"></th>
+          <th style="width:24%">Mô hình một danh sách Q_j</th>
+          <th style="width:24%">club_choice_function thật</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="hl">
+          <td><strong>Cảnh 1</strong><br>D có mặt</td>
+          <td class="pick">A, B, C</td>
+          <td class="pick"><strong>D, A, B</strong></td>
+          <td class="lech">LỆCH</td>
+        </tr>
+        <tr>
+          <td><strong>Cảnh 2</strong><br>D vắng mặt</td>
+          <td class="pick">A, B, C</td>
+          <td class="pick">A, B, C</td>
+          <td class="khop">khớp</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Đọc ra hai điều</h3>
+  <p>
+    <strong>①  Cảnh 1: C xếp trên D, CLB lấy 3 em — mà D đỗ còn C trượt.</strong>
+    Theo mô hình một danh sách thì chuyện đó không xảy ra được.
+  </p>
+  <p>
+    <strong>②  So hai cảnh: cùng em C, cùng thứ hạng, cùng CLB, cùng sức chứa</strong> — lúc có
+    suất lúc không. Cái đổi duy nhất là D có mặt hay không.
+  </p>
+  <p>
+    Nghĩa là kết cục của C <strong>không chỉ</strong> phụ thuộc thứ hạng của C, mà còn phụ thuộc
+    <strong>ai khác đang nộp cùng lúc</strong>. Không viết ra được một <code>Q_j</code> cố định
+    rồi đọc ra kết quả.
+  </p>
+  <div class="warn">
+    <b>Đây không phải lỗi.</b> Đó là điều suất dự trữ sinh ra, và là lý do Lớp 5 phải kiểm cặp
+    phá vỡ bằng chính hàm lựa chọn. Bảng này có <b>11 test canh</b>
+    (<code>tests/test_hai_canh_du_tru.py</code>). Gỡ cơ chế dự trữ ra thì <b>5 test đỏ</b> — đã thử.
+  </div>
+
+  <!-- ============ ĐỐI CHIẾU ============ -->
+  <h2>Đối chiếu báo cáo ↔ phần mềm</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th style="width:52%">Phần mềm chạy</th><th>Báo cáo đã mô tả?</th></tr></thead>
+      <tbody>
+        <tr><td>Deferred Acceptance học sinh đề xuất</td><td class="yes">có</td></tr>
+        <tr><td>Ghép cặp nhiều-một, có sức chứa</td><td class="yes">có</td></tr>
+        <tr><td>Kiểm tra cặp phá vỡ</td><td class="yes">có <span style="color:var(--slate);font-weight:400">— nhưng theo định nghĩa bảng tĩnh</span></td></tr>
+        <tr><td><strong>Dự trữ mềm, xét hai lượt</strong></td><td class="no">chưa có</td></tr>
+        <tr><td><strong>Bốc thăm STB dùng chung mọi CLB</strong></td><td class="no">chưa có</td></tr>
+        <tr><td><strong>Ưu tiên hai tầng thi / không thi</strong></td><td class="no">chưa có</td></tr>
+        <tr><td><strong>Hàm lựa chọn không phải thứ tự tuyến tính</strong></td><td class="no">mâu thuẫn <span style="color:var(--slate);font-weight:400">— báo cáo viết Q_j là một danh sách</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ============ TRÍCH DẪN ============ -->
+  <h2>Một lưu ý về trích dẫn</h2>
+  <p>
+    Cả dự án chỉ có <strong>đúng một</strong> tên tài liệu được nêu:
+    <strong>Kominers &amp; Sonmez 2016</strong>, ở <code>rbda_priority_pipeline.py</code> dòng 6
+    và 145 — cho phần dự trữ mềm.
+  </p>
+  <p>
+    Dòng đó <strong>do chính học sinh viết</strong>, có trong commit đầu tiên
+    <code>57f2e82</code> ngày 26/08, trước khi AI chỉnh sửa tệp.
+  </p>
+  <div class="scope">
+    AI <b>không</b> tìm thêm trích dẫn, <b>không</b> lập danh mục tài liệu tham khảo và
+    <b>không</b> đánh giá tính mới — Phụ lục 1 cấm. Việc khảo sát tài liệu là của học sinh.
+  </div>
+
+  <footer>
+    Trang này do AI viết, mô tả phần mềm do AI tham gia lập trình. Nó không chứa nhận định về ý
+    nghĩa khoa học của kết quả — phần đó học sinh tự viết. Mọi số dòng đối chiếu được bằng
+    grep -n "^def " rbda_priority_pipeline.py
+  </footer>
+
+</div>

@@ -318,6 +318,72 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ---
 
+## 4b. ⚠️ BÁO CÁO VÀ PHẦN MỀM ĐANG LỆCH — việc học sinh phải tự làm trước 05/09
+
+**Đọc mục này trước khi nộp.** Quét cả hai bản báo cáo `.docx`:
+
+| Từ khoá | Số lần trong báo cáo |
+|---|---|
+| "dự trữ" | **0** |
+| "bốc thăm" / "ngẫu nhiên" | **0** |
+| "Reserve" / "RB-DA" | **0** |
+
+Báo cáo mô tả **Gale–Shapley nhiều-một thuần tuý**: mỗi CLB có *"một danh sách
+ưu tiên học sinh (Q_j)"* và một sức chứa. Phần mềm chạy **năm** lớp cơ chế, ba
+lớp trong đó không có mặt trong báo cáo:
+
+| Lớp | Hàm · dòng | Báo cáo |
+|---|---|---|
+| Deferred Acceptance, học sinh đề xuất | `run_rbda` · 207 | ✅ có |
+| **Dự trữ mềm, xét hai lượt** | `club_choice_function` · 136 | ❌ **chưa có** |
+| **Single Tie-Breaking** | `generate_stb_lottery` · 441 | ❌ **chưa có** |
+| **Ưu tiên hai tầng thi / không thi** | `compute_club_priority` · 48 | ❌ **chưa có** |
+| Kiểm chứng ổn định bằng hàm lựa chọn | `verify_stability` · 322 | ❌ **mâu thuẫn** |
+
+**Hệ quả đi cả hai chiều:** không viết ra thì không được điểm cho phần khó nhất
+của phần mềm, mà vẫn mang trọn rủi ro nếu giám khảo mở mã nguồn ra.
+
+**Chỗ nặng nhất — mô hình toán trong báo cáo không mô tả được phần mềm.**
+Đã chạy hàm thật để kiểm, không suy đoán
+(`python du_lieu_test/do_hai_canh_du_tru.py`):
+
+> CLB sức chứa 3, trong đó 1 suất dự trữ. Ưu tiên **A > B > C > D**.
+> D thuộc diện dự trữ. Ưu tiên **giữ nguyên** ở cả hai cảnh.
+>
+> | | Mô hình một danh sách `Q_j` | `club_choice_function` thật | |
+> |---|---|---|---|
+> | **Cảnh 1** — D có mặt | A, B, C | **D, A, B** | **LỆCH** |
+> | **Cảnh 2** — D vắng mặt | A, B, C | A, B, C | khớp |
+>
+> Cảnh 1: **C xếp trên D, CLB lấy 3 em — mà D đỗ còn C trượt.**
+> So hai cảnh: **cùng em C, cùng thứ hạng, cùng CLB, cùng sức chứa** — lúc có
+> suất lúc không. Kết cục phụ thuộc **ai khác đang nộp cùng lúc**, nên không
+> viết ra được một `Q_j` cố định.
+
+**Đây KHÔNG phải lỗi** — đó là điều suất dự trữ sinh ra, và là lý do
+`verify_stability` phải kiểm cặp phá vỡ bằng chính hàm lựa chọn.
+Có **11 test canh** (`tests/test_hai_canh_du_tru.py`); gỡ cơ chế dự trữ ra thì
+**5 test đỏ** — đã thử.
+
+**Tài liệu để học sinh viết theo:**
+
+| Tệp | |
+|---|---|
+| `CO_CHE_THUAT_TOAN.md` | Mô tả năm lớp, kèm số dòng và lý do dự án cần từng lớp |
+| artifact `eced0ff9-08df-4922-a17e-5f85d99f79aa` | Bản trang web của tệp trên |
+| `du_lieu_test/do_hai_canh_du_tru.py` | Bộ đo chạy lại được — gõ một lệnh là ra bảng hai cảnh |
+
+> **AI KHÔNG viết phần cơ sở lý thuyết.** Hai tệp trên mô tả *phần mềm chạy cái
+> gì*, không diễn giải ý nghĩa khoa học. Phần lý thuyết cho ba lớp còn thiếu là
+> việc học sinh tự viết — Phụ lục 1.
+
+**Về trích dẫn:** cả dự án chỉ có **đúng một** tên tài liệu — *Kominers & Sonmez
+2016*, ở `rbda_priority_pipeline.py` dòng 6 và 145, **do chính học sinh viết**
+trong commit đầu tiên `57f2e82` (26/08). AI **không** thêm tên nào, **không** lập
+danh mục tài liệu tham khảo, **không** đánh giá tính mới — Phụ lục 1 cấm.
+
+---
+
 ## 5. Vấn đề chưa giải quyết
 
 ### ⚠️ CÒN MỞ (02/09) — một test giao diện chập chờn
