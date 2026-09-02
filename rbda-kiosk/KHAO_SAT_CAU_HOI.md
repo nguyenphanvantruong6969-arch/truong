@@ -11,8 +11,14 @@ phần lớn người trả lời thấy ít câu hơn.
 > ⏱ **Con số trên là ƯỚC TÍNH, không phải số đo.** Trước khi phát, hãy **tự bấm
 > giờ một lần** khi điền thử form. Số bấm được mới là số đưa vào báo cáo.
 
-Form đã có sẵn trong Drive: *KHẢO SÁT: Quy trình & Mức độ hài lòng với việc phân
-bổ CLB*.
+**Nền tảng: Microsoft Forms.** Tên biểu mẫu: *KHẢO SÁT: Quy trình & Mức độ hài
+lòng với việc phân bổ CLB*.
+
+| Tệp | Dùng để làm gì |
+|---|---|
+| `KHAO_SAT_NHAP_FORMS.docx` | **Đem nhập** bằng Quick Import của Microsoft Forms |
+| `KHAO_SAT_HUONG_DAN_FORMS.docx` | **Đọc, KHÔNG nhập** — các bước dựng form, cài đặt, rẽ nhánh |
+| Tệp này (`.md`) và bản trang web | Bộ câu hỏi kèm lý do thiết kế từng câu |
 
 ---
 
@@ -70,8 +76,9 @@ báo cáo phải viết lại theo hướng khác. Câu 8 phải hỏi, và ph�
 - 3 lần trở lên
 - Chưa đăng ký lần nào
 
-> **Cài đặt rẽ nhánh 1:** ai chọn *"Chưa đăng ký lần nào"* thì chuyển thẳng tới
-> **Phần E**, bỏ qua Phần B, C và D.
+> **Cài đặt rẽ nhánh 1** (Microsoft Forms — chọn câu → **"…"** → **Add
+> branching** → ô **Go to**): đáp án *"Chưa đăng ký lần nào"* → **Phần E**, bỏ
+> qua Phần B, C và D.
 >
 > Lý do: em chưa từng đăng ký thì không có trải nghiệm để trả lời Phần B và C.
 > Và Câu 13 hỏi *"hài lòng với kết quả **mình** nhận được"* — em không có kết quả
@@ -182,13 +189,20 @@ báo cáo phải viết lại theo hướng khác. Câu 8 phải hỏi, và ph�
 
 ### Câu 13. Bạn hài lòng tới đâu với **KẾT QUẢ** phân bổ mình nhận được? *(bắt buộc)*
 
-Thang 1–5 (dùng dạng câu hỏi *Thang đo tuyến tính* trong Forms):
+- 1 — Rất không hài lòng
+- 2 — Không hài lòng
+- 3 — Bình thường
+- 4 — Hài lòng
+- 5 — Rất hài lòng
 
-`1 — Rất không hài lòng` … `5 — Rất hài lòng`
+> **Vì sao viết thành trắc nghiệm 5 mức chứ không phải thang đo:** Quick Import
+> của Microsoft Forms **không nhập được thang Likert**. Sau khi nhập, muốn đẹp
+> hơn thì đổi sang dạng *Rating* (5 sao) ngay trong Forms — nội dung phân tích
+> không đổi.
 
 ### Câu 14. Bạn hài lòng tới đâu với **CÁCH TRƯỜNG XÉT** để phân bổ? *(bắt buộc)*
 
-Thang 1–5, nhãn hai đầu giống Câu 13.
+Năm đáp án giống hệt Câu 13.
 
 ---
 
@@ -199,8 +213,8 @@ Thang 1–5, nhãn hai đầu giống Câu 13.
 - Có
 - Không
 
-> **Cài đặt rẽ nhánh 2:** chọn *"Không"* → kết thúc form. Chọn *"Có"* → hiện
-> Câu 16.
+> **Cài đặt rẽ nhánh 2:** đáp án *"Không"* → **End of the form**. Đáp án *"Có"*
+> → đi tiếp Câu 16 (mặc định, không cần đặt gì).
 
 ### Câu 16. Khi nhận thành viên mới, CLB của bạn có được **chọn theo tiêu chí riêng** của CLB không?
 
@@ -285,21 +299,46 @@ và đó là loại lỗi làm mất điểm phần cơ sở lý thuyết.
 
 ---
 
-## Cài đặt bắt buộc trong Google Forms
+## Nhập vào Microsoft Forms
+
+1. Mở **forms.office.com** bằng tài khoản trường.
+2. Chọn **Quick import** (Nhập nhanh) trên trang chủ.
+3. Chọn tệp **`KHAO_SAT_NHAP_FORMS.docx`** từ ổ đĩa máy. Forms chỉ nhận tệp trên
+   máy; giới hạn 10 MB.
+4. Làm tiếp phần cài đặt và rẽ nhánh bên dưới **trước khi phát cho ai**.
+
+> ### ⚠️ Quick Import KHÔNG mang theo ba thứ
+> **Rẽ nhánh**, **dấu bắt buộc**, và **thang Likert** — cả ba phải làm tay sau
+> khi nhập. Xem `KHAO_SAT_HUONG_DAN_FORMS.docx` để có từng bước.
+>
+> Và Microsoft ghi rõ **bản tiếng Anh chuyển đổi chính xác hơn các ngôn ngữ
+> khác**. Khảo sát này toàn tiếng Việt, nên **phải soát lại từng câu** sau khi
+> nhập — lỗi hay gặp nhất là một câu trắc nghiệm bị biến thành ô văn bản tự do.
+
+## Cài đặt bắt buộc trong Microsoft Forms
+
+Vào **Settings** (dấu ba chấm góc trên bên phải → Settings).
 
 | Cài đặt | Giá trị | Lý do |
 |---|---|---|
-| **Thu thập địa chỉ email** | **TẮT** | Đây là dữ liệu của **học sinh có thật, phần lớn là trẻ vị thành niên**. Có email là có danh tính. |
-| Giới hạn 1 phản hồi mỗi người | **TẮT** | Bật lên là buộc đăng nhập Google, lại lộ danh tính |
-| Câu hỏi bắt buộc | Chỉ **Câu 1, 2, 3, 8, 9, 13, 14, 15** | Bắt buộc hết thì học sinh bỏ giữa chừng hoặc chọn bừa |
-| Xáo thứ tự câu hỏi | **TẮT** | Các câu có trình tự logic (Câu 8 phải trước Câu 9), xáo lên là hỏng |
+| Ai được điền biểu mẫu | **Chỉ người trong tổ chức của tôi** | Giới hạn trong trường; người ngoài không trả lời được |
+| **Ghi lại tên** *(Record name)* | **TẮT** | ⚠️ **MẶC ĐỊNH LÀ BẬT với tài khoản trường học.** Bật là mỗi phản hồi kèm tên và email người trả lời. Đây là chỗ **nguy hiểm hơn hẳn Google Forms**, nơi mục tương đương mặc định đã TẮT. Tắt xong thì cột người trả lời hiện **"Anonymous"** cho mọi phản hồi, kể cả người đang đăng nhập. |
+| Một phản hồi mỗi người | **TẮT** | Bật lên là buộc đăng nhập và dễ lần ra danh tính |
+| Câu hỏi bắt buộc *(Required)* | Chỉ **Câu 1, 2, 3, 8, 9, 13, 14, 15** | Tám câu. Bắt buộc hết thì học sinh bỏ giữa chừng hoặc chọn bừa |
+| Xáo thứ tự câu hỏi | **TẮT** | Câu 8 phải đứng trước Câu 9, xáo lên là hỏng mạch |
 
-**Hai chỗ rẽ nhánh** — dùng dấu ⋮ của câu → *"Chuyển đến phần dựa trên câu trả lời"*:
+> **Người trả lời phần lớn là trẻ vị thành niên.** Kiểm lại mục *Ghi lại tên*
+> **một lần nữa** ngay trước khi gửi đường dẫn — nó bật sẵn, không phải tắt sẵn.
 
-| Ở đâu | Điều kiện | Chuyển tới |
+**Hai chỗ rẽ nhánh** — chọn câu → **"…"** (More settings) → **Add branching** →
+mỗi đáp án hiện ra ô **Go to**:
+
+| Ở câu | Đáp án | Go to |
 |---|---|---|
 | Câu 2 | *"Chưa đăng ký lần nào"* | **Phần E** |
-| Câu 15 | *"Không"* | **Gửi biểu mẫu** (kết thúc) |
+| Câu 15 | *"Không"* | **End of the form** |
+
+Mọi đáp án còn lại để nguyên — Forms mặc định đi tiếp câu kế.
 
 ---
 
@@ -308,9 +347,11 @@ và đó là loại lỗi làm mất điểm phần cơ sở lý thuyết.
 Toàn bộ `du_lieu_test/` là dữ liệu **máy sinh**, đẩy lên GitHub thoải mái.
 **Phản hồi khảo sát thì khác hẳn.**
 
-- Bảng tính kết quả **không được vào kho git**. `.gitignore` đã chặn sẵn các
-  kiểu tên mà Google Forms đặt mặc định (`… (Responses).xlsx`,
-  `… (Phản hồi).xlsx`, `khao_sat*.csv`…). Đã thử và xác nhận chặn được.
+- Bảng tính kết quả **không được vào kho git**. Microsoft Forms đặt tên tệp xuất
+  ra dạng **`<tên biểu mẫu>(1-53).xlsx`** — luật chặn cũ viết cho Google Forms
+  **không bắt được kiểu tên đó**. Đã sửa `.gitignore` ngày 02/09 và thử lại 8
+  kiểu tên, gồm cả tên tiếng Việt có dấu; toàn bộ thư mục gốc dự án nay chặn
+  luôn mọi `.xlsx` và `.csv` làm lưới chắn cuối.
 - Báo cáo chỉ đưa **số liệu đã tổng hợp** — tỉ lệ phần trăm, biểu đồ. Không đưa
   bảng thô, không đưa câu trả lời của từng người.
 - Cùng một quy tắc đang áp cho `app.db` và các tệp `ket_qua*.csv`.

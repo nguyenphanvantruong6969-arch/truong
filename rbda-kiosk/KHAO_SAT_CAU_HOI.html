@@ -251,28 +251,6 @@
     border-radius: 50%;
   }
 
-  .scale {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    font-family: var(--f-mono);
-    font-size: 12.5px;
-    color: var(--ink-soft);
-    background: var(--sunk);
-    padding: 10px 12px;
-    border-radius: 3px;
-  }
-  .scale b {
-    display: inline-grid; place-items: center;
-    width: 24px; height: 24px;
-    border: 1px solid var(--rule);
-    border-radius: 50%;
-    background: var(--surface);
-    color: var(--ink);
-    font-weight: 500;
-  }
-
   .why {
     margin: 12px 0 0;
     padding-top: 10px;
@@ -414,11 +392,12 @@
     <p class="eyebrow">Công cụ đo · không phải dữ liệu</p>
     <h1>Khảo sát hiện trạng phân bổ câu lạc bộ</h1>
     <p class="standfirst">
-      Bộ câu hỏi để dựng Google Form. Mỗi câu ở đây tồn tại vì <strong>báo cáo đang khẳng
+      Bộ câu hỏi để dựng biểu mẫu trên Microsoft Forms. Mỗi câu ở đây tồn tại vì <strong>báo cáo đang khẳng
       định một điều mà chưa có số liệu nào đỡ</strong>. Khảo sát chỉ đo hiện trạng — không
       có câu nào hỏi ý kiến về giải pháp.
     </p>
     <dl class="facts">
+      <div class="fact"><dt>Nền tảng</dt><dd>MS&nbsp;Forms</dd></div>
       <div class="fact"><dt>Số câu</dt><dd>16</dd></div>
       <div class="fact"><dt>Dạng câu</dt><dd>Trắc nghiệm</dd></div>
       <div class="fact"><dt>Ước tính</dt><dd>≈ 2:45</dd></div>
@@ -500,7 +479,8 @@
   <div class="note branch">
     <span class="note-tag">Rẽ nhánh 1</span>
     <p>
-      Chọn <b>“Chưa đăng ký lần nào”</b> → chuyển thẳng tới <b>Phần E</b>, bỏ qua Phần B, C, D.
+      Chọn câu → <b>“…”</b> (More settings) → <b>Add branching</b> → ô <b>Go to</b>.
+      Đáp án <b>“Chưa đăng ký lần nào”</b> → <b>Phần E</b>, bỏ qua Phần B, C, D.
     </p>
     <p>
       Em chưa từng đăng ký thì không có trải nghiệm để trả lời Phần B và C. Câu 13 lại hỏi
@@ -672,22 +652,28 @@
   <div class="q">
     <div class="q-head"><span class="q-num">Câu 13</span><span class="chip req">Bắt buộc</span></div>
     <p class="q-stem">Bạn hài lòng tới đâu với <em>KẾT QUẢ</em> phân bổ mình nhận được?</p>
-    <div class="scale">
-      <span>Rất không hài lòng</span>
-      <b>1</b><b>2</b><b>3</b><b>4</b><b>5</b>
-      <span>Rất hài lòng</span>
-    </div>
-    <p class="why">Dùng dạng <b>Thang đo tuyến tính</b> trong Forms.</p>
+    <ul class="opts">
+      <li>1 — Rất không hài lòng</li>
+      <li>2 — Không hài lòng</li>
+      <li>3 — Bình thường</li>
+      <li>4 — Hài lòng</li>
+      <li>5 — Rất hài lòng</li>
+    </ul>
+    <p class="why"><b>Vì sao là trắc nghiệm 5 mức chứ không phải thang đo:</b> Quick Import của
+    Microsoft Forms <b>không nhập được thang Likert</b>. Sau khi nhập, muốn đẹp hơn thì đổi sang
+    dạng <em>Rating</em> (5 sao) ngay trong Forms — nội dung phân tích không đổi.</p>
   </div>
 
   <div class="q">
     <div class="q-head"><span class="q-num">Câu 14</span><span class="chip req">Bắt buộc</span></div>
     <p class="q-stem">Bạn hài lòng tới đâu với <em>CÁCH TRƯỜNG XÉT</em> để phân bổ?</p>
-    <div class="scale">
-      <span>Rất không hài lòng</span>
-      <b>1</b><b>2</b><b>3</b><b>4</b><b>5</b>
-      <span>Rất hài lòng</span>
-    </div>
+    <ul class="opts">
+      <li>1 — Rất không hài lòng</li>
+      <li>2 — Không hài lòng</li>
+      <li>3 — Bình thường</li>
+      <li>4 — Hài lòng</li>
+      <li>5 — Rất hài lòng</li>
+    </ul>
     <p class="why"><b>Tách khỏi Câu 13 là có chủ ý.</b> Một em được nguyện vọng 1 vẫn có thể
     thấy cách xét là bất công. Gộp hai câu lại là che mất đúng phát hiện đáng giá nhất.</p>
   </div>
@@ -709,7 +695,8 @@
 
   <div class="note branch">
     <span class="note-tag">Rẽ nhánh 2</span>
-    <p>Chọn <b>“Không”</b> → kết thúc form. Chọn <b>“Có”</b> → hiện Câu 16.</p>
+    <p>Đáp án <b>“Không”</b> → <b>End of the form</b>. Đáp án <b>“Có”</b> → đi tiếp Câu 16
+    (mặc định, không cần đặt gì).</p>
   </div>
 
   <div class="q load">
@@ -798,7 +785,31 @@
   </ol>
 
   <!-- ============ CÀI ĐẶT FORMS ============ -->
-  <h2>Cài đặt bắt buộc trong Google Forms</h2>
+  <h2>Nhập vào Microsoft Forms</h2>
+  <ol class="reasons">
+    <li>Mở <b>forms.office.com</b> bằng tài khoản trường.</li>
+    <li>Chọn <b>Quick import</b> (Nhập nhanh) trên trang chủ.</li>
+    <li>Chọn tệp <code>KHAO_SAT_NHAP_FORMS.docx</code> từ ổ đĩa máy. Forms chỉ nhận tệp trên máy;
+    giới hạn 10 MB.</li>
+    <li>Làm tiếp phần cài đặt và rẽ nhánh bên dưới <b>trước khi phát cho ai</b>.</li>
+  </ol>
+
+  <div class="alarm">
+    <h3>⚠ Quick Import không mang theo ba thứ</h3>
+    <p>
+      <strong>Rẽ nhánh</strong>, <strong>dấu bắt buộc</strong>, và <strong>thang Likert</strong> —
+      cả ba phải làm tay sau khi nhập. Từng bước nằm trong
+      <code>KHAO_SAT_HUONG_DAN_FORMS.docx</code>.
+    </p>
+    <p>
+      Và Microsoft ghi rõ <strong>bản tiếng Anh chuyển đổi chính xác hơn các ngôn ngữ khác</strong>.
+      Khảo sát này toàn tiếng Việt, nên <strong>phải soát lại từng câu</strong> sau khi nhập — lỗi
+      hay gặp nhất là một câu trắc nghiệm bị biến thành ô văn bản tự do.
+    </p>
+  </div>
+
+  <h2>Cài đặt bắt buộc trong Microsoft Forms</h2>
+  <p class="lede">Vào <b>Settings</b> — dấu ba chấm góc trên bên phải → Settings.</p>
   <div class="table-wrap">
     <table>
       <thead>
@@ -806,42 +817,58 @@
       </thead>
       <tbody>
         <tr>
-          <td><strong>Thu thập địa chỉ email</strong></td>
-          <td class="no">TẮT</td>
-          <td>Đây là dữ liệu của <strong>học sinh có thật, phần lớn là trẻ vị thành niên</strong>. Có email là có danh tính.</td>
+          <td>Ai được điền biểu mẫu</td>
+          <td>Trong tổ chức</td>
+          <td>Chỉ người trong trường trả lời được; người ngoài không vào được</td>
         </tr>
         <tr>
-          <td>Giới hạn 1 phản hồi mỗi người</td>
+          <td><strong>Ghi lại tên</strong><br><em>(Record name)</em></td>
           <td class="no">TẮT</td>
-          <td>Bật lên là buộc đăng nhập Google, lại lộ danh tính</td>
+          <td><strong class="no">⚠ MẶC ĐỊNH LÀ BẬT với tài khoản trường học.</strong> Bật là mỗi phản hồi kèm tên và email người trả lời. Đây là chỗ <strong>nguy hiểm hơn hẳn Google Forms</strong>, nơi mục tương đương mặc định đã TẮT. Tắt xong thì cột người trả lời hiện <strong>“Anonymous”</strong> cho mọi phản hồi, kể cả người đang đăng nhập.</td>
         </tr>
         <tr>
-          <td>Câu hỏi bắt buộc</td>
+          <td>Một phản hồi mỗi người</td>
+          <td class="no">TẮT</td>
+          <td>Bật lên là buộc đăng nhập và dễ lần ra danh tính</td>
+        </tr>
+        <tr>
+          <td>Câu hỏi bắt buộc <em>(Required)</em></td>
           <td>8 câu</td>
           <td>Chỉ Câu <strong>1, 2, 3, 8, 9, 13, 14, 15</strong>. Bắt buộc hết thì học sinh bỏ giữa chừng hoặc chọn bừa</td>
         </tr>
         <tr>
           <td>Xáo thứ tự câu hỏi</td>
           <td class="no">TẮT</td>
-          <td>Các câu có trình tự logic (Câu 8 phải trước Câu 9), xáo lên là hỏng</td>
+          <td>Câu 8 phải đứng trước Câu 9, xáo lên là hỏng mạch</td>
         </tr>
       </tbody>
     </table>
   </div>
 
+  <div class="note">
+    <span class="note-tag">Người trả lời phần lớn là trẻ vị thành niên</span>
+    <p>
+      Kiểm lại mục <b>Ghi lại tên</b> <b>một lần nữa</b> ngay trước khi gửi đường dẫn cho các bạn
+      — nó <b>bật sẵn</b>, không phải tắt sẵn.
+    </p>
+  </div>
+
   <h3>Hai chỗ rẽ nhánh</h3>
-  <p class="lede">Dùng dấu ⋮ của câu → <em>“Chuyển đến phần dựa trên câu trả lời”</em>.</p>
+  <p class="lede">
+    Chọn câu → <b>“…”</b> (More settings) → <b>Add branching</b> → mỗi đáp án hiện ra ô <b>Go to</b>.
+  </p>
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th style="width:22%">Ở đâu</th><th style="width:40%">Điều kiện</th><th>Chuyển tới</th></tr>
+        <tr><th style="width:18%">Ở câu</th><th style="width:42%">Đáp án</th><th>Go to</th></tr>
       </thead>
       <tbody>
         <tr><td>Câu 2</td><td>“Chưa đăng ký lần nào”</td><td><strong>Phần E</strong></td></tr>
-        <tr><td>Câu 15</td><td>“Không”</td><td><strong>Gửi biểu mẫu</strong> (kết thúc)</td></tr>
+        <tr><td>Câu 15</td><td>“Không”</td><td><strong>End of the form</strong></td></tr>
       </tbody>
     </table>
   </div>
+  <p class="lede">Mọi đáp án còn lại để nguyên — Forms mặc định đi tiếp câu kế.</p>
 
   <div class="note">
     <span class="note-tag">Trước khi phát</span>
@@ -865,7 +892,7 @@
       <tbody>
         <tr>
           <td>Bảng tính phản hồi</td>
-          <td><strong class="no">Không được vào kho git.</strong> <code>.gitignore</code> đã chặn sẵn các kiểu tên Google Forms đặt mặc định (<code>… (Responses).xlsx</code>, <code>… (Phản hồi).xlsx</code>, <code>khao_sat*.csv</code>…). Đã thử 5 kiểu tên và xác nhận chặn được.</td>
+          <td><strong class="no">Không được vào kho git.</strong> Microsoft Forms đặt tên tệp xuất ra dạng <code>&lt;tên biểu mẫu&gt;(1-53).xlsx</code> — luật chặn cũ viết cho Google Forms <strong>không bắt được kiểu tên đó</strong>. Đã sửa <code>.gitignore</code> ngày 02/09 và thử lại <strong>8 kiểu tên</strong>, gồm cả tên tiếng Việt có dấu; thư mục gốc dự án nay chặn luôn mọi <code>.xlsx</code> và <code>.csv</code> làm lưới chắn cuối.</td>
         </tr>
         <tr>
           <td>Đưa vào báo cáo</td>

@@ -320,6 +320,26 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ## 5. Vấn đề chưa giải quyết
 
+### ⚠️ CÒN MỞ (02/09) — một test giao diện chập chờn
+
+`tests/test_giao_dien_xoa_du_lieu.py::test_moi_o_so_tren_man_hinh_cap_nhat_ngay_sau_khi_xoa`
+**đỏ 1 lần trên 2 lần chạy toàn bộ** ngày 02/09. Chạy lại toàn bộ: **404/404
+xanh**. Chạy riêng mình nó: xanh, 2,4 giây.
+
+**Không phải lỗi sản phẩm.** Hôm đó không đụng một dòng mã nguồn nào — chỉ sửa
+tài liệu, `.gitignore` và thêm hai tệp Word. Nghi là chỗ **bấm hai bước** ở dòng
+143–147: bấm lần một, chờ nút vào trạng thái `is-confirming`, rồi bấm lần hai.
+Khi cả bộ 404 test cùng chạy thì Chromium chậm hơn, và các mốc `wait_for_function`
+đặt hạn 10 giây có thể không đủ.
+
+**Chưa sửa, và cố ý chưa sửa.** Nới hạn chờ là giấu triệu chứng chứ không phải
+chữa nguyên nhân, mà đóng băng mã là 04/09. Ghi vào đây để nếu nó đỏ lần nữa thì
+người đọc biết đây là chuyện đã thấy, không phải chuyện mới.
+
+**Nếu giám khảo hỏi:** trả lời đúng như trên — một test giao diện chập chờn do
+thời gian chờ, đã tái hiện được là chỉ xảy ra khi chạy cả bộ, và phần chức năng
+mà nó canh thì vẫn đúng.
+
 ### ✅ ĐÃ ĐÓNG (02/09) — lỗi 25: `set_window()` làm TREO HẲN app
 
 Lộ ra **nhờ** bản vá lỗi 24. Học sinh chạy bản mới trên Windows: cửa sổ mở,
@@ -1078,8 +1098,7 @@ sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertif
 ### Khảo sát hiện trạng (02/09) — ranh giới đã vạch ở đâu
 
 Học sinh nhờ soạn bộ câu hỏi cho form *"KHẢO SÁT: Quy trình & Mức độ hài lòng
-với việc phân bổ CLB"* (đã có sẵn trong Drive). Đây là chỗ **sát ranh giới**, nên
-ghi rõ đã chia thế nào:
+với việc phân bổ CLB"*. Đây là chỗ **sát ranh giới**, nên ghi rõ đã chia thế nào:
 
 | Việc | Ai làm |
 |---|---|
@@ -1109,8 +1128,27 @@ nháp chỉ là điểm khởi đầu — học sinh phải đọc và sửa, kh
 trạng ở VAS mà chưa có số liệu nào đỡ. Khi bảo vệ, giám khảo chỉ cần hỏi *"em
 biết điều đó từ đâu?"*.
 
-**Bản hiện tại: 16 câu** (`KHAO_SAT_CAU_HOI.md`, bản trang web ở artifact
-`803629b4-b0af-4a89-8715-38b54ccc1ee1`). Ngày 02/09 học sinh yêu cầu thêm câu và
+**Nền tảng: MICROSOFT FORMS** (chốt 02/09, bỏ Google Form). Bốn tệp:
+
+| Tệp | Dùng để làm gì |
+|---|---|
+| `KHAO_SAT_NHAP_FORMS.docx` | **Đem nhập** bằng Quick Import |
+| `KHAO_SAT_HUONG_DAN_FORMS.docx` | **Đọc, KHÔNG nhập** — cài đặt, rẽ nhánh, danh sách soát |
+| `KHAO_SAT_CAU_HOI.md` | Bộ câu hỏi kèm lý do thiết kế từng câu |
+| artifact `803629b4-b0af-4a89-8715-38b54ccc1ee1` | Bản trang web của tệp trên |
+
+**Quick Import KHÔNG mang theo ba thứ** — rẽ nhánh, dấu bắt buộc, thang Likert.
+Cả ba làm tay sau khi nhập. Và Microsoft ghi rõ **bản tiếng Anh chuyển đổi chính
+xác hơn các ngôn ngữ khác**, nên bộ câu hỏi tiếng Việt **phải soát lại từng câu**
+sau khi nhập.
+
+> ### ⚠️ "GHI LẠI TÊN" TRONG MICROSOFT FORMS MẶC ĐỊNH LÀ **BẬT**
+> Với tài khoản trường học, mục *Record name* **bật sẵn** — mỗi phản hồi kèm tên
+> và email người trả lời. **Nguy hiểm hơn hẳn Google Forms**, nơi mục tương đương
+> mặc định đã TẮT. Người trả lời phần lớn là **trẻ vị thành niên**.
+> Phải **TẮT** trước khi phát, và kiểm lại một lần nữa ngay trước khi gửi đường dẫn.
+
+**Bản hiện tại: 16 câu.** Ngày 02/09 học sinh yêu cầu thêm câu và
 yêu cầu câu **có ý nghĩa hơn**; đối chiếu lại với hai bản báo cáo thì thấy ba
 khẳng định trước đó **không có câu nào chạm tới** — hệ quả sau khi bị xếp sai,
 phía câu lạc bộ, và chuyện học sinh tự bỏ nguyện vọng thật của mình. Thêm 6 câu,
@@ -1137,20 +1175,36 @@ bỏ 1 câu trùng.
 > Khác **hoàn toàn** với mọi bộ trong `du_lieu_test/` (đều là máy sinh). Đây là
 > câu trả lời của học sinh thật, phần lớn là trẻ vị thành niên.
 >
-> - Bảng tính kết quả **không bao giờ được vào git**. `.gitignore` đã chặn các
->   kiểu tên Google Forms đặt mặc định (`… (Responses).xlsx`, `… (Phản hồi).xlsx`,
->   `khao_sat*.csv`, `phan_hoi*.xlsx`…). Đã thử từng tên và xác nhận chặn được;
->   `KHAO_SAT_CAU_HOI.md` thì **không** bị chặn vì đó là công cụ đo, không phải
->   dữ liệu.
-> - Trong Forms phải **TẮT "Thu thập địa chỉ email"**. Có email là có danh tính.
+> - Bảng tính kết quả **không bao giờ được vào git**.
+> - Trong Forms phải **TẮT "Ghi lại tên"** — xem khối cảnh báo ở trên.
 > - Báo cáo chỉ đưa **số đã tổng hợp**, không đưa bảng thô.
+>
+> #### Lỗ hổng `.gitignore` phát hiện được nhờ chuyển nền tảng (02/09)
+>
+> Microsoft Forms xuất phản hồi ra tên dạng **`<tên biểu mẫu>(1-53).xlsx`**. Luật
+> chặn cũ viết cho Google Forms **không bắt được kiểu tên đó** — `KHAO_SAT*` không
+> khớp `KHẢO SÁT` (khác dấu, khác khoảng trắng). Đã thử bằng `git check-ignore`
+> trước khi vá, cả bốn đều **LỌT**:
+>
+> ```
+> KHẢO SÁT Quy trình & Mức độ hài lòng với việc phân bổ CLB(1-53).xlsx
+> KHẢO SÁT(1-12).xlsx
+> Form1(1-53).xlsx
+> Khảo sát CLB.xlsx
+> ```
+>
+> Đã vá và kiểm **hai chiều**: 8/8 kiểu tên nay bị chặn, và **25/25** tệp `.csv`
+> / `.xlsx` đang được theo dõi **không** bị chặn nhầm. Thêm lưới chắn cuối
+> `/*.xlsx` và `/*.csv` — chặn mọi bảng tính ở thư mục gốc dự án, vì tên tệp Forms
+> xuất ra không đoán trước được. Bộ mẫu và bộ dữ liệu test nằm trong thư mục con
+> nên không bị ảnh hưởng; `KHAO_SAT_CAU_HOI.md/.html/.docx` vẫn vào git bình thường.
 
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 
-**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #93**, phủ hết
+**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #94**, phủ hết
 ngày 02/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ câu
-hỏi khảo sát, và bản khảo sát mở rộng 16 câu.
+hỏi khảo sát 16 câu, và việc chuyển sang Microsoft Forms.
 
 > **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
 > Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:

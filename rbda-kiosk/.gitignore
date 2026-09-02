@@ -37,6 +37,34 @@ khao_sat*.csv
 khao_sat*.xlsx
 KHAO_SAT*.csv
 KHAO_SAT*.xlsx
+#
+# 02/09: du an chuyen sang MICROSOFT FORMS. Cac luat tren viet cho Google
+# Forms va KHONG chan duoc ten Microsoft Forms dat. Da thu bang
+# git check-ignore, ca bon deu LOT:
+#     KHAO SAT Quy trinh & Muc do hai long...(1-53).xlsx   (co dau)
+#     KHAO SAT(1-12).xlsx
+#     Form1(1-53).xlsx
+#     Khao sat CLB.xlsx
+# Luat KHAO_SAT* KHONG khop "KHAO SAT" co dau va co khoang trang.
+#
+# Microsoft Forms dat ten "<ten form>(1-53).xlsx" — chan theo hinh dang do:
+*(1-*).xlsx
+*(1-*).csv
+# Ten form tieng Viet CO DAU:
+*KHẢO SÁT*.xlsx
+*KHẢO SÁT*.csv
+*Khảo sát*.xlsx
+*Khảo sát*.csv
+*khảo sát*.xlsx
+*khảo sát*.csv
+#
+# LUOI CHAN CUOI: chan MOI bang tinh o THU MUC GOC du an. Ten tep Forms
+# xuat ra khong doan truoc duoc, ma thu muc goc la cho de roi tep vao
+# nhat. Bo mau va bo du lieu test deu nam trong thu muc con nen khong bi
+# anh huong. Neu that su can mot bang tinh o goc thi mo khoa rieng bang
+# dong "!ten_tep.xlsx".
+/*.xlsx
+/*.csv
 
 build/
 dist/
