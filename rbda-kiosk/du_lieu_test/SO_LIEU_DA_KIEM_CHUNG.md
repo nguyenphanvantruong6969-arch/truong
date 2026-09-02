@@ -102,6 +102,45 @@ sinh, số CLB, số nguyện vọng, tổng chỉ tiêu và cách chia chỉ ti
 **Cố ý không chép số sang đây.** Chép là tạo ra hai bản dễ lệch nhau; đọc thẳng
 tệp CSV hoặc trang báo cáo.
 
+## 3c. Ảnh hưởng của seed bốc thăm
+
+Chạy lại toàn bộ quy trình với **200 seed** (1–200) trên cùng một bộ dữ liệu, lấy
+seed 42 làm mốc rồi đếm số em xếp khác mốc.
+
+| Bộ dữ liệu | Số em | **Không bao giờ đổi** | Đổi CLB: ít nhất / TB / nhiều nhất | Số em được xếp | Cặp phá vỡ |
+|---|---|---|---|---|---|
+| `vi_du_huong_dan/` | 10 | **10 (100%)** | 0 / 0,0 / 0 | 9 – 9 | 0 |
+| `bo_sach/` | 140 | **127 (90,7%)** | 0 / 6,0 / 11 | 139 – 140 | 0 |
+| `TEST_0*.xlsx` | 120 | **116 (96,7%)** | 0 / 1,9 / 4 | 107 – 109 | 0 |
+
+Khoá xếp hạng của mỗi CLB là `(-điểm, số_bốc_thăm)`
+(`rbda_priority_pipeline.club_priority_order`) — **điểm đứng trước**, nên seed chỉ
+chen vào được đúng hai chỗ: em **hoà điểm**, và em dự tuyển CLB mình **không thi**
+(tầng 2). Số đo khớp: trên cả ba bộ, **không một em nào** đổi chỗ mà lại nằm
+ngoài hai nhóm đó.
+
+`vi_du_huong_dan/` là ca đối chứng sạch nhất: bộ này **không có em hoà điểm và
+không có em tầng 2**, và kết quả là **0 em đổi chỗ trên cả 200 seed**.
+
+Hai điều cũng đo được, và cần nói rõ vì chúng đi ngược trực giác:
+
+- **Mọi seed đều cho 0 cặp phá vỡ.** Đổi seed đổi *ai* được suất trong nhóm hoà
+  nhau, chứ không bao giờ làm kết quả mất tính ổn định.
+- **Seed đổi được cả việc một em có suất hay không**, chứ không chỉ đổi CLB — số
+  em được xếp dao động 139–140 (bộ sạch) và 107–109 (bộ TEST).
+
+Trên `bo_sach/` thì 138/140 em có hoà điểm ở đâu đó và cả 140 em đều có ít nhất
+một CLB mình không thi, nên câu "không em nào đổi ngoài hai nhóm" ở bộ này gần
+như hiển nhiên. Bằng chứng mạnh nằm ở `vi_du_huong_dan/` và ở test dựng riêng
+(`tests/test_anh_huong_seed.py`), nơi ba em ba điểm khác nhau tranh hai suất và
+**100 seed đều cho cùng một kết quả**.
+
+```
+python du_lieu_test/do_anh_huong_seed.py --so-seed 200
+```
+
+Chạy hai lần ra **đúng cùng một bảng** — đã kiểm.
+
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
 Xem `NHAP_TAY.md` — 8 học sinh, 3 CLB.
@@ -121,16 +160,16 @@ tới — kết quả tính được bằng tay.
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tệp kiểm thử | 18 |
-| Trường hợp kiểm thử | **271** |
+| Tệp kiểm thử | 31 |
+| Trường hợp kiểm thử | **404** |
 | Số trường hợp không đạt | 0 |
-| Thời gian chạy toàn bộ | ~30 giây |
+| Thời gian chạy toàn bộ | ~95 giây |
 
 ## 6. Lỗi tìm được trong quá trình phát triển
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tổng số lỗi đã tìm và sửa | **13** |
+| Tổng số lỗi đã tìm và sửa | **25** |
 | Trong đó là lỗi **im lặng** | **10** |
 
 *Lỗi im lặng = phần mềm báo thành công trong khi dữ liệu đã sai.* Danh sách từng
@@ -146,14 +185,12 @@ lỗi và cách phát hiện nằm trong lịch sử Git và `BAN_GIAO.md` mục
 | Còn sống sau 3–5 phút thu nhỏ | Có | 30/08 |
 | Nạp 4 tệp Excel | Thành công | 30/08 |
 | Số ứng viên mỗi CLB khớp với số đo trên máy phát triển | Khớp cả 10 | 30/08 |
-| **Cửa sổ gốc (pywebview) mở được** | **Có** | **31/08** |
 | `PhanBoCauLacBo.exe` là tiến trình riêng trong Task Manager | Có | 31/08 |
+| Cửa sổ gốc (pywebview) **được tạo** | Có | 31/08 |
+| Cửa sổ gốc **dùng được** | **Chưa** — treo, xem dưới | 02/09 |
 
-**Đường hiển thị đang dùng: cửa sổ gốc (pywebview).** Nội dung được vẽ bằng
-**WebView2 Runtime** — thành phần có sẵn của Windows 10/11 — **bên trong** cửa sổ
-của chính phần mềm. Không có trình duyệt nào chạy.
-
-Nguồn: `loi_khoi_dong.txt` trên máy học sinh, 31/08/2026:
+**Đã sửa lại một khẳng định sai ở mục này (02/09).** Bản trước ghi *"Cửa sổ gốc
+(pywebview) mở được: Có"* và dẫn chứng bằng dòng nhật ký:
 
 ```
 [2026-08-31 15:34:42] go dau tai-ve trong ...\_internal:
@@ -161,12 +198,30 @@ Nguồn: `loi_khoi_dong.txt` trên máy học sinh, 31/08/2026:
 [2026-08-31 15:34:42] cua so goc (pywebview) mo THANH CONG
 ```
 
-`da_go: 173` là số tệp mang dấu "tải từ Internet" mà phần mềm tự gỡ lúc khởi động.
-`bo_qua: 0` nghĩa là **không tệp nào sạch sẵn** — tức việc gỡ dấu do **mã tự làm**,
-không phải người dùng thao tác tay. Xem `BAN_GIAO.md` mục 5.
+**Dòng "mo THANH CONG" đó không chứng minh được điều nó có vẻ chứng minh.**
+`main.py` ghi nó **trước** khi gọi `webview.start()` — mà `start()` mới là chỗ
+thật sự mở cửa sổ, và cũng chính là chỗ đã treo. Nói cách khác, nhật ký ghi
+"THÀNH CÔNG" ngay cả trong lần chạy mà app đứng hình. Chi tiết: `BAN_GIAO.md`
+mục 5, lỗi 25.
 
-Chế độ dự phòng bằng trình duyệt vẫn còn trong mã làm lưới an toàn, nhưng **không
-còn là đường đang chạy**.
+Ngày 02/09 học sinh chạy thử: cửa sổ gốc **có** mở, nhưng tiêu đề ghi
+**"(Not Responding)"** và giao diện không kết nối được với phần lõi. Nguyên nhân
+đã tìm ra và đã sửa (`api.set_window` khiến pywebview đệ quy vào chính cửa sổ của
+nó, chạm bốn property chặn 15 giây và đọc control WinForms chéo luồng).
+
+**Trạng thái đúng tính đến 02/09:** bản vá đã có, đã đóng gói, **nhưng CHƯA được
+xác nhận trên máy Windows.** Máy phát triển chạy Linux, không có .NET Framework
+lẫn WinForms — cơ chế đo được bằng cách chạy lại đúng luật dò của pywebview
+(`tests/test_do_api.py`), còn xác nhận cuối cùng phải do máy thật cho.
+
+**Đường hiển thị được xác nhận là dùng được: chế độ dự phòng bằng trình duyệt**
+(đã chạy trọn luồng nạp → chạy → xuất trên Windows ngày 30/08). Cửa sổ gốc là
+đường ưu tiên trong mã, nhưng **báo cáo không được viết là nó đã chạy được** cho
+tới khi có một lần chạy thành công trên máy Windows.
+
+`da_go: 173` vẫn là số liệu đúng: đó là số tệp mang dấu "tải từ Internet" mà phần
+mềm tự gỡ lúc khởi động. `bo_qua: 0` nghĩa là **không tệp nào sạch sẵn** — tức
+việc gỡ dấu do **mã tự làm**, không phải người dùng thao tác tay.
 
 ---
 

@@ -712,10 +712,29 @@ CÓ ở đó, .NET tìm thấy, chỉ là không chịu nạp.
 - `da_go: 173` — 173 tệp mang dấu, mã tự gỡ hết
 - **`bo_qua: 0`** — không một tệp nào sạch sẵn, tức học sinh **KHÔNG** unblock tay;
   chính mã làm. Nghĩa là nó tự chạy trên **máy bất kỳ**, kể cả máy giám khảo.
-- Cùng một giây, pywebview mở thành công
+- Dòng thứ ba **KHÔNG** chứng minh pywebview mở thành công — xem ngay dưới.
+
+> **SỬA LẠI (02/09) — dòng `mo THANH CONG` đã bị đọc quá tay.**
+> `main.py` ghi dòng đó **trước** khi gọi `webview.start()`, mà `start()` mới là
+> chỗ thật sự mở cửa sổ. Nên nó chỉ chứng minh *mã chạy tới được lời gọi đó*,
+> chứ không chứng minh cửa sổ mở được. Bằng chứng: ngày 02/09, đúng bản build
+> ghi "THANH CONG" lại treo với tiêu đề **"(Not Responding)"** (lỗi 25, mục 5).
+> `main.py` giờ ghi `"dang mo cua so goc..."` trước và
+> `"da dong binh thuong"` sau, có test canh (`tests/test_do_api.py`).
+>
+> **Điều bản vá gỡ dấu THẬT SỰ chứng minh:** phần gỡ `Zone.Identifier` chạy
+> đúng (173 tệp, tự động, không cần thao tác tay) — và nhờ đó pywebview mới đi
+> được xa tới mức tạo được cửa sổ, thay vì chết ngay lúc `import webview` như
+> trước. Đó là tiến bộ có thật, chỉ là chưa phải "chạy được".
 
 Task Manager xác nhận: `PhanBoCauLacBo.exe` là tiến trình riêng; nhóm
 `msedgewebview2.exe` (WebView2 Runtime) vẽ nội dung **bên trong** cửa sổ của nó.
+
+**Câu chữ đúng cho báo cáo tính đến 02/09:** đường hiển thị đã được xác nhận
+chạy trọn luồng trên Windows là **chế độ dự phòng bằng trình duyệt** (30/08).
+Cửa sổ gốc là đường ưu tiên trong mã và bản vá lỗi 25 đã có, **nhưng chưa có lần
+chạy thành công nào trên máy Windows** — không được viết là nó đã chạy được cho
+tới khi có.
 
 **Cách chữa — hai lớp, xem `chan_doan.py`:**
 1. `go_dau_tai_ve()` xoá luồng `Zone.Identifier` khỏi mọi `.dll/.exe/.pyd` trong

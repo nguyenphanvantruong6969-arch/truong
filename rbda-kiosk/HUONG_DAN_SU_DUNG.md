@@ -495,6 +495,33 @@ Số bốc thăm sinh từ ô `seed`. Cùng `seed` → cùng bộ số → cùng
 chạy đầu, số bốc thăm bị **khoá** để lần chạy sau không vô tình bốc lại và làm
 đổi kết quả đã công bố.
 
+### Đổi `seed` thì kết quả đổi tới đâu
+
+Câu hỏi tự nhiên: nếu bốc thăm khác đi thì kết quả khác tới mức nào? Đã **đo**,
+chạy lại toàn bộ quy trình với **200 seed** trên ba bộ dữ liệu:
+
+| Bộ dữ liệu | Số em **không bao giờ** đổi CLB | Em đổi CLB (trung bình / nhiều nhất) |
+|---|---|---|
+| Ví dụ hướng dẫn — 10 em / 4 CLB | **10 / 10 (100%)** | 0 / 0 |
+| Bộ sạch — 140 em / 12 CLB | **127 / 140 (91%)** | 6,0 / 11 em |
+| Bộ TEST — 120 em / 10 CLB | **116 / 120 (97%)** | 1,9 / 4 em |
+
+Bộ ví dụ trong hướng dẫn này **không có em nào hoà điểm và không em nào dự tuyển
+CLB mình không thi**, nên `seed` không có chỗ nào để chen vào: đổi seed kiểu gì
+cũng ra **đúng một kết quả**. Đó là minh hoạ trực tiếp cho quy tắc ở trên — điểm
+đứng trước, bốc thăm chỉ phân định khi điểm đã hoà.
+
+Hai điều nữa đã đo:
+
+- **Mọi seed đều cho kết quả ổn định** — không có cặp phá vỡ nào ở bất kỳ seed
+  nào trong 200 seed. Đổi seed đổi *ai* được suất trong nhóm hoà nhau, chứ không
+  làm kết quả sai.
+- **Seed có thể đổi cả việc một em có suất hay không**, không chỉ đổi CLB. Trên
+  bộ sạch, số em được xếp dao động 139–140; trên bộ TEST là 107–109. Con số nhỏ,
+  nhưng có thật.
+
+Tái lập: `python du_lieu_test/do_anh_huong_seed.py --so-seed 200`
+
 ### Suất dự trữ
 
 Trong `capacity` chỗ của một CLB, `reserve_capacity` chỗ được xét **trước** và
