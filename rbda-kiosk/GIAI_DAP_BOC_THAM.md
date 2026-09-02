@@ -1,5 +1,9 @@
 # Giải đáp về bốc thăm — ba câu hỏi hay gặp
 
+> **Bản trình bày (trang web):** `GIAI_DAP_BOC_THAM.html` — cùng nội dung, có
+> biểu đồ, mở bằng trình duyệt bất kỳ. Bản trực tuyến:
+> https://claude.ai/code/artifact/449066d6-148b-4978-be60-cc422db69cdf
+
 > **Mọi con số trong tệp này đều do đo mà có, không phải nói chay.** Cuối mỗi
 > câu có lệnh chạy lại. Chạy lại lúc nào cũng ra đúng bằng đó — không có gì phụ
 > thuộc đồng hồ hay máy tính đang dùng.
@@ -79,7 +83,7 @@ seed rời nhau, mỗi khối 10 000 seed**:
 
 **Đọc bảng này thế nào.** Hệ số **đổi cả dấu** — ba khối cho giá trị **âm**. Độ
 lệch giữa các khối (0,073) còn **lớn hơn** chính giá trị trung bình (0,051), và
-mọi khối đều nằm trong 1,5 lần ngưỡng nhiễu.
+khối lệch nhiều nhất cũng chỉ bằng **1,53 lần** ngưỡng nhiễu.
 
 Một thiên vị **thật** thì giữ nguyên dấu và độ lớn qua mọi khối. Cái này đổi
 dấu, nên đó là **nhiễu thống kê, không phải thiên vị**.
