@@ -320,6 +320,75 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 
 ## 5. Vấn đề chưa giải quyết
 
+### ✅ ĐÃ ĐÓNG (02/09) — lỗi 25: `set_window()` làm TREO HẲN app
+
+Lộ ra **nhờ** bản vá lỗi 24. Học sinh chạy bản mới trên Windows: cửa sổ mở,
+tiêu đề ghi **"(Not Responding)"**, giao diện hiện đúng câu tiếng Việt của bản
+vá lỗi 24 — *"Không kết nối được với phần lõi chương trình"*. Tiến trình treo
+thật, không phải chậm.
+
+**Đây là lần đầu tiên đường CỬA SỔ GỐC chạy được.** Suốt những ngày trước app
+toàn rơi xuống chế độ trình duyệt. Bản vá gỡ dấu "tải từ Internet" đã có tác
+dụng — và ngay đó đụng một cái bẫy chưa ai gặp.
+
+**Nguyên nhân nằm trong mã của mình, không phải pywebview.** `main.py` gọi
+`api.set_window(window)`, nên `PipelineAPI.window` giữ đối tượng `Window` của
+pywebview. Rồi pywebview dựng cầu nối bằng cách **dò chính đối tượng API**
+(`webview/util.py`, `get_functions`):
+
+```python
+for name in dir(obj):
+    if name.startswith('_'): continue      # <- lối thoát DUY NHẤT
+    attr = getattr(obj, name)              # <- KÍCH HOẠT property
+    ...
+    elif not callable(attr) and hasattr(attr, '__module__'):
+        get_functions(attr, ...)           # <- ĐỆ QUY vào attr
+```
+
+`Window` không callable và có `__module__` → pywebview **đệ quy vào chính cửa
+sổ của nó**. Mà `dir()` cửa sổ đó có bốn property CHẶN (`webview/window.py`):
+
+```python
+@property
+def width(self):
+    self.events.shown.wait(15)              # chờ tới 15 giây
+    width, _ = self.gui.get_size(self.uid)  # đọc Control.Size của WinForms
+```
+
+`width`, `height`, `x`, `y` — mỗi cái chờ tới 15 giây, và `get_size` đọc thuộc
+tính của một control WinForms **từ luồng khác luồng giao diện**. Truy cập chéo
+luồng đó chính là thứ làm cửa sổ ghi *"Not Responding"*. Luồng dò bị chặn →
+`finish.js` không bao giờ chạy → `window.pywebview.api` mãi rỗng.
+
+**Đo được, không phải suy luận** (`tests/test_do_api.py`, bản chưa vá):
+
+| Đo | Kết quả |
+|---|---|
+| Thuộc tính công khai bị đệ quy vào | `['window']` |
+| Property của cửa sổ bị chạm tới | `['height', 'width', 'x', 'y']` — **đủ cả bốn** |
+
+**Sửa:** đổi `self.window` → `self._window`, `set_window` → `_set_window`.
+`get_functions` bỏ qua tên bắt đầu bằng `_` **trước khi** gọi `getattr`, nên cửa
+sổ không hề bị chạm. Một dấu gạch dưới, và nó là **bắt buộc chứ không phải quy
+ước cho đẹp** — chú thích trong `api.py` nói rõ vì sao, vì sáu tháng sau sẽ có
+người thấy nó thừa mà bỏ đi.
+
+> Đáng chú ý: `self.window` được **gán hai lần và không đọc ở đâu cả**. Một
+> thuộc tính không ai dùng, làm treo cả ứng dụng.
+
+**Chữa luôn một lỗi chẩn đoán đi kèm.** `main.py` ghi nhật ký
+`"cua so goc (pywebview) mo THANH CONG"` **trước** `webview.start()` — mà chính
+`start()` mới là chỗ treo. Nghĩa là đúng lúc app treo, `loi_khoi_dong.txt` vẫn
+ghi "THÀNH CÔNG": nói dối đúng lúc cần sự thật nhất, và `chan_doan.py` sinh ra
+là để chống chuyện đó. Giờ ghi `"dang mo cua so goc..."` trước và
+`"da dong binh thuong"` sau, có test canh.
+
+**Bài học cho lần sau, đáng ghi vào báo cáo:** bản vá lỗi 24 không tự sửa lỗi
+này — nó **làm lỗi này nhìn thấy được**. Trước đó triệu chứng là một câu tiếng
+Anh khó hiểu; sau đó là một câu tiếng Việt nói đúng chuyện gì đang xảy ra, kèm
+tên tệp nhật ký. Đó là toàn bộ giá trị của việc báo lỗi tử tế.
+
+
 ### ✅ ĐÃ ĐÓNG (01/09) — lỗi 24: cổng khởi động hỏi sai câu hỏi
 
 Triệu chứng học sinh báo: *"mới cài, mở lần đầu thì thường bị lỗi backend không

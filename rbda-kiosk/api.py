@@ -66,20 +66,54 @@ def _fail(errors):
 class PipelineAPI:
     def __init__(self, db_path: str):
         self.db_path = db_path
-        self.window = None  # gán qua set_window() sau khi main.py tạo cửa sổ pywebview
+        # DẤU GẠCH DƯỚI LÀ BẮT BUỘC, không phải quy ước cho đẹp. Xem
+        # _set_window() ngay dưới đây.
+        self._window = None
         init_db(self.db_path)
 
-    def set_window(self, window) -> None:
+    def _set_window(self, window) -> None:
         """
         Gọi từ main.py sau webview.create_window(...):
             api = PipelineAPI(db_path)
             window = webview.create_window("...", "index.html", js_api=api)
-            api.set_window(window)
+            api._set_window(window)
         Không bắt buộc — nếu không gọi, mọi tính năng vẫn hoạt động,
         chỉ riêng import CSV sẽ nhận nội dung file qua FileReader ở JS
         (đã dùng theo mặc định) thay vì hộp thoại chọn file gốc của hệ điều hành.
+
+        VÌ SAO TÊN PHẢI BẮT ĐẦU BẰNG DẤU GẠCH DƯỚI — đây từng là lỗi làm
+        TREO HẲN app trên Windows (cửa sổ ghi "Not Responding"):
+
+        pywebview dựng cầu nối bằng cách DÒ chính đối tượng API này
+        (webview/util.py, get_functions). Luật của nó là:
+
+            for name in dir(obj):
+                if name.startswith('_'): continue      # <- lối thoát duy nhất
+                attr = getattr(obj, name)              # <- KÍCH HOẠT property
+                ...
+                elif not callable(attr) and hasattr(attr, '__module__'):
+                    get_functions(attr, ...)           # <- ĐỆ QUY vào attr
+
+        Cửa sổ pywebview không callable và có `__module__`, nên khi nó nằm ở
+        một thuộc tính CÔNG KHAI, pywebview đệ quy vào chính cửa sổ của nó —
+        và `dir()` cửa sổ đó có bốn property CHẶN (webview/window.py):
+
+            @property
+            def width(self):
+                self.events.shown.wait(15)              # chờ tới 15 giây
+                width, _ = self.gui.get_size(self.uid)  # đọc Control.Size
+
+        `width`, `height`, `x`, `y`: mỗi cái chờ tới 15 giây, và `get_size`
+        đọc thuộc tính của một control WinForms TỪ LUỒNG KHÁC luồng giao
+        diện. Luồng dò bị chặn -> finish.js không bao giờ chạy ->
+        `window.pywebview.api` mãi rỗng -> giao diện báo không kết nối được,
+        còn cửa sổ thì treo.
+
+        Dấu gạch dưới cắt đứt chuỗi đó ngay bước đầu: `get_functions` bỏ qua
+        tên bắt đầu bằng `_` TRƯỚC khi gọi `getattr`, nên cửa sổ không hề bị
+        chạm tới. Có test canh (tests/test_do_api.py).
         """
-        self.window = window
+        self._window = window
 
     # -----------------------------------------------------------------
     # TAB "VẬN HÀNH PIPELINE"

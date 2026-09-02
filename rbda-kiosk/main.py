@@ -89,12 +89,20 @@ def _show_ui(title: str, page: str, js_api, width: int, height: int,
             title, os.path.join(RESOURCE_DIR, page), js_api=js_api,
             width=width, height=height, min_size=min_size,
         )
-        if hasattr(js_api, "set_window"):
+        if hasattr(js_api, "_set_window"):
             # Cho phép các tính năng dùng hộp thoại gốc của hệ điều hành
             # sau này (hiện chưa tính năng nào bắt buộc phải có window ref).
-            js_api.set_window(window)
-        chan_doan.ghi(BASE_DIR, "cua so goc (pywebview) mo THANH CONG")
+            #
+            # TEN PHAI CO DAU GACH DUOI. Doc chu thich trong
+            # PipelineAPI._set_window — de ten cong khai thi pywebview de quy
+            # vao chinh cua so cua no va TREO HAN app.
+            js_api._set_window(window)
+        # KHONG duoc ghi "THANH CONG" o day. webview.start() ben duoi moi la
+        # cho that su mo cua so, va no da tung TREO ngay tai do — luc ay nhat
+        # ky van ghi "THANH CONG", tuc noi doi dung luc can su that nhat.
+        chan_doan.ghi(BASE_DIR, "dang mo cua so goc (pywebview)...")
         webview.start()
+        chan_doan.ghi(BASE_DIR, "cua so goc (pywebview) da dong binh thuong")
         return
     except BaseException:
         # Nuot MOI loai loi (ke ca khong phai Exception) roi thu cach 2 —
