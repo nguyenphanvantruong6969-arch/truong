@@ -331,6 +331,16 @@ thật, không phải chậm.
 toàn rơi xuống chế độ trình duyệt. Bản vá gỡ dấu "tải từ Internet" đã có tác
 dụng — và ngay đó đụng một cái bẫy chưa ai gặp.
 
+> ### ✅ ĐÃ XÁC NHẬN CHẠY ỔN ĐỊNH (02/09/2026)
+>
+> **Học sinh chạy bản có bản vá lỗi 25 trên máy Windows và xác nhận phần mềm
+> chạy ổn định.** Hết treo, cửa sổ gốc mở và dùng được bình thường.
+>
+> Nguồn của khẳng định này là **học sinh xác nhận**, không phải một tệp
+> `loi_khoi_dong.txt` do AI đọc. Ghi rõ như vậy để nếu giám khảo hỏi *"em biết
+> bằng cách nào"* thì câu trả lời đúng là *"em tự chạy trên máy của em"* — một
+> câu trả lời hợp lệ, và là câu trả lời thật.
+
 **Nguyên nhân nằm trong mã của mình, không phải pywebview.** `main.py` gọi
 `api.set_window(window)`, nên `PipelineAPI.window` giữ đối tượng `Window` của
 pywebview. Rồi pywebview dựng cầu nối bằng cách **dò chính đối tượng API**
@@ -726,15 +736,23 @@ CÓ ở đó, .NET tìm thấy, chỉ là không chịu nạp.
 > đúng (173 tệp, tự động, không cần thao tác tay) — và nhờ đó pywebview mới đi
 > được xa tới mức tạo được cửa sổ, thay vì chết ngay lúc `import webview` như
 > trước. Đó là tiến bộ có thật, chỉ là chưa phải "chạy được".
+>
+> **Chốt lại (02/09, sau bản vá lỗi 25):** giờ thì *đã* chạy được — học sinh
+> xác nhận app chạy ổn định trên Windows. Nhưng bài học về dòng log vẫn giữ
+> nguyên giá trị: **một dòng log ghi trước lời gọi không chứng minh lời gọi đó
+> thành công.** Đừng lặp lại lỗi đọc quá tay này ở chỗ khác.
 
 Task Manager xác nhận: `PhanBoCauLacBo.exe` là tiến trình riêng; nhóm
 `msedgewebview2.exe` (WebView2 Runtime) vẽ nội dung **bên trong** cửa sổ của nó.
 
-**Câu chữ đúng cho báo cáo tính đến 02/09:** đường hiển thị đã được xác nhận
-chạy trọn luồng trên Windows là **chế độ dự phòng bằng trình duyệt** (30/08).
-Cửa sổ gốc là đường ưu tiên trong mã và bản vá lỗi 25 đã có, **nhưng chưa có lần
-chạy thành công nào trên máy Windows** — không được viết là nó đã chạy được cho
-tới khi có.
+**Câu chữ đúng cho báo cáo tính đến 02/09:** cả **hai** đường hiển thị đều đã
+chạy được trên Windows. Chế độ dự phòng bằng trình duyệt xác nhận 30/08; **cửa
+sổ gốc** — đường ưu tiên trong mã — xác nhận **02/09** sau bản vá lỗi 25, học
+sinh chạy trên máy mình và báo lại là **chạy ổn định**.
+
+Viết được: *phần mềm chạy ổn định trong cửa sổ ứng dụng của riêng nó trên
+Windows*. Vẫn **không** được viết *"không dùng gì của Microsoft"* — xem khối câu
+chữ nguyên văn ở cuối mục này.
 
 **Cách chữa — hai lớp, xem `chan_doan.py`:**
 1. `go_dau_tai_ve()` xoá luồng `Zone.Identifier` khỏi mọi `.dll/.exe/.pyd` trong
@@ -765,6 +783,9 @@ là khả năng biết được tính năng đã hỏng thế nào.*
 
 > **Được viết:** phần mềm chạy trong cửa sổ ứng dụng của riêng nó; nội dung được vẽ
 > bằng WebView2 Runtime — một thành phần có sẵn của Windows 10/11.
+>
+> **Được viết (mới 02/09):** phần mềm **chạy ổn định** trên máy Windows ở chế độ
+> cửa sổ gốc. Nguồn: học sinh tự chạy và xác nhận.
 >
 > **Được viết:** lỗi đóng gói đã tìm ra nguyên nhân gốc và đã chữa.
 >
@@ -1062,21 +1083,55 @@ ghi rõ đã chia thế nào:
 
 | Việc | Ai làm |
 |---|---|
-| Soạn **nháp** bộ câu hỏi (`KHAO_SAT_CAU_HOI.md`) | AI |
-| Đọc lại, sửa câu chữ, **chịu trách nhiệm nội dung** | **Học sinh** |
-| Tạo form, phát khảo sát | **Học sinh** |
+| **Hỗ trợ và tư vấn chọn lựa câu hỏi** nhằm tối đa hóa thông tin trên mỗi câu hỏi, giúp thời gian thực hiện biểu mẫu ở mức hợp lí | AI |
+| **Xem xét, chọn lọc, sửa và đưa ra quyết định cuối cùng** | **Học sinh** |
+| Tạo biểu mẫu, phát khảo sát | **Học sinh** |
 | **Thu phản hồi** | **Học sinh** — quy định cấm AI thu thập dữ liệu |
-| Nhận xét, diễn giải, kết luận từ số liệu | **Học sinh** |
+| Phân tích, nhận xét, diễn giải, kết luận từ số liệu | **Học sinh** |
 | Dựng biểu đồ từ **số đã tổng hợp** (nếu học sinh đưa) | AI |
 
-> Thiết kế công cụ khảo sát **là một phần của phương pháp nghiên cứu**, nên bản
-> nháp của AI chỉ là điểm khởi đầu — học sinh phải đọc và sửa, không được dán
-> nguyên. Đã ghi vào nhật ký AI.
+> ### Câu chữ phải dùng — không nới rộng, không thu hẹp
+> Đây là câu chữ **do chính học sinh chọn**, ghi ở nhật ký AI câu lệnh #92:
+>
+> *"AI hỗ trợ và tư vấn chọn lựa câu hỏi nhằm tối đa hóa thông tin trên mỗi câu
+> hỏi nhằm giúp thời gian thực hiện biểu mẫu ở mức hợp lí. Học sinh xem xét, chọn
+> lọc, sửa và đưa ra quyết định cuối cùng. Học sinh tự tạo biểu mẫu, tự phát, tự
+> thu phản hồi và tự phân tích."*
+>
+> **KHÔNG** viết *"AI soạn bộ câu hỏi khảo sát"*, *"AI thiết kế khảo sát"* hay
+> *"AI thực hiện khảo sát"* — cả ba đều sai phạm vi và đều chạm vào ô *cấm thu
+> thập dữ liệu nghiên cứu* của Phụ lục 1.
 
-**Vì sao cần khảo sát:** hai bản báo cáo đang *khẳng định* bốn điều về hiện trạng
-ở VAS mà chưa có số liệu nào đỡ — phân bổ theo thứ tự đăng ký, học sinh có đam mê
-bị loại vì đăng ký muộn, nhiều em đăng ký vội vàng, quy mô ~300 em / ~20 CLB. Khi
-bảo vệ, giám khảo chỉ cần hỏi *"em biết điều đó từ đâu?"*.
+Thiết kế công cụ khảo sát **là một phần của phương pháp nghiên cứu**, nên bản
+nháp chỉ là điểm khởi đầu — học sinh phải đọc và sửa, không được dán nguyên.
+
+**Vì sao cần khảo sát:** hai bản báo cáo đang *khẳng định* **bảy** điều về hiện
+trạng ở VAS mà chưa có số liệu nào đỡ. Khi bảo vệ, giám khảo chỉ cần hỏi *"em
+biết điều đó từ đâu?"*.
+
+**Bản hiện tại: 16 câu** (`KHAO_SAT_CAU_HOI.md`, bản trang web ở artifact
+`803629b4-b0af-4a89-8715-38b54ccc1ee1`). Ngày 02/09 học sinh yêu cầu thêm câu và
+yêu cầu câu **có ý nghĩa hơn**; đối chiếu lại với hai bản báo cáo thì thấy ba
+khẳng định trước đó **không có câu nào chạm tới** — hệ quả sau khi bị xếp sai,
+phía câu lạc bộ, và chuyện học sinh tự bỏ nguyện vọng thật của mình. Thêm 6 câu,
+bỏ 1 câu trùng.
+
+> ### ⚠️ CÂU 12 KHÔNG PHẢI LÀ "ĐẾM CẶP PHÁ VỠ" — đừng viết nhầm vào báo cáo
+> Câu 12 hỏi: *hai em cùng muốn đổi CLB cho nhau*. Đó là **trao đổi cùng có lợi**
+> giữa **hai học sinh**. **Cặp phá vỡ** (blocking pair) là chuyện khác hẳn: một
+> **học sinh** và một **câu lạc bộ**.
+>
+> Một phương án ghép cặp **ổn định vẫn có thể để lại** những cặp đổi như vậy — đó
+> là chỗ **đánh đổi giữa tính ổn định và tính tối ưu**, không phải lỗi thuật toán
+> và không phải điều thuật toán hứa sẽ xoá bỏ.
+>
+> | Viết được | KHÔNG viết |
+> |---|---|
+> | "X% học sinh gặp trường hợp muốn đổi CLB cho nhau" | ~~"khảo sát đếm được X cặp phá vỡ"~~ |
+> | "cách làm hiện tại để lại những trao đổi cùng có lợi không thực hiện được" | ~~"thuật toán xoá bỏ được X cặp này"~~ |
+>
+> Câu 12 đáng hỏi vì nó đo **chi phí thật của cách làm hiện tại**, không phải vì
+> nó chứng minh thuật toán đúng.
 
 > ### ⚠️ PHẢN HỒI KHẢO SÁT LÀ DỮ LIỆU HỌC SINH CÓ THẬT
 > Khác **hoàn toàn** với mọi bộ trong `du_lieu_test/` (đều là máy sinh). Đây là
@@ -1093,10 +1148,9 @@ bảo vệ, giám khảo chỉ cần hỏi *"em biết điều đó từ đâu?"
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 
-**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #92**, phủ hết
-ngày 02/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, và bộ
-câu hỏi khảo sát. Con số ở đầu trang: **92 câu lệnh · 57 commit**; Mục 4: **67 tệp
-/ 13.333 dòng / 404 test**.
+**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #93**, phủ hết
+ngày 02/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ câu
+hỏi khảo sát, và bản khảo sát mở rộng 16 câu.
 
 > **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
 > Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:

@@ -548,19 +548,22 @@ python3 -m pytest tests/ -v
   console. Tức là chế độ dự phòng **không phải bản rút gọn** — nó chạy
   đầy đủ y hệt bản pywebview.
 
+## ĐÃ xác nhận trên máy Windows thật (02/09/2026)
+
+- **Cửa sổ pywebview thật, đóng gói bằng PyInstaller — CHẠY ỔN ĐỊNH.**
+  Học sinh chạy bản có bản vá lỗi 25 (`_set_window`) trên máy Windows
+  của mình và xác nhận app chạy ổn định, không còn treo. Sandbox này
+  không có GTK/QT nên `webview.start()` vẫn báo thiếu backend GUI —
+  đó là giới hạn của môi trường chạy test, không phải của phần mềm.
+- Chế độ dự phòng bằng trình duyệt cũng đã chạy thật đầy đủ (30/08).
+  pywebview hỏng thì app tự chuyển sang trình duyệt.
+
 ## CHƯA test được — cần Trường tự chạy trên máy có màn hình
 
-- Cửa sổ pywebview thật đóng gói bằng PyInstaller (kiosk.spec /
-  build_windows.bat) — sandbox này không có GTK/QT nên
-  `webview.start()` báo lỗi thiếu backend GUI (đã xác minh: lỗi dừng
-  đúng ở bước tạo cửa sổ, không phải lỗi code — mọi logic phía sau
-  `PipelineAPI`/`RecoveryAPI` đã được test độc lập với pywebview ở
-  trên, kể cả nhánh main.py mở `recovery.html` khi khởi tạo lỗi).
-  **Lưu ý:** kể từ khi có chế độ dự phòng bằng trình duyệt, đây không
-  còn là rủi ro chặn đường nữa — pywebview hỏng thì app tự chuyển sang
-  trình duyệt, và nhánh đó ĐÃ được chạy thật đầy đủ (xem mục trên).
 - Toàn bộ luồng thao tác bằng chuột thật tại kiosk trên phần cứng
   thật (cảm ứng, độ trễ, responsive khi resize cửa sổ thật).
+- Tập lệnh `ky_va_tin_cay.ps1` — chưa chạy ở đâu bao giờ (không có
+  `signtool` và kho chứng chỉ Windows trong sandbox).
 
 ## TODO tiếp theo
 
