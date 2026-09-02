@@ -587,10 +587,35 @@ bảng đó **không bao giờ bị ghi đè**, kể cả khi xoá toàn bộ d�
 dò seed đẹp sẽ để lại dấu vết không xoá được.
 
 **Điều nhà trường nên làm — quan trọng hơn mọi thứ trên:** nói với học sinh rằng
-**xếp càng nhiều nguyện vọng càng an toàn**. Trong ba em phụ thuộc bốc thăm, một
-em chỉ đăng ký **2 nguyện vọng** và có tới **46%** khả năng không có suất nào.
-Không phải thuật toán bạc đãi em — em tự đứng ở chỗ hẹp, không còn nguyện vọng
-nào phía dưới để rơi tiếp khi thua một lượt bốc thăm.
+**hãy xếp hết những CLB em thật sự chấp nhận vào**. Đã đo hẳn hoi — cùng bộ dữ
+liệu 140 em, chỉ cắt ngắn danh sách nguyện vọng:
+
+| Mỗi em xếp | Số em không có suất (trung bình) |
+|---|---|
+| 1 nguyện vọng | **48 em** |
+| 2 nguyện vọng | 26 em |
+| 3 nguyện vọng | 15 em |
+| 4 nguyện vọng | 7,5 em |
+| 5 nguyện vọng | 1,2 em |
+| 6 nguyện vọng | **0,3 em** |
+
+Bỏ trống nguyện vọng là tự bỏ cơ hội của chính mình.
+
+> ### ⚠️ Nhưng KHÔNG được bắt học sinh điền cho đủ số ô
+>
+> Bảng trên đo chuyện **cắt bớt** nguyện vọng của em vốn đã khai đủ — tức nó cho
+> thấy em **mất gì khi không khai hết những CLB mình vẫn chấp nhận**. Nó **không**
+> nói rằng bắt em khai thêm CLB em **không muốn** thì tốt.
+>
+> Bắt khai thêm CLB không muốn thì em có thể **bị xếp đúng vào CLB đó**, và với
+> em như thế còn tệ hơn không có suất. Trường cũng mất luôn dữ liệu về nguyện
+> vọng thật.
+>
+> Cách nói đúng với học sinh: *"Em cứ xếp theo đúng thứ tự em muốn, và đừng bỏ
+> sót CLB nào em sẵn sàng vào. Khai thật là có lợi nhất cho em."*
+>
+> Và **không có suất không phải lúc nào cũng là thất bại**: em chỉ muốn 2 CLB, cả
+> hai đều hết chỗ, thì không có suất là câu trả lời trung thực.
 
 Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
 

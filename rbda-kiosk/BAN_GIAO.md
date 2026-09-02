@@ -815,8 +815,35 @@ Ba lớp đang giữ:
 
 **Điều đáng làm nhất lại là chuyện vận hành, không phải mã:** trong ba em phụ
 thuộc bốc thăm, một em (`HS037`) chỉ đăng ký **2 nguyện vọng** và có **46%** khả
-năng không có suất nào. Nhà trường nên nói với học sinh rằng **xếp càng nhiều
-nguyện vọng càng an toàn**. Đã ghi vào `HUONG_DAN_SU_DUNG.md` mục 13.
+năng không có suất nào. Đã ghi vào `HUONG_DAN_SU_DUNG.md` mục 13.
+
+> ### ⚠️ CẢNH BÁO DIỄN GIẢI — dễ sai, và sai thì hỏng cả lập luận
+>
+> Từ số đo trên rất dễ nhảy sang kết luận **"vậy bắt học sinh điền tối đa số
+> CLB"**. Đó là kết luận **SAI**, và nó phá đúng tính chất làm nên giá trị của
+> thuật toán này.
+>
+> DA phía học sinh đề nghị là **strategy-proof**: khai đúng nguyện vọng thật là
+> chiến lược tối ưu, không ai lợi được nhờ khai gian. Tính chất đó chỉ đúng khi
+> danh sách là nguyện vọng **THẬT**. Bắt một em khai thêm CLB em không muốn thì:
+>
+> 1. Em có thể **bị xếp đúng vào CLB đó** — với em, tệ hơn không có suất.
+> 2. Trường **mất dữ liệu nguyện vọng thật**, nên không còn biết học sinh thật
+>    sự muốn gì.
+> 3. Bản thân số đo cũng không đỡ được kết luận đó: thí nghiệm ở trên **CẮT BỚT**
+>    nguyện vọng của em vốn đã khai đủ, tức nó đo *"em mất gì khi không khai hết
+>    những CLB mình VẪN CHẤP NHẬN"*. Nó **không** đo chuyện thêm CLB em không
+>    muốn.
+>
+> **Câu đúng:** khuyến khích học sinh khai hết những CLB em **thật sự chấp nhận**
+> — an toàn chính vì thuật toán strategy-proof. **Câu sai:** bắt điền cho đủ số ô.
+>
+> Và "không có suất" **không phải lúc nào cũng là thất bại**: em chỉ muốn 2 CLB,
+> cả hai hết chỗ, thì không có suất là câu trả lời trung thực.
+>
+> *(Tính chất strategy-proof của DA là định lý đã có trong tài liệu chuyên ngành.
+> Tìm và trích dẫn nguồn là việc của học sinh — AI không tìm trích dẫn hộ, theo
+> quy định ở mục 6.)*
 
 **Hai điều CỐ Ý không kết luận:**
 - Ranh giới này **không đoán trước được bằng bảng điểm**. `HS122` ở `clb_tinhoc`
@@ -824,8 +851,22 @@ nguyện vọng càng an toàn**. Đã ghi vào `HUONG_DAN_SU_DUNG.md` mục 13.
   phần lớn 34 em đó đỗ nguyện vọng trên của họ nên ranh giới thật tụt xuống tới
   em. Ranh giới sinh ra từ **chuỗi dây chuyền**, không từ bảng điểm. Đã viết một
   bộ dò ranh giới tĩnh để thử: **không bắt được ca nào**.
-- "Nguyện vọng càng ngắn càng dễ bấp bênh" nghe hợp lý và khớp cả ba ca, nhưng
-  **ba ca chưa đủ để kết luận**. Muốn nói được phải quét nhiều bộ dữ liệu hơn.
+- ~~"Nguyện vọng càng ngắn càng dễ bấp bênh"~~ — **ĐÃ ĐO (02/09), và phỏng đoán
+  này SAI một nửa.** Thí nghiệm đối chứng (`du_lieu_test/do_do_dai_nguyen_vong.py`):
+  cùng bộ sạch, cắt danh sách nguyện vọng của mọi em xuống k = 1..6, 50 seed mỗi mức.
+
+  | Cắt còn | Em **chưa được xếp** (TB) | Em **bấp bênh** |
+  |---|---|---|
+  | 1 nguyện vọng | **48,0** | 2 (1,4%) |
+  | 2 nguyện vọng | 26,2 | 7 (5,0%) |
+  | 3 nguyện vọng | 14,8 | 3 (2,1%) |
+  | 4 nguyện vọng | 7,5 | 3 (2,1%) |
+  | 5 nguyện vọng | 1,2 | 4 (2,9%) |
+  | 6 nguyện vọng | **0,3** | 1 (0,7%) |
+
+  Danh sách dài hơn giảm **rất mạnh và rất đều** nguy cơ **không có suất**
+  (48 → 0,3). Nhưng với **bấp bênh** thì **không có quy luật nào** — 1,4 / 5,0 /
+  2,1 / 2,1 / 2,9 / 0,7, nhảy loạn. Đây là hai hiện tượng khác nhau, đừng gộp.
 
 Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
 
