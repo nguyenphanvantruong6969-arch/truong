@@ -135,3 +135,15 @@ def test_quy_trinh_build_chep_cau_hinh_ra_canh_exe():
                      "build-windows-exe.yml")
     yml = io.open(p, encoding="utf-8").read()
     assert "PhanBoCauLacBo.exe.config dist/PhanBoCauLacBo/" in yml
+
+
+def test_quy_trinh_build_chep_ca_huong_dan_su_dung_vao_goi():
+    """Đã sót một lần: gói tải về có HUONG_DAN_CAI_DAT.md (xử lý cảnh báo chữ
+    ký số) nhưng KHÔNG có HUONG_DAN_SU_DUNG.md — tức tệp duy nhất viết cho
+    người chưa từng mở chương trình bao giờ. Để trong kho mà không chép vào
+    gói thì người tải về không bao giờ thấy."""
+    p = os.path.join(os.path.dirname(GOC), ".github", "workflows",
+                     "build-windows-exe.yml")
+    yml = io.open(p, encoding="utf-8").read()
+    assert "HUONG_DAN_SU_DUNG.md dist/PhanBoCauLacBo/" in yml
+    assert os.path.exists(os.path.join(GOC, "HUONG_DAN_SU_DUNG.md"))

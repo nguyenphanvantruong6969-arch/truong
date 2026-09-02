@@ -35,6 +35,9 @@ jobs:
           # thi .NET Framework moi doc — xem chu thich trong chinh tep do.
           Copy-Item PhanBoCauLacBo.exe.config dist/PhanBoCauLacBo/
           Copy-Item HUONG_DAN_CAI_DAT.md dist/PhanBoCauLacBo/
+          # Huong dan dung phan mem — tep NGUOI DUNG can nhat, va la tep duy
+          # nhat viet cho nguoi chua tung mo chuong trinh bao gio.
+          Copy-Item HUONG_DAN_SU_DUNG.md dist/PhanBoCauLacBo/
           Copy-Item ky_va_tin_cay.ps1    dist/PhanBoCauLacBo/
           Copy-Item mau_csv              dist/PhanBoCauLacBo/mau_csv -Recurse
           Copy-Item du_lieu_test         dist/PhanBoCauLacBo/du_lieu_test -Recurse

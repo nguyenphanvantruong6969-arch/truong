@@ -19,11 +19,14 @@ giải nén.
 
 ## Có sẵn trong gói
 
-| Thư mục | Nội dung |
+| Thư mục / tệp | Nội dung |
 |---|---|
+| **`HUONG_DAN_SU_DUNG.md`** | **Đọc tệp này trước.** Hướng dẫn dùng phần mềm từ đầu đến cuối, viết cho người chưa từng mở chương trình bao giờ |
+| `HUONG_DAN_CAI_DAT.md` | Xử lý cảnh báo chữ ký số của Windows |
 | `mau_csv/` | Tệp CSV và Excel mẫu, kèm hướng dẫn định dạng |
-| `du_lieu_test/` | Bộ dữ liệu **mô phỏng** 120 học sinh / 10 CLB để chạy thử |
-| `HUONG_DAN_CAI_DAT.md` | Xử lý cảnh báo chữ ký số |
+| `du_lieu_test/vi_du_huong_dan/` | Bộ **mô phỏng** nhỏ: 10 học sinh / 4 CLB — đúng bộ dùng trong hướng dẫn, nhỏ đủ để tự tính lại bằng tay |
+| `du_lieu_test/bo_sach/` | Bộ **mô phỏng** 140 học sinh / 12 CLB, chạy trọn quy trình không một cảnh báo |
+| `du_lieu_test/TEST_0*.xlsx` | Bộ **mô phỏng** 120 học sinh / 10 CLB, trong đó `TEST_04` **cố ý sai 6 chỗ** để thử xem phần mềm có cảnh báo không |
 | `ky_va_tin_cay.ps1` | Ký bằng chứng chỉ tự tạo (tuỳ chọn, cần quyền Administrator) |
 
 > Dữ liệu trong `du_lieu_test/` là **dữ liệu mô phỏng do máy sinh**, không phải
