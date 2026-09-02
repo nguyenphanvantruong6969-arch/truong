@@ -44,15 +44,15 @@ lợi hay bị thiệt một cách có hệ thống**.
 | | Giá trị |
 |---|---|
 | Thứ hạng trung bình, **nếu công bằng tuyệt đối** | 49,50 |
-| Thứ hạng trung bình **thấp nhất** trong 100 em | 48,88 (HS026) |
-| Thứ hạng trung bình **cao nhất** trong 100 em | 50,21 (HS078) |
+| Thứ hạng trung bình **tốt nhất** trong 100 em | 48,88 |
+| Thứ hạng trung bình **kém nhất** trong 100 em | 50,21 |
 | Chênh lệch lớn nhất so với lý thuyết | **0,71 — tức 1,44%** |
 
 | Tỉ lệ lọt vào nhóm 10% đầu bảng | Giá trị |
 |---|---|
 | Nếu công bằng tuyệt đối | 10,00% |
-| Em thấp nhất | 9,38% |
-| Em cao nhất | 10,98% |
+| Em ít lọt vào nhất trong 100 em | 9,38% |
+| Em hay lọt vào nhất trong 100 em | 10,98% |
 
 Không em nào lệch quá 1,5% so với lý thuyết sau 10 000 lần bốc.
 
@@ -61,35 +61,45 @@ Không em nào lệch quá 1,5% so với lý thuyết sau 10 000 lần bốc.
 Câu hỏi này đáng hỏi, vì bộ số bốc thăm sinh ra từ **danh sách mã đã sắp xếp**
 (lý do: xem Câu 2). Nếu mã nhỏ hay được số nhỏ thì bốc thăm thiên vị.
 
-Đo hệ số tương quan giữa **thứ tự mã** và **thứ hạng trung bình**, trên **8 khối
-seed rời nhau, mỗi khối 10 000 seed**:
+**Hệ số tương quan** là phép tính đo xem hai thứ có đi cùng nhau không. Bằng
+**0** nghĩa là chẳng liên quan gì; bằng **+1** hoặc **−1** nghĩa là biết cái này
+là đoán chắc được cái kia. Ở đây ta hỏi: *em có mã nhỏ hơn thì có hay được thứ
+hạng tốt hơn không?*
 
-| Khối seed | Tương quan |
-|---|---|
-| 1 – 10 000 | +0,1142 |
-| 10 001 – 20 000 | +0,0527 |
-| 20 001 – 30 000 | +0,1539 |
-| 30 001 – 40 000 | **−0,0155** |
-| 40 001 – 50 000 | +0,0827 |
-| 50 001 – 60 000 | **−0,0470** |
-| 60 001 – 70 000 | **−0,0250** |
-| 70 001 – 80 000 | +0,0909 |
+Với 100 học sinh, ngay cả khi **hoàn toàn không có** liên hệ nào, con số đo được
+vẫn tự dao động quanh 0 trong khoảng **±0,10**. Khoảng đó gọi là **ngưỡng
+nhiễu**. Nên **một lần đo không kết luận được gì** — phải đo nhiều lần độc lập.
+
+Đo **8 lần**, mỗi lần 10 000 lượt bốc thăm hoàn toàn riêng biệt, không lần nào
+dùng lại seed của lần nào:
+
+| Lần đo | Dùng seed số | Kết quả |
+|---|---|---|
+| Lần 1 | 1 – 10 000 | +0,1142 |
+| Lần 2 | 10 001 – 20 000 | +0,0527 |
+| Lần 3 | 20 001 – 30 000 | +0,1539 |
+| Lần 4 | 30 001 – 40 000 | **−0,0155** |
+| Lần 5 | 40 001 – 50 000 | +0,0827 |
+| Lần 6 | 50 001 – 60 000 | **−0,0470** |
+| Lần 7 | 60 001 – 70 000 | **−0,0250** |
+| Lần 8 | 70 001 – 80 000 | +0,0909 |
 
 | | |
 |---|---|
-| Trung bình 8 khối | +0,0509 |
-| Độ lệch **giữa các khối** | 0,0727 |
-| Ngưỡng nhiễu lý thuyết (1/√99) | 0,1005 |
+| Trung bình của 8 lần đo | +0,0509 |
+| Mức chênh lệch **giữa các lần đo** | 0,0727 |
+| Ngưỡng nhiễu — mức dao động tự nhiên | 0,1005 |
 
-**Đọc bảng này thế nào.** Hệ số **đổi cả dấu** — ba khối cho giá trị **âm**. Độ
-lệch giữa các khối (0,073) còn **lớn hơn** chính giá trị trung bình (0,051), và
+**Đọc bảng này thế nào.** Kết quả **đổi cả dấu** — ba lần đo ra giá trị **âm**. Mức
+chênh lệch giữa các lần đo (0,073) còn **lớn hơn** chính giá trị trung bình (0,051), và
 khối lệch nhiều nhất cũng chỉ bằng **1,53 lần** ngưỡng nhiễu.
 
-Một thiên vị **thật** thì giữ nguyên dấu và độ lớn qua mọi khối. Cái này đổi
+Một thiên vị **thật** thì phải giữ nguyên dấu qua mọi lần đo — mã nhỏ đã được
+ưu ái thì lần nào cũng phải được ưu ái. Cái này đổi
 dấu, nên đó là **nhiễu thống kê, không phải thiên vị**.
 
-> Đo một khối rồi kết luận là sai phương pháp. Khối đầu tiên cho +0,1142, nhìn
-> qua thì tưởng có xu hướng. Phải đo nhiều khối rời nhau mới phân biệt được.
+> Đo một lần rồi kết luận là sai phương pháp. Lần đầu cho +0,1142, nhìn qua thì
+> tưởng có xu hướng thật, và suýt nữa đã ghi vào tài liệu như vậy.
 
 ### Còn mệnh đề quan trọng nhất
 
@@ -141,8 +151,8 @@ cùng seed, nhập theo thứ tự khác là ra kết quả khác.
 
 | Thử nghiệm | Kết quả |
 |---|---|
-| Chèn HS01→HS10 so với HS10→HS01, **trước bản vá** | **6 / 10 em vào CLB khác** |
-| Cùng thử nghiệm, **sau bản vá** | **0 em khác** |
+| Nhập xuôi so với nhập ngược, **trước khi sửa** | **6 / 10 em vào CLB khác** |
+| Cùng thử nghiệm, **sau khi sửa** | **0 em khác** |
 
 Sửa bằng **một dòng** — sắp xếp trước khi xáo (`generate_stb_lottery`):
 
@@ -242,6 +252,10 @@ python du_lieu_test/do_cau_hoi_boc_tham.py
 | `BAN_GIAO.md` mục 5 | Lỗi 19 (thứ tự nhập) và mục "ĐÃ ĐO, KHÔNG PHẢI LỖI" |
 
 ---
+
+**Về dữ liệu dùng để đo.** Toàn bộ học sinh trong các phép đo trên là **dữ liệu
+mô phỏng do máy sinh ra**, không phải học sinh có thật. Các mã như *HS001,
+HS002…* chỉ là mã đánh số tự động để phân biệt, không tương ứng với người nào.
 
 *Tệp này chỉ trình bày **số đo và cơ chế**. Phần nhận xét, diễn giải ý nghĩa và
 kết luận về kết quả phân bổ do người thực hiện đề tài tự viết.*

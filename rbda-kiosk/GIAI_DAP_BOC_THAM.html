@@ -41,12 +41,11 @@
 * { box-sizing:border-box; }
 body {
   margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--f-body); font-size:16px; line-height:1.62;
+  font-family:var(--f-body); font-size:16.5px; line-height:1.68;
   -webkit-font-smoothing:antialiased;
 }
 .wrap { max-width:1140px; margin:0 auto; padding:0 24px 96px; }
 
-/* ---------- đầu trang ---------- */
 header { padding:64px 0 40px; border-bottom:1px solid var(--hairline); }
 .eyebrow {
   font-family:var(--f-mono); font-size:12px; letter-spacing:.14em;
@@ -64,9 +63,8 @@ h1 {
 }
 .meta b { color:var(--ink-soft); font-weight:500; }
 
-/* ---------- bố cục hai cột ---------- */
 .cols { display:grid; grid-template-columns:1fr; gap:0; }
-@media (min-width:960px) { .cols { grid-template-columns:210px 1fr; gap:56px; } }
+@media (min-width:960px) { .cols { grid-template-columns:214px 1fr; gap:56px; } }
 nav.toc { display:none; }
 @media (min-width:960px) {
   nav.toc { display:block; position:sticky; top:32px; align-self:start; padding-top:56px; }
@@ -78,7 +76,7 @@ nav.toc { display:none; }
 .toc ol { list-style:none; margin:0; padding:0; counter-reset:q; }
 .toc li { counter-increment:q; margin-bottom:2px; }
 .toc a {
-  display:flex; gap:10px; padding:7px 10px; border-radius:var(--radius,6px);
+  display:flex; gap:10px; padding:7px 10px; border-radius:6px;
   color:var(--ink-soft); text-decoration:none; font-size:14px; line-height:1.35;
   border-left:2px solid transparent;
 }
@@ -90,7 +88,6 @@ nav.toc { display:none; }
 
 main { padding-top:56px; min-width:0; }
 
-/* ---------- khối câu hỏi ---------- */
 section { margin-bottom:76px; scroll-margin-top:24px; }
 h2.q {
   font-family:var(--f-display); font-weight:600; font-size:clamp(23px,2.9vw,31px);
@@ -101,13 +98,29 @@ h2.q .num {
   letter-spacing:.14em; color:var(--gold); margin-bottom:9px;
 }
 h3 {
-  font-family:var(--f-display); font-weight:600; font-size:17.5px;
-  margin:38px 0 14px; letter-spacing:-.008em;
+  font-family:var(--f-display); font-weight:600; font-size:18px;
+  margin:40px 0 14px; letter-spacing:-.008em;
 }
 p { margin:0 0 16px; max-width:66ch; }
 strong { font-weight:600; }
+ol.steps { max-width:66ch; padding-left:22px; margin:0 0 20px; }
+ol.steps li { margin-bottom:9px; }
 
-/* ---------- thẻ kết luận ---------- */
+/* ---------- từ điển thuật ngữ đầu trang ---------- */
+.terms {
+  background:var(--raised); border:1px solid var(--hairline); border-radius:10px;
+  padding:24px 26px; margin:0 0 30px; box-shadow:var(--shadow);
+}
+.terms h3 { margin:0 0 4px; font-size:17px; }
+.terms p.sub { color:var(--slate); font-size:14.5px; margin:0 0 18px; }
+.terms dl { margin:0; display:grid; gap:16px; }
+@media (min-width:620px) { .terms dl { grid-template-columns:repeat(3,1fr); gap:22px; } }
+.terms dt {
+  font-family:var(--f-display); font-weight:600; font-size:15.5px;
+  margin-bottom:5px; color:var(--ink);
+}
+.terms dd { margin:0; font-size:14.5px; line-height:1.55; color:var(--ink-soft); }
+
 .verdict {
   display:flex; flex-wrap:wrap; align-items:baseline; gap:12px 20px;
   background:var(--raised); border:1px solid var(--hairline);
@@ -122,28 +135,22 @@ strong { font-weight:600; }
 .verdict.is-yes .ans { color:var(--gold); }
 .verdict .why { font-size:15.5px; color:var(--ink-soft); flex:1 1 260px; min-width:0; }
 
-/* ---------- ô số nổi bật ---------- */
-.stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); margin:24px 0 28px; }
-.stat {
-  background:var(--raised); border:1px solid var(--hairline);
-  border-radius:10px; padding:16px 18px;
-}
+.stats { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); margin:24px 0 28px; }
+.stat { background:var(--raised); border:1px solid var(--hairline); border-radius:10px; padding:16px 18px; }
 .stat .v {
   font-family:var(--f-display); font-weight:700; font-size:29px; line-height:1.05;
   letter-spacing:-.028em; font-variant-numeric:tabular-nums; display:block;
 }
-.stat .k { display:block; margin-top:7px; font-size:13px; line-height:1.4; color:var(--slate); }
+.stat .k { display:block; margin-top:7px; font-size:13px; line-height:1.45; color:var(--slate); }
 .stat.hi .v { color:var(--moss); }
 
-/* ---------- bảng ---------- */
 .scroll { overflow-x:auto; margin:0 0 24px; -webkit-overflow-scrolling:touch; }
-table { border-collapse:collapse; width:100%; min-width:440px; font-size:14.5px; }
+table { border-collapse:collapse; width:100%; min-width:440px; font-size:15px; }
 caption {
   caption-side:top; text-align:left; font-family:var(--f-mono); font-size:11.5px;
-  letter-spacing:.1em; text-transform:uppercase; color:var(--slate);
-  padding:0 0 10px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--slate); padding:0 0 10px;
 }
-th, td { text-align:left; padding:10px 16px 10px 0; border-bottom:1px solid var(--hairline); }
+th, td { text-align:left; padding:11px 16px 11px 0; border-bottom:1px solid var(--hairline); vertical-align:top; }
 thead th {
   font-family:var(--f-mono); font-size:11.5px; letter-spacing:.07em;
   text-transform:uppercase; color:var(--slate); font-weight:500;
@@ -154,13 +161,13 @@ tbody tr:last-child td { border-bottom:none; }
 td b { font-weight:600; }
 .pos { color:var(--data-pos); }
 .neg { color:var(--data-neg); font-weight:600; }
+tr.hl td { background:var(--moss-soft); }
 
-/* ---------- biểu đồ ---------- */
 figure { margin:26px 0 28px; }
-figcaption { font-size:13.5px; color:var(--slate); margin-top:12px; max-width:62ch; }
+figcaption { font-size:14px; color:var(--slate); margin-top:12px; max-width:64ch; }
 .chart-shell { position:relative; background:var(--raised); border:1px solid var(--hairline); border-radius:10px; padding:20px 18px 14px; }
 .chart-shell svg { display:block; width:100%; height:auto; }
-.legend { display:flex; flex-wrap:wrap; gap:8px 20px; margin:0 0 14px; font-size:13px; color:var(--ink-soft); }
+.legend { display:flex; flex-wrap:wrap; gap:8px 20px; margin:0 0 14px; font-size:13.5px; color:var(--ink-soft); }
 .legend span { display:inline-flex; align-items:center; gap:8px; }
 .legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
 .tip {
@@ -171,34 +178,37 @@ figcaption { font-size:13.5px; color:var(--slate); margin-top:12px; max-width:62
 }
 .tip.on { opacity:1; }
 
-/* ---------- khối mã & ghi chú ---------- */
-pre {
-  font-family:var(--f-mono); font-size:13px; line-height:1.65;
-  background:var(--raised); border:1px solid var(--hairline);
-  border-radius:8px; padding:14px 16px; overflow-x:auto; margin:0 0 22px;
+.run { margin:0 0 22px; }
+.run .lbl {
+  display:block; font-size:13.5px; color:var(--slate); margin-bottom:8px;
 }
-code { font-family:var(--f-mono); font-size:.9em; background:var(--raised);
+pre {
+  font-family:var(--f-mono); font-size:13px; line-height:1.7;
+  background:var(--raised); border:1px solid var(--hairline);
+  border-radius:8px; padding:14px 16px; overflow-x:auto; margin:0;
+}
+code { font-family:var(--f-mono); font-size:.88em; background:var(--raised);
   border:1px solid var(--hairline); border-radius:4px; padding:1px 5px; }
 pre code { background:none; border:none; padding:0; font-size:1em; }
 
 .note {
   background:var(--moss-soft); border-left:3px solid var(--moss);
-  border-radius:0 8px 8px 0; padding:16px 20px; margin:24px 0; font-size:15px;
+  border-radius:0 8px 8px 0; padding:18px 22px; margin:26px 0; font-size:15.5px;
 }
 .note.warn { background:var(--gold-soft); border-left-color:var(--gold); }
 .note.alert { background:var(--rust-soft); border-left-color:var(--rust); }
 .note p:last-child { margin-bottom:0; }
 .note .lbl {
   display:block; font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
-  text-transform:uppercase; margin-bottom:8px; color:var(--ink-soft);
+  text-transform:uppercase; margin-bottom:9px; color:var(--ink-soft);
 }
 
 hr { border:none; border-top:1px solid var(--hairline); margin:0 0 56px; }
 footer {
   border-top:1px solid var(--hairline); padding-top:26px; margin-top:20px;
-  font-size:13.5px; color:var(--slate); max-width:66ch;
+  font-size:14px; color:var(--slate); max-width:70ch;
 }
-footer p { margin-bottom:10px; }
+footer p { margin-bottom:12px; }
 a { color:inherit; }
 :focus-visible { outline:2px solid var(--gold); outline-offset:2px; border-radius:3px; }
 @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
@@ -206,14 +216,13 @@ a { color:inherit; }
 
 <div class="wrap">
 <header>
-  <p class="eyebrow">Phần mềm phân bổ câu lạc bộ · RB-DA</p>
+  <p class="eyebrow">Phần mềm phân bổ câu lạc bộ · Thuật toán RB-DA</p>
   <h1>Giải đáp về phép bốc thăm</h1>
-  <p class="lede">Ba câu hỏi hay gặp nhất về cơ chế bốc thăm, trả lời bằng <strong>số đo</strong>
-  chứ không bằng giải thích. Mỗi câu kèm lệnh chạy lại — chạy lúc nào cũng ra
-  đúng bằng đó.</p>
+  <p class="lede">Ba câu hỏi hay gặp nhất về cơ chế bốc thăm, trả lời bằng
+  <strong>số đo</strong> chứ không bằng giải thích suông. Mỗi câu kèm lệnh chạy
+  lại để người đọc tự kiểm chứng.</p>
   <div class="meta">
-    <span>Bộ đo <b>du_lieu_test/do_cau_hoi_boc_tham.py</b></span>
-    <span>Kiểm thử <b>404 / 404 đạt</b></span>
+    <span>Kiểm thử phần mềm <b>404 / 404 đạt</b></span>
     <span>Cập nhật <b>02/09/2026</b></span>
   </div>
 </header>
@@ -231,16 +240,61 @@ a { color:inherit; }
 <main>
 
 <section id="q0">
-  <h2 class="q">Trước hết: bốc thăm được dùng ở đâu</h2>
-  <p>Mỗi câu lạc bộ xếp hạng học sinh nộp đơn theo <strong>hai khoá, có thứ tự</strong>:</p>
-<pre><code>key=lambda sid: (-tested_scores_for_club[sid], stb_lottery[sid])
-#                 ^^^^^ ĐIỂM đứng trước         ^^^^^ bốc thăm chỉ đứng sau</code></pre>
-  <p>Bốc thăm <strong>chỉ</strong> được dùng ở đúng hai chỗ: khi hai em
-  <strong>bằng điểm nhau</strong> ở cùng một CLB, và khi một em dự tuyển CLB mà
-  mình <strong>không thi</strong> (không có điểm để so).</p>
-  <p>Em có điểm cao hơn thì <strong>luôn</strong> đứng trên, bất kể bốc thăm ra
-  sao. Đây là mệnh đề quan trọng nhất trong cả trang này, và nó có phép đo riêng
-  ở cuối Câu 1.</p>
+  <h2 class="q">Bốc thăm được dùng ở đâu, và để làm gì</h2>
+
+  <div class="terms">
+    <h3>Ba từ dùng suốt trang này</h3>
+    <p class="sub">Đọc ba định nghĩa dưới đây là theo được hết phần còn lại.</p>
+    <dl>
+      <div>
+        <dt>Seed (hạt giống)</dt>
+        <dd>Một con số người vận hành gõ vào ô trên màn hình, mặc định là 42. Từ
+        con số này phần mềm sinh ra toàn bộ số bốc thăm. Cùng một seed thì luôn
+        ra cùng một bộ số — nhờ vậy kết quả kiểm tra lại được.</dd>
+      </div>
+      <div>
+        <dt>Số bốc thăm</dt>
+        <dd>Mỗi học sinh nhận <strong>một</strong> số duy nhất, dùng chung cho
+        <strong>mọi</strong> câu lạc bộ. Không phải mỗi CLB bốc lại một lần. Số
+        này chỉ dùng khi hai em bằng điểm nhau.</dd>
+      </div>
+      <div>
+        <dt>Khoá bốc thăm</dt>
+        <dd>Sau lần chạy đầu tiên, phần mềm khoá bộ số lại. Từ đó không ai bốc
+        lại được nếu không thực hiện một thao tác riêng, và thao tác đó bị ghi
+        vào nhật ký.</dd>
+      </div>
+    </dl>
+  </div>
+
+  <h3>Câu lạc bộ xếp hàng học sinh theo hai bước</h3>
+  <p>Khi nhiều em cùng nộp đơn vào một câu lạc bộ, câu lạc bộ đó xếp các em
+  thành một hàng để lấy từ trên xuống cho đủ chỉ tiêu. Hàng đó xếp như sau:</p>
+
+  <ol class="steps">
+    <li><strong>Bước 1 — xếp theo điểm thi, cao trước.</strong> Đây là bước
+    quyết định gần như toàn bộ kết quả.</li>
+    <li><strong>Bước 2 — chỉ khi hai em bằng điểm nhau</strong> thì mới lấy số
+    bốc thăm ra phân định ai đứng trước.</li>
+  </ol>
+
+  <p>Nói cách khác, bốc thăm <strong>chỉ</strong> được dùng ở đúng hai chỗ: khi
+  hai em <strong>bằng điểm nhau</strong> ở cùng một câu lạc bộ, và khi một em
+  đăng ký nguyện vọng vào câu lạc bộ mà mình <strong>không dự thi</strong> — lúc
+  đó không có điểm nào để so.</p>
+
+  <p><strong>Em có điểm cao hơn thì luôn đứng trên, bất kể bốc thăm ra sao.</strong>
+  Đây là điều quan trọng nhất trong cả trang này, và nó có phép đo riêng ở cuối
+  Câu 1.</p>
+
+  <div class="note">
+    <span class="lbl">Đây là dòng lệnh thật trong chương trình</span>
+    <p>Người đọc không cần hiểu cú pháp. Chỉ cần thấy <strong>điểm</strong> đứng
+    trước <strong>số bốc thăm</strong> trong cùng một dòng — đó chính là hai
+    bước vừa mô tả.</p>
+<pre><code>(-điểm thi ở CLB này, số bốc thăm của em)
+#  ^^^^^ so trước        ^^^^^ chỉ dùng khi điểm bằng nhau</code></pre>
+  </div>
 </section>
 
 <hr>
@@ -250,106 +304,143 @@ a { color:inherit; }
 
   <div class="verdict">
     <span class="ans">Không</span>
-    <span class="why">Đổi seed cho ra bộ số khác, nhưng không em nào được lợi
-    hay bị thiệt một cách có hệ thống.</span>
+    <span class="why">Đổi seed cho ra một bộ số khác, nhưng không học sinh nào
+    được lợi hay bị thiệt một cách có hệ thống.</span>
   </div>
 
-  <p>Đo trên <strong>100 học sinh</strong> và <strong>10 000 lần bốc thăm</strong>.
-  Nếu bốc thăm công bằng tuyệt đối thì thứ hạng trung bình của mỗi em phải tiến
-  về 49,50.</p>
+  <h3>Cách đo</h3>
+  <p>Lấy <strong>100 học sinh</strong>, cho phần mềm bốc thăm lại
+  <strong>10 000 lần</strong> với 10 000 seed khác nhau, rồi xem mỗi em trung
+  bình đứng thứ mấy trong hàng.</p>
+
+  <p>Nếu bốc thăm hoàn toàn công bằng thì về lâu dài mọi em phải có thứ hạng
+  trung bình như nhau, và bằng <strong>49,50</strong> — tức đúng giữa hàng 100
+  người. Em nào lệch xa con số đó là em được ưu ái hoặc bị thiệt.</p>
 
   <div class="stats">
-    <div class="stat"><span class="v">49,50</span><span class="k">Thứ hạng trung bình lý thuyết</span></div>
-    <div class="stat"><span class="v">48,88</span><span class="k">Em thấp nhất trong 100 em</span></div>
-    <div class="stat"><span class="v">50,21</span><span class="k">Em cao nhất trong 100 em</span></div>
-    <div class="stat hi"><span class="v">1,44 %</span><span class="k">Chênh lệch lớn nhất so với lý thuyết</span></div>
+    <div class="stat"><span class="v">49,50</span><span class="k">Thứ hạng trung bình nếu công bằng tuyệt đối</span></div>
+    <div class="stat"><span class="v">48,88</span><span class="k">Em có thứ hạng trung bình <em>tốt</em> nhất trong 100 em</span></div>
+    <div class="stat"><span class="v">50,21</span><span class="k">Em có thứ hạng trung bình <em>kém</em> nhất trong 100 em</span></div>
+    <div class="stat hi"><span class="v">1,44 %</span><span class="k">Chênh lệch lớn nhất so với mức công bằng</span></div>
   </div>
+
+  <p>Em may mắn nhất và em kém may nhất chỉ cách mức lý tưởng chưa tới
+  <strong>1,5 %</strong>, sau mười nghìn lần bốc. Kiểm thêm một cách nữa — đếm
+  xem mỗi em lọt vào <strong>nhóm 10 em đứng đầu</strong> bao nhiêu phần trăm số
+  lần:</p>
 
   <div class="scroll">
   <table>
-    <caption>Tỉ lệ lọt vào nhóm 10 % đầu bảng</caption>
+    <caption>Tỉ lệ lọt vào nhóm 10 em đứng đầu</caption>
     <thead><tr><th>Đối tượng</th><th class="n">Tỉ lệ</th></tr></thead>
     <tbody>
-      <tr><td>Nếu công bằng tuyệt đối</td><td class="n">10,00 %</td></tr>
-      <tr><td>Em thấp nhất (HS083)</td><td class="n">9,38 %</td></tr>
-      <tr><td>Em cao nhất (HS005)</td><td class="n">10,98 %</td></tr>
+      <tr class="hl"><td>Mức công bằng tuyệt đối</td><td class="n">10,00 %</td></tr>
+      <tr><td>Em ít lọt vào nhất trong 100 em</td><td class="n">9,38 %</td></tr>
+      <tr><td>Em hay lọt vào nhất trong 100 em</td><td class="n">10,98 %</td></tr>
     </tbody>
   </table>
   </div>
 
   <h3>Mã học sinh có “kéo” thứ hạng không?</h3>
-  <p>Câu này đáng hỏi, vì bộ số bốc thăm sinh ra từ <strong>danh sách mã đã sắp
-  xếp</strong> (lý do ở Câu 2). Nếu mã nhỏ hay được số nhỏ thì bốc thăm thiên vị.</p>
+  <p>Câu này đáng hỏi, vì phần mềm sắp xếp danh sách mã học sinh trước rồi mới
+  xáo (lý do ở Câu 2). Nếu vì thế mà em mã nhỏ hay được số nhỏ, thì bốc thăm
+  thiên vị và phải sửa ngay.</p>
+
+  <div class="note">
+    <span class="lbl">Cách đo chuyện này</span>
+    <p>Dùng một phép tính gọi là <strong>hệ số tương quan</strong>: nó đo xem hai
+    thứ có đi cùng nhau hay không.</p>
+    <p><strong>Bằng 0</strong> nghĩa là hai thứ chẳng liên quan gì.
+    <strong>Bằng +1 hoặc −1</strong> nghĩa là biết cái này là đoán chắc được cái
+    kia. Ở đây ta hỏi: <em>em có mã nhỏ hơn thì có hay được thứ hạng tốt hơn
+    không?</em> Muốn công bằng thì con số này phải quanh 0.</p>
+  </div>
 
   <div class="note warn">
     <span class="lbl">Chỗ suýt kết luận sai</span>
-    <p>Đo <strong>một khối</strong> seed đầu tiên cho hệ số <strong>+0,1142</strong>.
-    Nhìn qua thì tưởng có xu hướng thật. Nhưng hệ số tương quan trên 100 em vốn
-    dao động quanh 0 một cách tự nhiên, nên một khối <strong>không kết luận được
-    gì</strong>. Phải đo trên nhiều khối rời nhau.</p>
+    <p>Đo <strong>một lần</strong> ra <strong>+0,1142</strong>. Nhìn qua thì
+    tưởng có xu hướng thật, và suýt nữa đã ghi vào tài liệu như vậy.</p>
+    <p>Nhưng với 100 học sinh, ngay cả khi <em>hoàn toàn không có</em> liên hệ
+    nào, con số đo được vẫn tự dao động quanh 0 trong khoảng
+    <strong>±0,10</strong>. Khoảng đó gọi là <strong>ngưỡng nhiễu</strong>. Nên
+    một lần đo <strong>không kết luận được gì</strong> — phải đo nhiều lần độc
+    lập với nhau.</p>
+    <p>Vì thế phép đo được lặp lại <strong>tám lần</strong>, mỗi lần 10 000 lượt
+    bốc thăm hoàn toàn riêng biệt, không lần nào dùng lại seed của lần nào.</p>
   </div>
 
   <figure>
     <div class="legend" aria-hidden="true">
-      <span><i style="background:var(--data-pos)"></i>Hệ số dương</span>
-      <span><i style="background:var(--data-neg)"></i>Hệ số âm</span>
-      <span><i style="background:var(--band);border:1px solid var(--hairline)"></i>Vùng nhiễu lý thuyết ±0,1005</span>
+      <span><i style="background:var(--data-pos)"></i>Kết quả dương</span>
+      <span><i style="background:var(--data-neg)"></i>Kết quả âm</span>
+      <span><i style="background:var(--band);border:1px solid var(--hairline)"></i>Ngưỡng nhiễu ±0,1005</span>
     </div>
     <div class="chart-shell">
-      <svg id="chart" viewBox="0 0 760 330" role="img"
-           aria-label="Hệ số tương quan trên tám khối seed rời nhau, dao động từ −0,047 đến +0,154 và đổi dấu ba lần, mọi khối đều nằm trong vùng nhiễu lý thuyết."></svg>
+      <svg id="chart" viewBox="0 0 760 366" role="img"
+           aria-label="Kết quả tám lần đo độc lập, chạy từ âm 0,047 đến dương 0,154, đổi dấu ba lần."></svg>
       <div class="tip" id="tip" role="status"></div>
     </div>
-    <figcaption>Tương quan giữa <strong>thứ tự mã học sinh</strong> và
-    <strong>thứ hạng bốc thăm trung bình</strong>, đo trên 8 khối seed rời nhau,
-    mỗi khối 10 000 seed. Giá trị chính xác ở bảng ngay dưới.</figcaption>
+    <figcaption><strong>Tám lần đo độc lập cho tám kết quả khác nhau.</strong>
+    Ba lần ra số <strong>âm</strong> (vệt xanh, nằm bên trái vạch 0), năm lần ra
+    số dương. Nếu bốc thăm thật sự thiên vị mã nhỏ, cả tám lần phải cùng dương.</figcaption>
   </figure>
 
   <div class="scroll">
   <table>
-    <caption>Số chính xác từng khối</caption>
-    <thead><tr><th>Khối seed</th><th class="n">Hệ số tương quan</th></tr></thead>
+    <caption>Số chính xác của tám lần đo</caption>
+    <thead><tr><th>Lần đo</th><th>Dùng seed số</th><th class="n">Kết quả</th></tr></thead>
     <tbody>
-      <tr><td>1 – 10 000</td><td class="n pos">+0,1142</td></tr>
-      <tr><td>10 001 – 20 000</td><td class="n pos">+0,0527</td></tr>
-      <tr><td>20 001 – 30 000</td><td class="n pos">+0,1539</td></tr>
-      <tr><td>30 001 – 40 000</td><td class="n neg">−0,0155</td></tr>
-      <tr><td>40 001 – 50 000</td><td class="n pos">+0,0827</td></tr>
-      <tr><td>50 001 – 60 000</td><td class="n neg">−0,0470</td></tr>
-      <tr><td>60 001 – 70 000</td><td class="n neg">−0,0250</td></tr>
-      <tr><td>70 001 – 80 000</td><td class="n pos">+0,0909</td></tr>
+      <tr><td>Lần 1</td><td>1 – 10 000</td><td class="n pos">+0,1142</td></tr>
+      <tr><td>Lần 2</td><td>10 001 – 20 000</td><td class="n pos">+0,0527</td></tr>
+      <tr><td>Lần 3</td><td>20 001 – 30 000</td><td class="n pos">+0,1539</td></tr>
+      <tr><td>Lần 4</td><td>30 001 – 40 000</td><td class="n neg">−0,0155</td></tr>
+      <tr><td>Lần 5</td><td>40 001 – 50 000</td><td class="n pos">+0,0827</td></tr>
+      <tr><td>Lần 6</td><td>50 001 – 60 000</td><td class="n neg">−0,0470</td></tr>
+      <tr><td>Lần 7</td><td>60 001 – 70 000</td><td class="n neg">−0,0250</td></tr>
+      <tr><td>Lần 8</td><td>70 001 – 80 000</td><td class="n pos">+0,0909</td></tr>
     </tbody>
   </table>
   </div>
 
+  <h3>Đọc tám con số đó thế nào</h3>
+  <p>Điểm mấu chốt: kết quả <strong>đổi cả dấu</strong>. Ba lần ra số âm, năm lần
+  ra số dương. Một thiên vị <strong>thật</strong> thì phải giữ nguyên dấu qua mọi
+  lần đo — mã nhỏ đã được ưu ái thì lần nào cũng phải được ưu ái. Ở đây thì
+  không.</p>
+
   <div class="stats">
-    <div class="stat"><span class="v">+0,0509</span><span class="k">Trung bình 8 khối</span></div>
-    <div class="stat"><span class="v">0,0727</span><span class="k">Độ lệch <em>giữa</em> các khối</span></div>
-    <div class="stat"><span class="v">0,1005</span><span class="k">Ngưỡng nhiễu lý thuyết (1/√99)</span></div>
+    <div class="stat"><span class="v">+0,0509</span><span class="k">Trung bình của tám lần đo</span></div>
+    <div class="stat"><span class="v">0,0727</span><span class="k">Mức chênh lệch <em>giữa</em> các lần đo</span></div>
+    <div class="stat"><span class="v">0,1005</span><span class="k">Ngưỡng nhiễu — mức dao động tự nhiên</span></div>
   </div>
 
-  <p><strong>Đọc bảng này thế nào.</strong> Hệ số <strong>đổi cả dấu</strong> —
-  ba khối cho giá trị âm. Độ lệch giữa các khối (0,0727) còn
-  <strong>lớn hơn</strong> chính giá trị trung bình (0,0509), và khối lệch nhiều nhất
-  cũng chỉ bằng <strong>1,53 lần</strong> ngưỡng nhiễu.</p>
-  <p>Một thiên vị <strong>thật</strong> thì giữ nguyên dấu và độ lớn qua mọi khối.
-  Cái này đổi dấu, nên đó là <strong>nhiễu thống kê, không phải thiên vị</strong>.</p>
+  <p>Mức chênh lệch giữa các lần đo (0,0727) còn <strong>lớn hơn</strong> chính
+  giá trị trung bình (0,0509). Nghĩa là các lần đo lệch nhau nhiều hơn cả độ lớn
+  của thứ đang muốn đo — dấu hiệu điển hình của một con số không có thật. Lần đo
+  lệch nhiều nhất cũng chỉ bằng <strong>1,53 lần</strong> ngưỡng nhiễu.</p>
 
-  <h3>Còn mệnh đề quan trọng nhất</h3>
-  <p>Bốc thăm <strong>không đụng được</strong> vào chỗ điểm đã quyết định. Test
-  dựng riêng: ba em, ba điểm khác nhau, tranh hai suất.</p>
+  <p><strong>Kết luận của phép đo: đây là dao động ngẫu nhiên, không phải thiên
+  vị.</strong> Mã học sinh không kéo thứ hạng.</p>
+
+  <h3>Còn điều quan trọng nhất</h3>
+  <p>Bốc thăm <strong>không đụng được</strong> vào chỗ mà điểm thi đã quyết định.
+  Phép thử dựng riêng cho việc này: ba em, ba mức điểm khác nhau, cùng tranh hai
+  suất. Em điểm cao nhất phải luôn vào, em điểm thấp nhất phải luôn trượt.</p>
 
   <div class="stats">
     <div class="stat"><span class="v">100</span><span class="k">Số seed đã thử</span></div>
     <div class="stat hi"><span class="v">0</span><span class="k">Số lần kết quả khác đi</span></div>
   </div>
 
-  <p>Em điểm cao nhất luôn vào, em điểm thấp nhất luôn trượt. Đã kiểm chứng test
-  này bắt được lỗi thật: <strong>đảo hai khoá xếp hạng thì test đỏ ngay ở seed
-  đầu tiên</strong>.</p>
+  <p>Không một lần nào bốc thăm lật được kết quả. Phép thử này còn được kiểm
+  chứng là <em>bắt được lỗi thật</em>: cố tình đảo hai bước xếp hàng cho bốc thăm
+  đứng trước điểm, thì nó báo sai <strong>ngay từ seed đầu tiên</strong>.</p>
 
+  <div class="run">
+    <span class="lbl">Muốn tự kiểm chứng, chạy hai lệnh này trong thư mục phần mềm:</span>
 <pre><code>python du_lieu_test/do_cau_hoi_boc_tham.py
 python -m pytest tests/test_anh_huong_seed.py -v</code></pre>
+  </div>
 </section>
 
 <hr>
@@ -359,54 +450,64 @@ python -m pytest tests/test_anh_huong_seed.py -v</code></pre>
 
   <div class="verdict">
     <span class="ans">Không</span>
-    <span class="why">Và đây là chỗ <strong>đã từng có lỗi thật</strong>, đã sửa,
-    và có test canh riêng.</span>
+    <span class="why">Và đây là chỗ <strong>đã từng có lỗi thật</strong> — đã tìm
+    ra, đã sửa, và có phép thử canh để không tái diễn.</span>
   </div>
 
-  <p>Đo trên 20 học sinh, <strong>cố ý cho tất cả hoà điểm</strong> — tức đặt đúng
-  vào chỗ duy nhất mà bốc thăm có quyền can thiệp. Nhập lại 20 lần theo 20
-  <strong>thứ tự xáo ngẫu nhiên</strong> khác nhau:</p>
+  <h3>Cách đo</h3>
+  <p>Lấy 20 học sinh và <strong>cố ý cho tất cả bằng điểm nhau</strong> — tức đặt
+  đúng vào chỗ duy nhất mà bốc thăm có quyền can thiệp. Rồi nhập lại danh sách đó
+  <strong>20 lần</strong>, mỗi lần theo một thứ tự xáo trộn khác nhau, và so kết
+  quả.</p>
 
   <div class="stats">
     <div class="stat hi"><span class="v">0 / 20</span><span class="k">Số lần bộ số bốc thăm khác bản gốc</span></div>
-    <div class="stat hi"><span class="v">0 / 20</span><span class="k">Số lần kết quả xếp CLB khác bản gốc</span></div>
-    <div class="stat"><span class="v">49 / 49</span><span class="k">Đối chứng: đổi seed thì phải khác</span></div>
+    <div class="stat hi"><span class="v">0 / 20</span><span class="k">Số lần kết quả xếp câu lạc bộ khác bản gốc</span></div>
+    <div class="stat"><span class="v">49 / 49</span><span class="k">Đối chứng: thử đổi seed thì phải ra khác — và đúng là khác</span></div>
   </div>
 
-  <p>Con số đối chứng bên phải là bắt buộc. Không có nó thì hai số 0/20 kia vô
-  nghĩa — biết đâu phép đo hỏng nên cái gì cũng ra giống nhau.</p>
+  <p><strong>Con số đối chứng bên phải là bắt buộc phải có.</strong> Nếu không đo
+  nó thì hai số 0/20 kia vô nghĩa: biết đâu phép đo hỏng nên thử kiểu gì cũng ra
+  giống nhau. Đổi seed ra khác đủ 49 trên 49 lần, chứng tỏ phép đo hoạt động —
+  vậy hai số 0/20 mới đáng tin.</p>
 
   <h3>Vì sao chỗ này từng sai</h3>
-  <p>Đây là <strong>lỗi 19</strong> của dự án. <code>random.shuffle</code> xáo
-  <strong>đúng danh sách được đưa vào</strong>, mà truy vấn đọc bảng
-  <code>students</code> không có <code>ORDER BY</code> nên SQLite trả về
-  <strong>theo thứ tự chèn</strong>. Hệ quả: cùng một trường, cùng seed, nhập theo
-  thứ tự khác là ra kết quả khác.</p>
+  <p>Đây là <strong>lỗi thứ 19</strong> trong nhật ký lỗi của dự án.</p>
+  <p>Phần mềm bốc thăm bằng cách <em>xáo trộn</em> danh sách học sinh. Nhưng lệnh
+  xáo trộn ấy xáo <strong>đúng danh sách được đưa vào</strong> — mà cơ sở dữ liệu
+  lại trả danh sách về <strong>theo thứ tự đã nhập</strong>. Hệ quả: cùng một
+  trường, cùng một seed, nhưng nhập học sinh theo thứ tự khác thì ra kết quả
+  khác.</p>
 
   <div class="scroll">
   <table>
-    <caption>Đo lúc đó — 10 em bằng điểm nhau, cùng seed 42</caption>
+    <caption>Đo lúc đó — 10 em bằng điểm nhau, cùng một seed</caption>
     <thead><tr><th>Thử nghiệm</th><th class="n">Kết quả</th></tr></thead>
     <tbody>
-      <tr><td>Chèn HS01→HS10 so với HS10→HS01, <b>trước bản vá</b></td><td class="n"><b>6 / 10 em vào CLB khác</b></td></tr>
-      <tr><td>Cùng thử nghiệm, <b>sau bản vá</b></td><td class="n"><b>0 em khác</b></td></tr>
+      <tr><td>Nhập xuôi so với nhập ngược, <b>trước khi sửa</b></td><td class="n"><b>6 trên 10 em vào câu lạc bộ khác</b></td></tr>
+      <tr class="hl"><td>Cùng thử nghiệm, <b>sau khi sửa</b></td><td class="n"><b>0 em khác</b></td></tr>
     </tbody>
   </table>
   </div>
 
-  <p>Sửa bằng <strong>một dòng</strong> — sắp xếp trước khi xáo:</p>
-<pre><code>shuffled = sorted(student_ids)   # &lt;- dòng này
-rng.shuffle(shuffled)</code></pre>
+  <p>Cách chữa chỉ tốn <strong>một dòng</strong>: bắt phần mềm
+  <strong>sắp xếp danh sách theo mã học sinh trước, rồi mới xáo</strong>. Sau đó
+  danh sách đưa vào máy xáo luôn giống hệt nhau, bất kể trường nhập theo thứ tự
+  nào.</p>
 
   <div class="note alert">
     <span class="lbl">Câu chữ đúng khi trình bày</span>
     <p><strong>Nên nói:</strong> “bốc thăm không phụ thuộc thứ tự nhập liệu”.</p>
     <p><strong>Không được nói:</strong> “số bốc thăm dựa trên mã học sinh”. Mã học
     sinh chỉ dùng để <strong>sắp xếp danh sách trước khi xáo</strong>, chứ không
-    quyết định số — bằng chứng chính là bảng tương quan ở Câu 1.</p>
+    quyết định em nào được số nào. Bằng chứng chính là tám lần đo ở Câu 1: nếu mã
+    quyết định số thì tám lần đó đã không đổi dấu.</p>
   </div>
 
+  <div class="run">
+    <span class="lbl">Phép thử canh chỗ này:</span>
 <pre><code>python -m pytest tests/test_stb_khong_phu_thuoc_thu_tu.py -v</code></pre>
+  </div>
 </section>
 
 <hr>
@@ -416,75 +517,83 @@ rng.shuffle(shuffled)</code></pre>
 
   <div class="verdict is-yes">
     <span class="ans">Đúng hai thứ</span>
-    <span class="why"><strong>Số seed</strong> và <strong>tập mã học sinh</strong>.
-    Không có thứ ba.</span>
+    <span class="why"><strong>Con số seed</strong> và <strong>danh sách học sinh
+    gồm những ai</strong>. Không có thứ ba.</span>
   </div>
 
-  <p>Thử đổi từng thứ một, giữ nguyên mọi thứ còn lại:</p>
+  <p>Cách đo: đổi từng thứ một, giữ nguyên mọi thứ còn lại, rồi xem bộ số bốc
+  thăm có đổi theo không.</p>
 
   <div class="scroll">
   <table>
     <caption>Đổi một thứ, xem bộ số có đổi theo không</caption>
     <thead><tr><th>Đổi thứ này</th><th>Bộ số bốc thăm</th></tr></thead>
     <tbody>
-      <tr><td><b>Số seed</b> (42 → 43)</td><td><b>ĐỔI</b></td></tr>
-      <tr><td><b>Thêm 1 học sinh</b> vào danh sách</td><td><b>ĐỔI</b> — chỉ 6/100 em giữ nguyên số</td></tr>
-      <tr><td><b>Bớt 1 học sinh</b> khỏi danh sách</td><td><b>ĐỔI</b> — chỉ 5/99 em giữ nguyên số</td></tr>
-      <tr><td>Thứ tự danh sách (đảo ngược)</td><td>không đổi</td></tr>
-      <tr><td>Thứ tự danh sách (100 lần xáo ngẫu nhiên)</td><td>không đổi, cả <b>100/100</b></td></tr>
-      <tr><td>Chạy lại y nguyên</td><td>không đổi</td></tr>
+      <tr class="hl"><td><b>Con số seed</b> (từ 42 sang 43)</td><td><b>ĐỔI</b></td></tr>
+      <tr class="hl"><td><b>Thêm 1 học sinh</b> vào danh sách</td><td><b>ĐỔI</b> — chỉ 6 trên 100 em giữ nguyên số cũ</td></tr>
+      <tr class="hl"><td><b>Bớt 1 học sinh</b> khỏi danh sách</td><td><b>ĐỔI</b> — chỉ 5 trên 99 em giữ nguyên số cũ</td></tr>
+      <tr><td>Nhập danh sách theo thứ tự ngược lại</td><td>không đổi</td></tr>
+      <tr><td>Xáo trộn thứ tự nhập 100 lần</td><td>không đổi, cả <b>100 trên 100 lần</b></td></tr>
+      <tr><td>Chạy lại y nguyên như cũ</td><td>không đổi</td></tr>
     </tbody>
   </table>
   </div>
 
-  <p><strong>Không</strong> ảnh hưởng: thứ tự nhập, họ tên học sinh, điểm số, giờ
-  chạy, máy tính đang dùng, hệ điều hành.</p>
+  <p>Những thứ <strong>không</strong> ảnh hưởng: thứ tự nhập, họ tên học sinh,
+  điểm số, giờ chạy, máy tính đang dùng, hệ điều hành.</p>
 
   <h3>Hai điều rút ra từ bảng trên</h3>
-  <p><strong>Thêm hoặc bớt một học sinh làm đổi số của gần như tất cả mọi người</strong>
-  — chỉ 6 trên 100 em giữ nguyên. Đây là tính chất của phép xáo, không phải lỗi,
-  nhưng nó có hệ quả thực tế dẫn sang điều thứ hai.</p>
-  <p><strong>Vì thế bốc thăm bị khoá sau lần chạy đầu.</strong> Nếu không khoá,
-  chỉ cần thêm một em vào danh sách là toàn bộ bộ số đổi, và kết quả đã công bố
-  có thể lật ngược.</p>
+  <p><strong>Thứ nhất — thêm hoặc bớt một học sinh làm đổi số của gần như tất cả
+  mọi người.</strong> Chỉ 6 trên 100 em giữ nguyên số cũ. Đây là tính chất bình
+  thường của phép xáo bài, không phải lỗi, nhưng nó dẫn thẳng tới điều thứ hai.</p>
+
+  <p><strong>Thứ hai — vì thế bốc thăm phải bị khoá sau lần chạy đầu.</strong>
+  Nếu không khoá, chỉ cần thêm một em vào danh sách là toàn bộ bộ số đổi, và kết
+  quả đã công bố cho học sinh có thể lật ngược.</p>
 
   <div class="scroll">
   <table>
-    <caption>Cơ chế khoá đang chạy</caption>
+    <caption>Cơ chế khoá đang chạy trong phần mềm</caption>
     <thead><tr><th>Tình huống</th><th>Phần mềm làm gì</th></tr></thead>
     <tbody>
-      <tr><td>Chạy lần đầu</td><td>Vẽ toàn bộ số bốc thăm rồi <b>khoá</b></td></tr>
-      <tr><td>Đã khoá, có học sinh mới</td><td><b>Chỉ cấp số bổ sung</b> cho em mới, đánh số tiếp nối. Không vẽ lại số của ai đã có</td></tr>
-      <tr><td>Muốn vẽ lại toàn bộ</td><td>Phải bật cờ <code>force_redraw_stb</code> — hành động cố ý</td></tr>
+      <tr><td>Chạy lần đầu tiên</td><td>Bốc thăm cho toàn bộ học sinh rồi <b>khoá lại</b></td></tr>
+      <tr><td>Đã khoá, sau đó có học sinh mới</td><td><b>Chỉ cấp số cho em mới</b>, đánh số tiếp nối phía sau. Không bốc lại cho ai đã có số</td></tr>
+      <tr><td>Muốn bốc lại toàn bộ</td><td>Phải chủ động bật một lựa chọn riêng — không thể lỡ tay</td></tr>
     </tbody>
   </table>
   </div>
 
   <h3>Chống việc bốc đi bốc lại để chọn kết quả vừa ý</h3>
-  <p>Vì seed <em>có</em> đổi số phận của một số em, việc bốc lại nhiều lần rồi
-  chọn kết quả mình thích là rủi ro thật. Ba lớp đang chặn:</p>
+  <p>Vì đổi seed <em>có</em> đổi số phận của một vài em, nên nguy cơ thật sự là:
+  ai đó bốc lại nhiều lần, xem trước kết quả từng lần, rồi giữ lại lần mình
+  thích. Ba lớp đang chặn việc đó:</p>
 
   <div class="scroll">
   <table>
-    <thead><tr><th class="n" style="width:3em">Lớp</th><th>Cơ chế</th></tr></thead>
+    <thead><tr><th class="n" style="width:3.5em">Lớp</th><th>Cơ chế</th></tr></thead>
     <tbody>
-      <tr><td class="n">1</td><td><code>stb_lock</code> khoá bộ số sau lần chạy đầu</td></tr>
-      <tr><td class="n">2</td><td>Vẽ lại phải bật cờ <code>force_redraw_stb</code> — không lỡ tay được</td></tr>
-      <tr><td class="n">3</td><td><b><code>run_history</code> ghi thêm một dòng mỗi lần chạy</b>, kèm <code>seed</code>, cờ <code>stb_redrawn</code> và mốc thời gian</td></tr>
+      <tr><td class="n">1</td><td>Bộ số bị <b>khoá</b> ngay sau lần chạy đầu tiên</td></tr>
+      <tr><td class="n">2</td><td>Bốc lại phải <b>chủ động bật một lựa chọn riêng</b> — không thể lỡ tay bấm nhầm</td></tr>
+      <tr class="hl"><td class="n">3</td><td><b>Mỗi lần chạy đều ghi thêm một dòng vào nhật ký</b>, gồm con số seed đã dùng, dấu đánh dấu “lần này có bốc lại”, và mốc thời gian</td></tr>
     </tbody>
   </table>
   </div>
 
   <div class="note">
     <span class="lbl">Lớp thứ ba là lớp quan trọng nhất</span>
-    <p>Bảng <code>run_history</code> <strong>không bao giờ bị ghi đè</strong>, và
-    chức năng xoá dữ liệu <strong>không đụng tới nó</strong>. Ai bốc lại để dò
-    seed đẹp đều để lại dấu vết <strong>không xoá được</strong> — đủ cả seed đã
-    thử lẫn mốc thời gian. Xem được ngay trong phần mềm, mục
-    <em>Lịch sử chạy pipeline</em>.</p>
+    <p>Nhật ký chạy <strong>không bao giờ bị ghi đè</strong>, và chức năng xoá
+    toàn bộ dữ liệu <strong>cũng không xoá được nó</strong>. Ai bốc lại nhiều lần
+    để dò một seed vừa ý đều để lại dấu vết <strong>không xoá được</strong> — đủ
+    cả những seed đã thử lẫn thời điểm thử.</p>
+    <p>Người kiểm tra xem được ngay trong phần mềm, ở mục
+    <strong>Lịch sử chạy pipeline</strong> của màn hình chính. Không cần biết lập
+    trình, không cần mở cơ sở dữ liệu.</p>
   </div>
 
+  <div class="run">
+    <span class="lbl">Muốn tự kiểm chứng bảng trên:</span>
 <pre><code>python du_lieu_test/do_cau_hoi_boc_tham.py</code></pre>
+  </div>
 </section>
 
 <hr>
@@ -495,26 +604,30 @@ rng.shuffle(shuffled)</code></pre>
   <table>
     <thead><tr><th>Câu hỏi</th><th>Trả lời</th><th class="n">Số đo</th></tr></thead>
     <tbody>
-      <tr><td>Đổi seed, bốc thăm còn công bằng không?</td><td><b>Còn</b></td><td class="n">lệch tối đa 1,44 %</td></tr>
-      <tr><td>Mã học sinh có kéo thứ hạng không?</td><td><b>Không</b></td><td class="n">tương quan đổi dấu</td></tr>
-      <tr><td>Bốc thăm lật được kết quả của em điểm cao hơn không?</td><td><b>Không</b></td><td class="n">0 / 100 seed</td></tr>
-      <tr><td>Đổi thứ tự nhập có ảnh hưởng không?</td><td><b>Không</b></td><td class="n">0 / 20 lần xáo</td></tr>
-      <tr><td>Đổi seed thì bộ số có thật sự đổi không?</td><td><b>Có</b></td><td class="n">49 / 49 seed</td></tr>
-      <tr><td>Có bao nhiêu thứ ảnh hưởng tới bốc thăm?</td><td><b>Hai</b></td><td class="n">seed + tập mã</td></tr>
-      <tr><td>Bốc lại có bị phát hiện không?</td><td><b>Có</b></td><td class="n">run_history</td></tr>
+      <tr><td>Đổi seed thì bốc thăm còn công bằng không?</td><td><b>Còn</b></td><td class="n">lệch nhiều nhất 1,44 %</td></tr>
+      <tr><td>Mã học sinh có kéo thứ hạng không?</td><td><b>Không</b></td><td class="n">8 lần đo, đổi dấu 3 lần</td></tr>
+      <tr><td>Bốc thăm lật được kết quả của em điểm cao hơn không?</td><td><b>Không</b></td><td class="n">0 trên 100 seed</td></tr>
+      <tr><td>Đổi thứ tự nhập có ảnh hưởng không?</td><td><b>Không</b></td><td class="n">0 trên 20 lần</td></tr>
+      <tr><td>Đổi seed thì bộ số có thật sự đổi không?</td><td><b>Có</b></td><td class="n">49 trên 49 lần</td></tr>
+      <tr><td>Có bao nhiêu thứ ảnh hưởng tới bốc thăm?</td><td><b>Hai</b></td><td class="n">seed và danh sách học sinh</td></tr>
+      <tr><td>Bốc lại nhiều lần có bị phát hiện không?</td><td><b>Có</b></td><td class="n">nhật ký không xoá được</td></tr>
     </tbody>
   </table>
   </div>
 </section>
 
 <footer>
-  <p><strong>Tài liệu liên quan.</strong>
-  <code>du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md</code> mục 3c — ảnh hưởng của seed
-  lên <em>kết quả phân bổ</em>. <code>HUONG_DAN_SU_DUNG.md</code> mục 12 — thuật
-  toán hoạt động thế nào. <code>BAN_GIAO.md</code> mục 5 — lỗi 19 và mục
-  “ĐÃ ĐO, KHÔNG PHẢI LỖI”.</p>
-  <p>Trang này chỉ trình bày <strong>số đo và cơ chế</strong>. Phần nhận xét, diễn
-  giải ý nghĩa và kết luận về kết quả phân bổ do người thực hiện đề tài tự viết.</p>
+  <p><strong>Về dữ liệu dùng để đo.</strong> Toàn bộ học sinh trong các phép đo
+  trên là <strong>dữ liệu mô phỏng do máy sinh ra</strong>, không phải học sinh
+  có thật. Các mã như <em>HS001, HS002…</em> chỉ là mã đánh số tự động để phân
+  biệt, không tương ứng với người nào.</p>
+  <p><strong>Tài liệu liên quan trong bộ hồ sơ.</strong>
+  <em>Số liệu đã kiểm chứng</em> mục 3c — ảnh hưởng của seed lên kết quả phân bổ.
+  <em>Hướng dẫn sử dụng</em> mục 12 — thuật toán hoạt động thế nào.
+  <em>Bàn giao</em> mục 5 — nhật ký lỗi, gồm lỗi thứ 19 nói ở Câu 2.</p>
+  <p>Trang này chỉ trình bày <strong>số đo và cơ chế hoạt động</strong>. Phần
+  nhận xét, diễn giải ý nghĩa và kết luận về kết quả phân bổ do người thực hiện
+  đề tài tự viết.</p>
 </footer>
 
 </main>
@@ -525,18 +638,14 @@ rng.shuffle(shuffled)</code></pre>
 (function () {
   "use strict";
   var DATA = [
-    { nhan:"1 – 10k",   v:+0.1142 },
-    { nhan:"10 – 20k",  v:+0.0527 },
-    { nhan:"20 – 30k",  v:+0.1539 },
-    { nhan:"30 – 40k",  v:-0.0155 },
-    { nhan:"40 – 50k",  v:+0.0827 },
-    { nhan:"50 – 60k",  v:-0.0470 },
-    { nhan:"60 – 70k",  v:-0.0250 },
-    { nhan:"70 – 80k",  v:+0.0909 }
+    { lan:"Lần 1", v:+0.1142 }, { lan:"Lần 2", v:+0.0527 },
+    { lan:"Lần 3", v:+0.1539 }, { lan:"Lần 4", v:-0.0155 },
+    { lan:"Lần 5", v:+0.0827 }, { lan:"Lần 6", v:-0.0470 },
+    { lan:"Lần 7", v:-0.0250 }, { lan:"Lần 8", v:+0.0909 }
   ];
   var NHIEU = 0.1005;
-  var W = 760, X0 = 122, X1 = 682, TOP = 40, PITCH = 33, BH = 17;
-  var MAX = 0.19, K = (X1 - X0) / (MAX * 2), ZERO = X0 + MAX * K;
+  var W = 760, X0 = 128, X1 = 676, TOP = 46, PITCH = 33, BH = 17;
+  var MAX = 0.195, K = (X1 - X0) / (MAX * 2), ZERO = X0 + MAX * K;
 
   var svg = document.getElementById("chart");
   var tip = document.getElementById("tip");
@@ -551,20 +660,32 @@ rng.shuffle(shuffled)</code></pre>
   function so(v) {
     return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(4).replace(".", ",");
   }
+  function chu(x, y, t, o) {
+    o = o || {};
+    var n = el("text", {
+      x: x, y: y, "text-anchor": o.anchor || "middle",
+      fill: o.fill || "var(--slate)", "font-size": o.size || "12.5",
+      "font-family": o.family || "var(--f-mono)"
+    });
+    n.textContent = t;
+    svg.appendChild(n);
+    return n;
+  }
 
   var day = TOP + DATA.length * PITCH;
 
-  // Vùng nhiễu lý thuyết — vẽ trước để nằm dưới mọi thứ.
   svg.appendChild(el("rect", {
-    x: ZERO - NHIEU * K, y: TOP - 12, width: NHIEU * K * 2, height: day - TOP + 16,
+    x: ZERO - NHIEU * K, y: TOP - 14, width: NHIEU * K * 2, height: day - TOP + 18,
     fill: "var(--band)", rx: 4
   }));
-
-  // Trục 0.
   svg.appendChild(el("line", {
-    x1: ZERO, y1: TOP - 12, x2: ZERO, y2: day + 4,
+    x1: ZERO, y1: TOP - 14, x2: ZERO, y2: day + 4,
     stroke: "var(--slate)", "stroke-width": 1.5
   }));
+
+  // Nhãn hai phía, nói thẳng phía nào nghĩa là gì.
+  chu(ZERO - NHIEU * K / 2, TOP - 24, "◄ mã nhỏ THIỆT hơn", { size: "11.5" });
+  chu(ZERO + NHIEU * K / 2, TOP - 24, "mã nhỏ LỢI hơn ►", { size: "11.5" });
 
   DATA.forEach(function (d, i) {
     var y = TOP + i * PITCH, duong = d.v >= 0;
@@ -572,45 +693,27 @@ rng.shuffle(shuffled)</code></pre>
     var x = duong ? ZERO : ZERO - dai;
     var mau = duong ? "var(--data-pos)" : "var(--data-neg)";
 
-    // Nhãn khối seed, cột trái.
-    var lb = el("text", {
-      x: X0 - 14, y: y + BH / 2 + 4, "text-anchor": "end",
-      fill: "var(--slate)", "font-size": "12.5",
-      "font-family": "var(--f-mono)"
-    });
-    lb.textContent = d.nhan;
-    svg.appendChild(lb);
+    chu(X0 - 16, y + BH / 2 + 4, d.lan, { anchor: "end", size: "13",
+        family: "var(--f-body)" });
 
-    // Vệt dữ liệu: đầu ở trục 0 vuông, đầu dữ liệu bo 4px.
     var r = 4, y2 = y + BH;
     var p = duong
       ? "M" + x + " " + y + " H" + (x + dai - r) + " a" + r + " " + r + " 0 0 1 " + r + " " + r +
         " V" + (y2 - r) + " a" + r + " " + r + " 0 0 1 " + (-r) + " " + r + " H" + x + " Z"
       : "M" + (x + dai) + " " + y + " H" + (x + r) + " a" + r + " " + r + " 0 0 0 " + (-r) + " " + r +
         " V" + (y2 - r) + " a" + r + " " + r + " 0 0 0 " + r + " " + r + " H" + (x + dai) + " Z";
-    var bar = el("path", { d: p, fill: mau });
-    svg.appendChild(bar);
+    svg.appendChild(el("path", { d: p, fill: mau }));
 
-    // Nhãn giá trị trực tiếp — bắt buộc, vì tương phản của vệt gần ngưỡng.
-    var vx = duong ? x + dai + 11 : x - 11;
-    var vt = el("text", {
-      x: vx, y: y + BH / 2 + 4, "text-anchor": duong ? "start" : "end",
-      fill: "var(--ink-soft)", "font-size": "12.5",
-      "font-family": "var(--f-mono)"
-    });
-    vt.textContent = so(d.v);
-    svg.appendChild(vt);
+    chu(duong ? x + dai + 11 : x - 11, y + BH / 2 + 4, so(d.v),
+        { anchor: duong ? "start" : "end", fill: "var(--ink-soft)" });
 
-    // Vùng chạm rộng hơn vệt, để rê chuột dễ.
     var hit = el("rect", {
-      x: X0 - 4, y: y - 8, width: X1 - X0 + 8, height: PITCH,
-      fill: "transparent", style: "cursor:default"
+      x: X0 - 4, y: y - 8, width: X1 - X0 + 8, height: PITCH, fill: "transparent"
     });
     hit.addEventListener("mouseenter", function () {
-      tip.textContent = "seed " + d.nhan + "  ·  " + so(d.v);
-      var box = svg.getBoundingClientRect();
-      var sx = box.width / W;
-      tip.style.left = ((duong ? x + dai / 2 : x + dai / 2) * sx) + "px";
+      tip.textContent = d.lan + "  ·  " + so(d.v);
+      var box = svg.getBoundingClientRect(), sx = box.width / W;
+      tip.style.left = ((x + dai / 2) * sx) + "px";
       tip.style.top = ((y + BH / 2) * sx + 20) + "px";
       tip.classList.add("on");
     });
@@ -618,20 +721,9 @@ rng.shuffle(shuffled)</code></pre>
     svg.appendChild(hit);
   });
 
-  // Nhãn hai đầu vùng nhiễu.
-  [["−0,1005", ZERO - NHIEU * K], ["+0,1005", ZERO + NHIEU * K]].forEach(function (p) {
-    var t = el("text", {
-      x: p[1], y: day + 22, "text-anchor": "middle",
-      fill: "var(--slate)", "font-size": "11.5", "font-family": "var(--f-mono)"
-    });
-    t.textContent = p[0];
-    svg.appendChild(t);
-  });
-  var z = el("text", {
-    x: ZERO, y: day + 22, "text-anchor": "middle",
-    fill: "var(--slate)", "font-size": "11.5", "font-family": "var(--f-mono)"
-  });
-  z.textContent = "0";
-  svg.appendChild(z);
+  chu(ZERO - NHIEU * K, day + 22, "−0,1005");
+  chu(ZERO, day + 22, "0");
+  chu(ZERO + NHIEU * K, day + 22, "+0,1005");
+  chu(ZERO, day + 42, "hoàn toàn công bằng", { size: "11.5", family: "var(--f-body)" });
 })();
 </script>
