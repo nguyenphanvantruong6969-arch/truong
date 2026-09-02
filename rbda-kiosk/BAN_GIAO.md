@@ -1054,6 +1054,42 @@ sạch, 988 token) và logic tìm file, nhưng các lệnh `New-SelfSignedCertif
   số liệu thật là **bịa đặt dữ liệu**.
 - Diễn giải, nhận xét kết quả kiểm thử → học sinh tự viết
 
+### Khảo sát hiện trạng (02/09) — ranh giới đã vạch ở đâu
+
+Học sinh nhờ soạn bộ câu hỏi cho form *"KHẢO SÁT: Quy trình & Mức độ hài lòng
+với việc phân bổ CLB"* (đã có sẵn trong Drive). Đây là chỗ **sát ranh giới**, nên
+ghi rõ đã chia thế nào:
+
+| Việc | Ai làm |
+|---|---|
+| Soạn **nháp** bộ câu hỏi (`KHAO_SAT_CAU_HOI.md`) | AI |
+| Đọc lại, sửa câu chữ, **chịu trách nhiệm nội dung** | **Học sinh** |
+| Tạo form, phát khảo sát | **Học sinh** |
+| **Thu phản hồi** | **Học sinh** — quy định cấm AI thu thập dữ liệu |
+| Nhận xét, diễn giải, kết luận từ số liệu | **Học sinh** |
+| Dựng biểu đồ từ **số đã tổng hợp** (nếu học sinh đưa) | AI |
+
+> Thiết kế công cụ khảo sát **là một phần của phương pháp nghiên cứu**, nên bản
+> nháp của AI chỉ là điểm khởi đầu — học sinh phải đọc và sửa, không được dán
+> nguyên. Đã ghi vào nhật ký AI.
+
+**Vì sao cần khảo sát:** hai bản báo cáo đang *khẳng định* bốn điều về hiện trạng
+ở VAS mà chưa có số liệu nào đỡ — phân bổ theo thứ tự đăng ký, học sinh có đam mê
+bị loại vì đăng ký muộn, nhiều em đăng ký vội vàng, quy mô ~300 em / ~20 CLB. Khi
+bảo vệ, giám khảo chỉ cần hỏi *"em biết điều đó từ đâu?"*.
+
+> ### ⚠️ PHẢN HỒI KHẢO SÁT LÀ DỮ LIỆU HỌC SINH CÓ THẬT
+> Khác **hoàn toàn** với mọi bộ trong `du_lieu_test/` (đều là máy sinh). Đây là
+> câu trả lời của học sinh thật, phần lớn là trẻ vị thành niên.
+>
+> - Bảng tính kết quả **không bao giờ được vào git**. `.gitignore` đã chặn các
+>   kiểu tên Google Forms đặt mặc định (`… (Responses).xlsx`, `… (Phản hồi).xlsx`,
+>   `khao_sat*.csv`, `phan_hoi*.xlsx`…). Đã thử từng tên và xác nhận chặn được;
+>   `KHAO_SAT_CAU_HOI.md` thì **không** bị chặn vì đó là công cụ đo, không phải
+>   dữ liệu.
+> - Trong Forms phải **TẮT "Thu thập địa chỉ email"**. Có email là có danh tính.
+> - Báo cáo chỉ đưa **số đã tổng hợp**, không đưa bảng thô.
+
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 

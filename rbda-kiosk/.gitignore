@@ -17,5 +17,26 @@ ket_qua*_theo_club/
 # bao_cao_thu_tai.html khong ai dung lai duoc, ma README lai dang tro
 # toi. Luat ket_qua*.csv o tren chan nham no chi vi trung tien to ten.
 !du_lieu_test/thu_tai/ket_qua_thu_tai.csv
+# PHAN HOI KHAO SAT — DU LIEU HOC SINH CO THAT, khac han moi bo du lieu
+# trong du_lieu_test/ (deu la may sinh). Day la cau tra loi cua hoc sinh
+# that, phan lon la tre vi thanh nien. Khong bao gio duoc vao git.
+#
+# Chan theo DUOI BANG TINH chu khong theo ten, vi Google Forms dat ten
+# mac dinh khac nhau tuy ngon ngu: "... (Responses)" hoac "... (Phan hoi)".
+# Chi bang tinh moi bi chan, nen ban thân BO CAU HOI (KHAO_SAT_CAU_HOI.md)
+# van vao git binh thuong — do la cong cu do, khong phai du lieu.
+*(Responses)*.csv
+*(Responses)*.xlsx
+*Responses*.csv
+*Responses*.xlsx
+*hản hồi*.csv
+*hản hồi*.xlsx
+phan_hoi*.csv
+phan_hoi*.xlsx
+khao_sat*.csv
+khao_sat*.xlsx
+KHAO_SAT*.csv
+KHAO_SAT*.xlsx
+
 build/
 dist/
