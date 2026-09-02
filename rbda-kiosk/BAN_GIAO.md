@@ -771,6 +771,65 @@ là khả năng biết được tính năng đã hỏng thế nào.*
 > **KHÔNG được viết:** *"không dùng gì của Microsoft"* — WebView2 là của Microsoft.
 > Nói đúng là **dùng thành phần hệ điều hành**, không phải **chạy trong trình duyệt**.
 
+### ĐÃ ĐO, KHÔNG PHẢI LỖI — vài em có suất hay không phụ thuộc bốc thăm (02/09)
+
+**Đọc mục này trước khi định "sửa" nó.** Ghi vào đây vì nó *trông* như lỗi, và
+người đọc sau — hoặc chính học sinh khi bị giám khảo hỏi — rất dễ tưởng là lỗi.
+
+**Số đo** (`du_lieu_test/do_anh_huong_seed.py`, 200 seed, ba bộ dữ liệu):
+
+| Bộ | Luôn có suất | Luôn không | **Phụ thuộc bốc thăm** |
+|---|---|---|---|
+| `vi_du_huong_dan/` (10 em) | 9 | 1 | **0 (0,0%)** |
+| `bo_sach/` (140 em) | 139 | 0 | **1 (0,7%)** |
+| `TEST_0*` (120 em) | 107 | 11 | **2 (1,7%)** |
+| **Gộp (270 em)** | | | **3 (1,1%)** |
+
+**Vì sao đây KHÔNG phải lỗi.** Khi hai em bằng điểm nhau tranh một chỗ, phải có
+gì đó phân định. Mọi phương án khác đều **thiên vị có hệ thống**: thứ tự nhập thì
+ai nộp sớm luôn thắng; mã học sinh thì em mã nhỏ luôn thắng — **cùng một người
+được lợi ở mọi CLB, năm này qua năm khác**. Bốc thăm không thiên vị ai. Đây là
+lựa chọn thiết kế của cả họ thuật toán Gale–Shapley, không phải thiếu sót của
+bản cài đặt này.
+
+**Ba điều SẼ đáng lo — đã đo, đều không xảy ra:**
+
+| Nếu | Đo được |
+|---|---|
+| Seed lật kết quả của em **điểm khác nhau** | **Không.** 3 em 3 điểm khác nhau, 100 seed, cùng kết quả (`tests/test_anh_huong_seed.py`) |
+| Seed phá tính ổn định | **Không.** 0 cặp phá vỡ / 200 seed / 3 bộ |
+| Bốc thăm thiên vị một em | **Không.** Hai em hoà điểm tranh một suất: cả hai đều từng thắng |
+
+**Rủi ro THẬT, và nó đã được chặn sẵn — đừng gỡ:** vì seed *có* đổi số phận vài
+em, việc bốc lại nhiều lần rồi chọn kết quả vừa ý là rủi ro liêm chính thật sự.
+Ba lớp đang giữ:
+
+1. `stb_lock` khoá bộ số sau lần chạy đầu (`api.py`, `run_pipeline`).
+2. Bốc lại phải bật cờ `force_redraw_stb` — hành động cố ý, không lỡ tay được.
+3. **`run_history` ghi thêm một dòng mỗi lần chạy**, kèm `seed` và cờ
+   `stb_redrawn`. Bảng này **không bao giờ ghi đè**, và `reset_data` **không
+   đụng tới** (đã kiểm). Ai dò seed đẹp để lại dấu vết không xoá được.
+
+> Ba lớp này là lý do 1,1% ở trên chấp nhận được. **Gỡ bất kỳ lớp nào là biến
+> một tính chất thành một lỗ hổng.**
+
+**Điều đáng làm nhất lại là chuyện vận hành, không phải mã:** trong ba em phụ
+thuộc bốc thăm, một em (`HS037`) chỉ đăng ký **2 nguyện vọng** và có **46%** khả
+năng không có suất nào. Nhà trường nên nói với học sinh rằng **xếp càng nhiều
+nguyện vọng càng an toàn**. Đã ghi vào `HUONG_DAN_SU_DUNG.md` mục 13.
+
+**Hai điều CỐ Ý không kết luận:**
+- Ranh giới này **không đoán trước được bằng bảng điểm**. `HS122` ở `clb_tinhoc`
+  có 34 em điểm cao hơn tranh 14 chỗ — nhìn tĩnh thì đứng ngoài rất xa, nhưng
+  phần lớn 34 em đó đỗ nguyện vọng trên của họ nên ranh giới thật tụt xuống tới
+  em. Ranh giới sinh ra từ **chuỗi dây chuyền**, không từ bảng điểm. Đã viết một
+  bộ dò ranh giới tĩnh để thử: **không bắt được ca nào**.
+- "Nguyện vọng càng ngắn càng dễ bấp bênh" nghe hợp lý và khớp cả ba ca, nhưng
+  **ba ca chưa đủ để kết luận**. Muốn nói được phải quét nhiều bộ dữ liệu hơn.
+
+Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
+
+
 ### Còn lại chưa giải quyết
 
 - **`ky_va_tin_cay.ps1` chưa chạy ở đâu bao giờ.** Nếu demo trên máy không có quyền

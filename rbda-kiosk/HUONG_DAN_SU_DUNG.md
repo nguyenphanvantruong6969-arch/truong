@@ -562,6 +562,37 @@ Ghi ra để người dùng biết trước, không phải để bào chữa.
 | **Điểm bất thường chỉ được CẢNH BÁO, không bị chặn** | Phần mềm không đặt trần cứng (trường có thể chấm thang 100), mà so mỗi điểm với trung vị của chính CLB đó. Lệch quá 3 lần thì báo — bắt được cả `70` lẫn `0.85`. Nhưng một điểm sai *vừa phải*, ví dụ 9 thay vì 8, thì không cách nào phát hiện được |
 | **Chưa có nút "Sao lưu ngay"** | Phần mềm tự sao lưu trước mỗi lần chạy và trước khi xoá. Sao lưu thường ngày vẫn phải chép tay tệp `app.db` |
 | **Windows cảnh báo nhà phát hành không xác định** | Do chưa mua chứng chỉ ký số thương mại, không phải lỗi phần mềm |
+| **Vài em có suất hay không phụ thuộc bốc thăm** | Đo trên 270 em của ba bộ dữ liệu: **3 em (1,1%)**. Đây không phải lỗi — xem ngay dưới |
+
+### Vì sao có em phụ thuộc bốc thăm, và vì sao đó không phải lỗi
+
+Khi hai em **bằng điểm nhau** ở cùng một CLB còn đúng một chỗ, phải có gì đó phân
+định. Mọi cách khác đều **thiên vị có hệ thống**: xếp theo thứ tự nhập thì ai nộp
+sớm luôn thắng; xếp theo mã học sinh thì em mã nhỏ luôn thắng — cùng một người
+được lợi ở **mọi** CLB, năm này qua năm khác. Bốc thăm không thiên vị ai.
+
+Đã đo và **không** xảy ra ba điều đáng lo:
+
+| Nếu | Đo được |
+|---|---|
+| Bốc thăm lật ngược kết quả của em **điểm khác nhau** | **Không.** 3 em 3 điểm khác nhau, 100 seed, cùng một kết quả |
+| Bốc thăm làm kết quả mất tính ổn định | **Không.** 0 cặp phá vỡ trên 200 seed, cả ba bộ |
+| Bốc thăm thiên vị một em cụ thể | **Không.** Hai em hoà điểm tranh một suất: cả hai đều từng thắng |
+
+**Chỗ thật sự cần giữ, và phần mềm đã giữ:** vì bốc thăm *có* đổi số phận của vài
+em, việc bốc đi bốc lại rồi chọn kết quả vừa ý là rủi ro thật. Sau lần chạy đầu,
+bộ số bốc thăm bị **khoá**; bốc lại phải bật cờ riêng, không thể lỡ tay; và **mỗi
+lần chạy đều ghi thêm một dòng vào lịch sử** kèm `seed` và dấu "đã bốc lại" —
+bảng đó **không bao giờ bị ghi đè**, kể cả khi xoá toàn bộ dữ liệu. Ai bốc lại để
+dò seed đẹp sẽ để lại dấu vết không xoá được.
+
+**Điều nhà trường nên làm — quan trọng hơn mọi thứ trên:** nói với học sinh rằng
+**xếp càng nhiều nguyện vọng càng an toàn**. Trong ba em phụ thuộc bốc thăm, một
+em chỉ đăng ký **2 nguyện vọng** và có tới **46%** khả năng không có suất nào.
+Không phải thuật toán bạc đãi em — em tự đứng ở chỗ hẹp, không còn nguyện vọng
+nào phía dưới để rơi tiếp khi thua một lượt bốc thăm.
+
+Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
 
 ---
 
