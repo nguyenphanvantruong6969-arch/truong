@@ -1093,6 +1093,24 @@ bảo vệ, giám khảo chỉ cần hỏi *"em biết điều đó từ đâu?"
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 
+**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #92**, phủ hết
+ngày 02/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, và bộ
+câu hỏi khảo sát. Con số ở đầu trang: **92 câu lệnh · 57 commit**; Mục 4: **67 tệp
+/ 13.333 dòng / 404 test**.
+
+> **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
+> Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:
+> *"AI hỗ trợ và tư vấn chọn lựa câu hỏi nhằm tối đa hóa thông tin trên mỗi câu hỏi
+> nhằm giúp thời gian thực hiện biểu mẫu ở mức hợp lí. Học sinh xem xét, chọn lọc,
+> sửa và đưa ra quyết định cuối cùng. Học sinh tự tạo biểu mẫu, tự phát, tự thu phản
+> hồi và tự phân tích."*
+> **KHÔNG** viết "AI soạn bộ câu hỏi khảo sát", "AI thiết kế khảo sát" hay "AI thực
+> hiện khảo sát" — cả ba đều sai phạm vi và đều chạm vào ô *cấm thu thập dữ liệu
+> nghiên cứu* của Phụ lục 1.
+
+Câu lệnh **#89** ghi lại một lần **AI từ chối viết phần Kết luận** (02/09) — dùng
+được làm mốc đối chiếu khi giám khảo hỏi về ranh giới sử dụng AI.
+
 ---
 
 ## 7. Cách làm việc học sinh mong đợi
