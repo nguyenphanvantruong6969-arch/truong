@@ -188,6 +188,109 @@ trữ ra thì **5 test đỏ** — đã thử.
 
 ---
 
+## Cái giá của tính ổn định — đã đo, không phải suy luận
+
+`verify_stability` canh được **0 cặp phá vỡ**. Nhưng *"ổn định"* và *"tốt nhất
+cho học sinh"* là hai chuyện khác nhau, và chỗ khác nhau đó đo được:
+
+> **CẶP ĐÔI CÙNG CÓ LỢI** — em `s1` được xếp CLB `c1`, em `s2` được xếp CLB `c2`,
+> mà `s1` thích `c2` hơn và `s2` thích `c1` hơn. Hai em đổi chỗ cho nhau thì
+> **cả hai cùng lên** nguyện vọng cao hơn — thuật toán không cho, vì đổi như vậy
+> phá mất tính ổn định.
+
+**Đừng lẫn hai khái niệm** — đây là chỗ giám khảo bắt lỗi được ngay:
+
+| | Gồm những ai | Có nghĩa là gì |
+|---|---|---|
+| **Cặp phá vỡ** (blocking pair) | 1 học sinh + 1 **câu lạc bộ** | Kết quả **không ổn định** → **LỖI** |
+| **Cặp đôi cùng có lợi** | 2 **học sinh** | Kết quả không tối ưu Pareto → **đánh đổi đã biết**, không phải lỗi |
+
+Chạy lại:
+
+```bash
+python du_lieu_test/do_danh_doi_on_dinh.py
+```
+
+### Đo được gì (seed mốc 42)
+
+| Bộ dữ liệu | Cặp phá vỡ | **Cặp đôi cùng có lợi** | Số em dính | Bốc thăm CÓ phần | Bốc thăm VÔ CAN |
+|---|---|---|---|---|---|
+| `vi_du_huong_dan` (10 em) | 0 | **0** | 0 | — | — |
+| `bo_sach` (140 em) | 0 | **85** | 34 (24,3%) | 18 (21%) | **67 (79%)** |
+| `TEST_0*` (120 em) | 0 | **19** | 16 (13,3%) | 2 (11%) | **17 (89%)** |
+
+Quét **40 seed**, mỗi bộ:
+
+| Bộ dữ liệu | Cặp phá vỡ | Ít nhất · TB · Nhiều nhất | **Số seed cho 0 cặp** |
+|---|---|---|---|
+| `vi_du_huong_dan` | 0 ở mọi seed | 0 · 0,0 · 0 | 40 / 40 |
+| `bo_sach` | 0 ở mọi seed | 82 · **91,0** · 103 | **0 / 40** |
+| `TEST_0*` | 0 ở mọi seed | 19 · **21,5** · 24 | **0 / 40** |
+
+### Không quy được cho bốc thăm — và đây là thí nghiệm chứng minh
+
+Cách đọc tự nhiên là đổ cho **bốc thăm phá hoà**. Ba phép đo đều **không** ủng hộ
+cách đọc đó:
+
+1. **Đổi bốc thăm không làm hiện tượng biến mất.** 0/40 seed cho 0 cặp trên cả
+   hai bộ có hiện tượng, biên độ dao động nhỏ.
+2. **Phần lớn số cặp là em thua vì ĐIỂM**, không phải vì hoà rồi thua bốc thăm —
+   79% và 89%.
+3. **Thí nghiệm can thiệp thẳng.** Bỏ điểm của `p%` số cặp (em, CLB) để đẩy các
+   em đó xuống **Tầng 2** — nơi bốc thăm quyết định **hoàn toàn**. Nếu bốc thăm
+   sinh ra tổn thất thì càng nhiều Tầng 2, số cặp phải càng **tăng**.
+
+`bo_sach`, 10 seed mỗi mức:
+
+| Bỏ điểm | Cặp đôi (TB) | Bốc thăm có phần | Thua vì điểm | Seed cho 0 cặp |
+|---|---|---|---|---|
+| 0% | **90,2** | 18,4 (20%) | 71,8 | 0/10 |
+| 25% | 65,3 | 7,9 (12%) | 57,4 | 0/10 |
+| 50% | 58,5 | 29,4 (50%) | 29,1 | 0/10 |
+| 75% | 45,2 | 41,2 (91%) | 4,0 | 0/10 |
+| **100%** | **4,1** | 4,1 (100%) | 0,0 | 0/10 |
+
+`TEST_0*`, cùng cách:
+
+| Bỏ điểm | Cặp đôi (TB) | Bốc thăm có phần | Thua vì điểm | Seed cho 0 cặp |
+|---|---|---|---|---|
+| 0% | **21,1** | 2,0 (9%) | 19,1 | 0/10 |
+| 25% | 20,0 | 4,0 (20%) | 16,0 | 0/10 |
+| 50% | 41,5 | 33,9 (82%) | 7,6 | 0/10 |
+| 75% | 29,5 | 29,3 (99%) | 0,2 | 0/10 |
+| **100%** | **2,2** | 2,2 (100%) | 0,0 | **3/10** |
+
+**Đọc ra:** ở mức bỏ hết điểm, bốc thăm quyết định 100% — mà số cặp lại **ít
+nhất** (90,2 → 4,1 và 21,1 → 2,2), thậm chí `TEST_0*` có **3/10 seed cho 0 cặp**,
+tức có lần đạt **tối ưu Pareto**. Chuyện đó **không xảy ra lần nào** khi điểm còn
+nguyên. Hướng đi ngược hẳn với cách đọc *"tại bốc thăm"*.
+
+> **Hai chỗ phải nói thẳng, đừng cắt đi khi trích:**
+>
+> - **Các mức ở giữa không đi một chiều** (65,3 · 58,5 · 45,2 — và `TEST_0*` còn
+>   vọt lên 41,5 ở mức 50%). Chỉ **hai đầu** của bảng mới là điều đọc ra được.
+>   Không viết thành *"càng nhiều Tầng 2 càng ít cặp"*.
+> - **Trên ba bộ này, Tầng 2 rất hiếm khi giữ suất**: `bo_sach` chỉ có **8** em
+>   giữ suất ở CLB mình không thi, `TEST_0*` có **0**. Nên toàn bộ 18 và 2 cặp
+>   *"bốc thăm có phần"* đều đến từ **hoà điểm**, không từ Tầng 2. Thí nghiệm ở
+>   trên tồn tại chính vì lý do đó — nó tạo ra Tầng 2 mà dữ liệu gốc không có.
+
+### Nghĩa là gì cho phần mềm
+
+Tổn thất đến từ chỗ **CLB có ưu tiên thật** (điểm thi) và ưu tiên đó **không
+trùng** với nguyện vọng học sinh. Đó là đặc điểm của **mọi** thuật toán ghép cặp
+giữ tính ổn định, không phải khuyết điểm của bản cài đặt này. Bỏ bốc thăm đi
+cũng không gỡ được — số đo ở trên cho thấy bốc thăm gần như vô can.
+
+Bảng số này có test canh: `tests/test_danh_doi_on_dinh.py` (24 test). Sửa hàm
+tìm cặp cho lỏng ra thì **3 test đỏ**; sửa hàm quy nguyên nhân thì thêm test đỏ
+nữa — đã thử.
+
+> **Phần này chỉ ĐẾM cái giá.** Cái giá đó có chấp nhận được không, có nên đổi cơ
+> chế không, nên nói gì với học sinh về nó — **học sinh tự viết** (Phụ lục 1).
+
+---
+
 ## Bảng đối chiếu báo cáo ↔ phần mềm
 
 | Phần mềm chạy | Báo cáo đã mô tả? |

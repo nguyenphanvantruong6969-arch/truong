@@ -225,6 +225,67 @@ Chạy hai lần ra **đúng cùng một bảng** — đã kiểm.
 > bằng không, thứ tự nhập có ảnh hưởng không, những gì ảnh hưởng tới bộ
 > số) được trả lời riêng, kèm số đo, ở **`GIAI_DAP_BOC_THAM.md`**.
 
+## 3d. Cái giá của tính ổn định — cặp đôi cùng có lợi
+
+Mục 3c hỏi *"seed đổi thì ai đổi chỗ"*. Mục này hỏi câu khác và khó hơn: **kết
+quả ổn định rồi, nhưng có tốt nhất cho học sinh không?**
+
+> **Cặp đôi cùng có lợi** — em `s1` xếp CLB `c1`, em `s2` xếp CLB `c2`, mà `s1`
+> thích `c2` hơn **và** `s2` thích `c1` hơn. Đổi chỗ thì **cả hai cùng lên**.
+>
+> **Không phải cặp phá vỡ.** Cặp phá vỡ gồm 1 học sinh + 1 **câu lạc bộ**, và có
+> nghĩa là kết quả **sai**. Cặp đôi cùng có lợi gồm 2 **học sinh**, và có nghĩa
+> là kết quả **không tối ưu Pareto** — đánh đổi đã biết của cả họ thuật toán ghép
+> cặp ổn định.
+
+### Seed mốc 42
+
+| Bộ | Cặp phá vỡ | Cặp đôi cùng có lợi | Số em dính | Bốc thăm CÓ phần | Bốc thăm VÔ CAN |
+|---|---|---|---|---|---|
+| `vi_du_huong_dan/` (10 em) | 0 | **0** | 0 | — | — |
+| `bo_sach/` (140 em) | 0 | **85** | 34 (24,3%) | 18 (21%) | **67 (79%)** |
+| `TEST_0*` (120 em) | 0 | **19** | 16 (13,3%) | 2 (11%) | **17 (89%)** |
+
+### Quét 40 seed
+
+| Bộ | Cặp phá vỡ | Ít nhất · TB · Nhiều nhất | Số seed cho 0 cặp |
+|---|---|---|---|
+| `vi_du_huong_dan/` | 0 ở mọi seed | 0 · 0,0 · 0 | 40 / 40 |
+| `bo_sach/` | 0 ở mọi seed | 82 · **91,0** · 103 | **0 / 40** |
+| `TEST_0*` | 0 ở mọi seed | 19 · **21,5** · 24 | **0 / 40** |
+
+### Thí nghiệm đối chứng — bỏ điểm để đẩy học sinh xuống Tầng 2
+
+Bỏ điểm của `p%` số cặp (em, CLB) thì các em đó tụt xuống **Tầng 2**, nơi bốc
+thăm quyết định **hoàn toàn**. Nếu bốc thăm sinh ra tổn thất thì số cặp phải
+**tăng**. 10 seed mỗi mức.
+
+| Bỏ điểm | `bo_sach` cặp đôi (TB) | bốc thăm có phần | `TEST_0*` cặp đôi (TB) | bốc thăm có phần |
+|---|---|---|---|---|
+| 0% | **90,2** | 18,4 (20%) | **21,1** | 2,0 (9%) |
+| 25% | 65,3 | 7,9 (12%) | 20,0 | 4,0 (20%) |
+| 50% | 58,5 | 29,4 (50%) | 41,5 | 33,9 (82%) |
+| 75% | 45,2 | 41,2 (91%) | 29,5 | 29,3 (99%) |
+| **100%** | **4,1** | 4,1 (100%) | **2,2** | 2,2 (100%) |
+
+Ở mức bỏ hết điểm, bốc thăm quyết định 100% — mà số cặp lại **ít nhất**, và
+`TEST_0*` còn có **3/10 seed cho 0 cặp** (tối ưu Pareto). Khi điểm còn nguyên thì
+**không seed nào** trong 40 làm được điều đó.
+
+**Hai giới hạn của phép đo này, ghi để không ai trích thiếu:**
+
+- Các mức **ở giữa không đi một chiều** — chỉ hai đầu bảng mới đọc ra được.
+- Trên ba bộ này **Tầng 2 rất hiếm khi giữ suất**: `bo_sach/` có **8** em giữ
+  suất ở CLB mình không thi, `TEST_0*` có **0**. Nên cả 18 và 2 cặp *"bốc thăm có
+  phần"* đều đến từ **hoà điểm**. Thí nghiệm ở trên tồn tại chính vì lý do đó.
+
+```
+python du_lieu_test/do_danh_doi_on_dinh.py
+```
+
+Có **24 test canh** con số này: `tests/test_danh_doi_on_dinh.py`. Diễn giải đầy
+đủ ở `CO_CHE_THUAT_TOAN.md` và `BAN_GIAO.md` mục 5.
+
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
 Xem `NHAP_TAY.md` — 8 học sinh, 3 CLB.
@@ -244,8 +305,8 @@ tới — kết quả tính được bằng tay.
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tệp kiểm thử | 31 |
-| Trường hợp kiểm thử | **404** |
+| Tệp kiểm thử | 33 |
+| Trường hợp kiểm thử | **439** |
 | Số trường hợp không đạt | 0 |
 | Thời gian chạy toàn bộ | ~95 giây |
 

@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 01/09/2026 · 381 test pass
+> Cập nhật lần cuối: 03/09/2026 · 439 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **381 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) |
+| Test | **439 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) · ~90 giây |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 28 file test, 381 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 33 file test, 439 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -978,6 +978,83 @@ năng không có suất nào. Đã ghi vào `HUONG_DAN_SU_DUNG.md` mục 13.
 Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3c.
 
 
+### ĐÃ ĐO, KHÔNG PHẢI LỖI — kết quả ổn định nhưng không tối ưu Pareto (03/09)
+
+**Đọc mục này trước khi định "sửa" nó.** Học sinh hỏi thẳng câu này (dán vào một
+đoạn giải thích về *tie-breaking* trong DA, nói rằng phá hoà bằng bốc thăm làm
+mất tối ưu Pareto). Câu trả lời dưới đây là **đo được**, không phải trả lời bằng
+trí nhớ — và **kết quả đo bác một nửa đoạn văn đó**.
+
+**Hiện tượng có thật:**
+
+> **Cặp đôi cùng có lợi** — em `s1` xếp CLB `c1`, em `s2` xếp CLB `c2`, mà `s1`
+> thích `c2` hơn **và** `s2` thích `c1` hơn. Đổi chỗ thì **cả hai cùng lên**
+> nguyện vọng cao hơn. Thuật toán không cho, vì đổi như vậy phá tính ổn định.
+
+**KHÔNG được gọi đây là "cặp phá vỡ".** Cặp phá vỡ gồm 1 học sinh + 1 **câu lạc
+bộ** và nghĩa là kết quả **sai**; phần mềm đo được **0 cặp phá vỡ ở mọi seed**.
+Cặp đôi cùng có lợi gồm 2 **học sinh** và nghĩa là kết quả **không tối ưu
+Pareto** — đánh đổi đã biết của cả họ thuật toán ghép cặp ổn định. Lẫn hai chỗ
+này là mất điểm ngay.
+
+**Số đo** (`du_lieu_test/do_danh_doi_on_dinh.py`, seed mốc 42):
+
+| Bộ | Cặp phá vỡ | Cặp đôi cùng có lợi | Số em dính | Bốc thăm CÓ phần | Bốc thăm VÔ CAN |
+|---|---|---|---|---|---|
+| `vi_du_huong_dan/` (10 em) | 0 | **0** | 0 | — | — |
+| `bo_sach/` (140 em) | 0 | **85** | 34 (24,3%) | 18 (21%) | **67 (79%)** |
+| `TEST_0*` (120 em) | 0 | **19** | 16 (13,3%) | 2 (11%) | **17 (89%)** |
+
+Quét 40 seed: `bo_sach/` 82 · TB 91,0 · 103, **0/40 seed cho 0 cặp**; `TEST_0*`
+19 · TB 21,5 · 24, **0/40**.
+
+**Vì sao KHÔNG quy được cho bốc thăm — thí nghiệm đối chứng.** Bỏ điểm của `p%`
+số cặp (em, CLB) để đẩy các em đó xuống **Tầng 2**, nơi bốc thăm quyết định
+**hoàn toàn**. Nếu bốc thăm sinh ra tổn thất thì số cặp phải **tăng**:
+
+| Bỏ điểm | `bo_sach` (TB) | `TEST_0*` (TB) |
+|---|---|---|
+| 0% (giữ nguyên) | **90,2** | **21,1** |
+| 100% (bốc thăm quyết định tất cả) | **4,1** | **2,2** |
+
+Ngược hẳn. Và ở mức bỏ hết điểm, `TEST_0*` có **3/10 seed cho 0 cặp** — tức có
+lần đạt tối ưu Pareto, chuyện **không xảy ra lần nào** khi điểm còn nguyên.
+
+> ### ⚠️ CẢNH BÁO DIỄN GIẢI — hai kết luận sai dễ nhảy sang
+>
+> **SAI 1 — "vậy phải bỏ bốc thăm đi".** Số đo **không** đỡ kết luận đó. Bốc thăm
+> vô can trong **79–89%** số cặp, và khi cho bốc thăm toàn quyền thì số cặp
+> **giảm** chứ không tăng. Bỏ bốc thăm cũng không có gì thay thế: hai em hoà điểm
+> vẫn phải có cách phân định, và mọi cách khác đều thiên vị có hệ thống (xem khối
+> "ĐÃ ĐO, KHÔNG PHẢI LỖI" ở trên).
+>
+> **SAI 2 — "vậy phần mềm sai".** Không. `verify_stability` canh đúng cái phải
+> canh (0 cặp phá vỡ). Việc còn cặp đôi cùng có lợi là **hệ quả của việc giữ tính
+> ổn định**, không phải lỗi cài đặt.
+>
+> **Câu đúng, ngắn gọn:** tổn thất đến từ chỗ **CLB có ưu tiên thật (điểm thi)
+> không trùng với nguyện vọng học sinh** — không phải từ việc phá hoà.
+
+**Hai giới hạn của phép đo, ghi để không trích thiếu:**
+
+- Các mức **ở giữa** của thí nghiệm (25/50/75%) **không đi một chiều** — chỉ hai
+  đầu bảng mới đọc ra được. Đừng viết *"càng nhiều Tầng 2 càng ít cặp"*.
+- Trên ba bộ này **Tầng 2 rất hiếm khi giữ suất**: `bo_sach/` chỉ có **8** em giữ
+  suất ở CLB mình không thi, `TEST_0*` có **0**. Nên cả 18 và 2 cặp *"bốc thăm có
+  phần"* đều đến từ **hoà điểm**, không từ Tầng 2. Thí nghiệm đối chứng tồn tại
+  chính vì lý do đó — nó tạo ra Tầng 2 mà dữ liệu gốc không có.
+
+Có **24 test canh** (`tests/test_danh_doi_on_dinh.py`). Nới hàm tìm cặp cho lỏng
+ra thì **3 test đỏ**; phá hàm quy nguyên nhân thì thêm test đỏ nữa — đã thử.
+
+> **AI không kết luận hộ.** Bộ đo **ĐẾM** cái giá. Cái giá đó có chấp nhận được
+> không, có nên đổi cơ chế không, nên nói gì với học sinh về nó — **học sinh tự
+> viết** (Phụ lục 1, mục 6).
+
+Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3d và
+`CO_CHE_THUAT_TOAN.md`.
+
+
 ### Còn lại chưa giải quyết
 
 - **`ky_va_tin_cay.ps1` chưa chạy ở đâu bao giờ.** Nếu demo trên máy không có quyền
@@ -1268,9 +1345,10 @@ bỏ 1 câu trùng.
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 
-**Trạng thái nhật ký AI (02/09/2026):** đã cập nhật tới **câu lệnh #94**, phủ hết
-ngày 02/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ câu
-hỏi khảo sát 16 câu, và việc chuyển sang Microsoft Forms.
+**Trạng thái nhật ký AI (03/09/2026):** đã cập nhật tới **câu lệnh #96**, phủ hết
+ngày 02–03/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ
+câu hỏi khảo sát 16 câu, việc chuyển sang Microsoft Forms, trang
+`CO_CHE_THUAT_TOAN`, và bộ đo cái giá của tính ổn định.
 
 > **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
 > Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:
@@ -1282,8 +1360,11 @@ hỏi khảo sát 16 câu, và việc chuyển sang Microsoft Forms.
 > hiện khảo sát" — cả ba đều sai phạm vi và đều chạm vào ô *cấm thu thập dữ liệu
 > nghiên cứu* của Phụ lục 1.
 
-Câu lệnh **#89** ghi lại một lần **AI từ chối viết phần Kết luận** (02/09) — dùng
-được làm mốc đối chiếu khi giám khảo hỏi về ranh giới sử dụng AI.
+Hai mốc dùng được khi giám khảo hỏi về ranh giới sử dụng AI:
+
+- Câu lệnh **#89** — **AI từ chối viết phần Kết luận** (02/09).
+- Câu lệnh **#95** — **AI từ chối tìm tài liệu tham khảo**, hỏi bốn lần từ chối cả
+  bốn (02/09). Là mục duy nhất trong nhật ký mang nhãn **"Không được phép"**.
 
 ---
 
@@ -1304,6 +1385,7 @@ Câu lệnh **#89** ghi lại một lần **AI từ chối viết phần Kết l
 | Giải thích thuật toán RB-DA (tiếng Việt, có sơ đồ) | artifact `ef3cc025-51d6-4bb8-a8ee-92ac23c945c8` |
 | Kế hoạch kiểm thử mất dữ liệu | artifact `c0aa29df-b2b2-4e40-8e72-4adb63627a26` |
 | Nhật ký AI (PDF in được) | artifact `1369e5c3-3d9f-4d8f-8c00-0328bc1b5131` |
+| Phần mềm chạy cơ chế gì (5 lớp + cái giá của ổn định) | artifact `eced0ff9-08df-4922-a17e-5f85d99f79aa` · `CO_CHE_THUAT_TOAN.md` |
 | Tài liệu thuật toán + dữ liệu test | `TAI_LIEU_RBDA.zip` (đã gửi cho học sinh) |
 | README chi tiết | `rbda-kiosk/README.md` |
 

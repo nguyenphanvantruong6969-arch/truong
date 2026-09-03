@@ -134,6 +134,14 @@ blockquote p:last-child{margin-bottom:0}
   color:var(--ink-soft);margin:14px 0}
 .warn b{color:var(--ink)}
 
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right;
+  font-size:13.5px}
+th.num{text-align:right}
+.key{color:var(--rust);font-weight:600}
+.pass.vs-a{border-left:4px solid var(--rust)}
+.pass.vs-b{border-left:4px solid var(--gold)}
+.pass .vs-what{font-size:13.5px;color:var(--ink);font-weight:600;margin:0 0 4px}
+
 footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
   font-size:13.5px;color:var(--slate);font-style:italic}
 
@@ -397,6 +405,213 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
     <b>Đây không phải lỗi.</b> Đó là điều suất dự trữ sinh ra, và là lý do Lớp 5 phải kiểm cặp
     phá vỡ bằng chính hàm lựa chọn. Bảng này có <b>11 test canh</b>
     (<code>tests/test_hai_canh_du_tru.py</code>). Gỡ cơ chế dự trữ ra thì <b>5 test đỏ</b> — đã thử.
+  </div>
+
+
+  <!-- ============ CÁI GIÁ CỦA TÍNH ỔN ĐỊNH ============ -->
+  <h2>Cái giá của tính ổn định — đã đo, không phải suy luận</h2>
+  <p class="lede">
+    <code>verify_stability</code> canh được <strong>0 cặp phá vỡ</strong>. Nhưng
+    <em>"ổn định"</em> và <em>"tốt nhất cho học sinh"</em> là hai chuyện khác nhau — và chỗ
+    khác nhau đó đo được.
+  </p>
+
+  <blockquote>
+    <p>
+      <strong>CẶP ĐÔI CÙNG CÓ LỢI</strong> — em <code>s1</code> được xếp CLB <code>c1</code>,
+      em <code>s2</code> được xếp CLB <code>c2</code>, mà <code>s1</code> thích <code>c2</code>
+      hơn <em>và</em> <code>s2</code> thích <code>c1</code> hơn. Hai em đổi chỗ cho nhau thì
+      <strong>cả hai cùng lên</strong> nguyện vọng cao hơn — thuật toán không cho, vì đổi như
+      vậy phá mất tính ổn định.
+    </p>
+  </blockquote>
+
+  <h3>Đừng lẫn hai khái niệm — giám khảo bắt được ngay</h3>
+  <div class="passes">
+    <div class="pass vs-a">
+      <p class="pass-n">Cặp phá vỡ · blocking pair</p>
+      <p class="vs-what">1 học sinh + 1 CÂU LẠC BỘ</p>
+      <p>Kết quả <strong>không ổn định</strong> → là <strong>LỖI</strong>. Phần mềm đo được
+        <strong>0</strong> ở mọi seed.</p>
+    </div>
+    <div class="pass vs-b">
+      <p class="pass-n">Cặp đôi cùng có lợi</p>
+      <p class="vs-what">2 HỌC SINH đổi chỗ cho nhau</p>
+      <p>Kết quả không tối ưu Pareto → <strong>đánh đổi đã biết</strong> của cả họ thuật toán,
+        <strong>không phải lỗi</strong>.</p>
+    </div>
+  </div>
+
+  <pre>python du_lieu_test/do_danh_doi_on_dinh.py</pre>
+
+  <h3>Đo được gì — seed mốc 42</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Bộ dữ liệu</th>
+          <th class="num">Cặp phá vỡ</th>
+          <th class="num">Cặp đôi cùng có lợi</th>
+          <th class="num">Số em dính</th>
+          <th class="num">Bốc thăm có phần</th>
+          <th class="num">Bốc thăm vô can</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>vi_du_huong_dan</code><br><span style="color:var(--slate)">10 em</span></td>
+          <td class="num yes">0</td><td class="num">0</td><td class="num">0</td>
+          <td class="num">—</td><td class="num">—</td>
+        </tr>
+        <tr class="hl">
+          <td><code>bo_sach</code><br><span style="color:var(--slate)">140 em</span></td>
+          <td class="num yes">0</td><td class="num key">85</td><td class="num">34 · 24,3%</td>
+          <td class="num">18 · 21%</td><td class="num key">67 · 79%</td>
+        </tr>
+        <tr>
+          <td><code>TEST_0*</code><br><span style="color:var(--slate)">120 em</span></td>
+          <td class="num yes">0</td><td class="num key">19</td><td class="num">16 · 13,3%</td>
+          <td class="num">2 · 11%</td><td class="num key">17 · 89%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Quét 40 seed</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Bộ dữ liệu</th>
+          <th class="num">Cặp phá vỡ</th>
+          <th class="num">Ít nhất · TB · Nhiều nhất</th>
+          <th class="num">Số seed cho 0 cặp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>vi_du_huong_dan</code></td><td class="num yes">0 ở mọi seed</td>
+            <td class="num">0 · 0,0 · 0</td><td class="num">40 / 40</td></tr>
+        <tr><td><code>bo_sach</code></td><td class="num yes">0 ở mọi seed</td>
+            <td class="num">82 · <b>91,0</b> · 103</td><td class="num key">0 / 40</td></tr>
+        <tr><td><code>TEST_0*</code></td><td class="num yes">0 ở mọi seed</td>
+            <td class="num">19 · <b>21,5</b> · 24</td><td class="num key">0 / 40</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="font-size:20px">Không quy được cho bốc thăm — và đây là thí nghiệm chứng minh</h2>
+  <p class="lede">
+    Cách đọc tự nhiên là đổ cho <strong>bốc thăm phá hoà</strong>. Ba phép đo đều
+    <strong>không</strong> ủng hộ cách đọc đó.
+  </p>
+  <p>
+    <strong>①  Đổi bốc thăm không làm hiện tượng biến mất.</strong> 0/40 seed cho 0 cặp trên
+    cả hai bộ có hiện tượng, biên độ dao động nhỏ.
+  </p>
+  <p>
+    <strong>②  Phần lớn số cặp là em thua vì ĐIỂM</strong>, không phải hoà rồi thua bốc thăm —
+    <strong>79%</strong> và <strong>89%</strong>.
+  </p>
+  <p>
+    <strong>③  Thí nghiệm can thiệp thẳng.</strong> Bỏ điểm của <code>p%</code> số cặp
+    (em, CLB) để đẩy các em đó xuống <strong>Tầng 2</strong> — nơi bốc thăm quyết định
+    <strong>hoàn toàn</strong>. Nếu bốc thăm sinh ra tổn thất thì càng nhiều Tầng 2, số cặp
+    phải càng <strong>tăng</strong>.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th><code>bo_sach</code> · 10 seed mỗi mức</th>
+          <th class="num">Cặp đôi (TB)</th>
+          <th class="num">Bốc thăm có phần</th>
+          <th class="num">Thua vì điểm</th>
+          <th class="num">Seed cho 0 cặp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="hl"><td>Giữ nguyên điểm</td><td class="num key">90,2</td>
+            <td class="num">18,4 · 20%</td><td class="num">71,8</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 25%</td><td class="num">65,3</td><td class="num">7,9 · 12%</td>
+            <td class="num">57,4</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 50%</td><td class="num">58,5</td><td class="num">29,4 · 50%</td>
+            <td class="num">29,1</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 75%</td><td class="num">45,2</td><td class="num">41,2 · 91%</td>
+            <td class="num">4,0</td><td class="num">0/10</td></tr>
+        <tr class="hl"><td><strong>Bỏ hết điểm</strong><br>
+            <span style="color:var(--slate)">bốc thăm quyết định 100%</span></td>
+            <td class="num key">4,1</td><td class="num">4,1 · 100%</td>
+            <td class="num">0,0</td><td class="num">0/10</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th><code>TEST_0*</code> · 10 seed mỗi mức</th>
+          <th class="num">Cặp đôi (TB)</th>
+          <th class="num">Bốc thăm có phần</th>
+          <th class="num">Thua vì điểm</th>
+          <th class="num">Seed cho 0 cặp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="hl"><td>Giữ nguyên điểm</td><td class="num key">21,1</td>
+            <td class="num">2,0 · 9%</td><td class="num">19,1</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 25%</td><td class="num">20,0</td><td class="num">4,0 · 20%</td>
+            <td class="num">16,0</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 50%</td><td class="num">41,5</td><td class="num">33,9 · 82%</td>
+            <td class="num">7,6</td><td class="num">0/10</td></tr>
+        <tr><td>Bỏ 75%</td><td class="num">29,5</td><td class="num">29,3 · 99%</td>
+            <td class="num">0,2</td><td class="num">0/10</td></tr>
+        <tr class="hl"><td><strong>Bỏ hết điểm</strong><br>
+            <span style="color:var(--slate)">bốc thăm quyết định 100%</span></td>
+            <td class="num key">2,2</td><td class="num">2,2 · 100%</td>
+            <td class="num">0,0</td><td class="num yes">3/10</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <strong>Đọc ra:</strong> ở mức bỏ hết điểm, bốc thăm quyết định 100% — mà số cặp lại
+    <strong>ít nhất</strong> (90,2 → 4,1 và 21,1 → 2,2), thậm chí <code>TEST_0*</code> có
+    <strong>3/10 seed cho 0 cặp</strong>, tức có lần đạt <strong>tối ưu Pareto</strong>.
+    Chuyện đó <strong>không xảy ra lần nào</strong> khi điểm còn nguyên. Hướng đi ngược hẳn
+    với cách đọc <em>"tại bốc thăm"</em>.
+  </p>
+
+  <div class="warn">
+    <b>Hai chỗ phải nói thẳng, đừng cắt đi khi trích:</b>
+    <p style="margin:8px 0 0">
+      <b>①  Các mức ở giữa không đi một chiều</b> (65,3 · 58,5 · 45,2 — và <code>TEST_0*</code>
+      còn vọt lên 41,5 ở mức 50%). Chỉ <b>hai đầu</b> của bảng mới là điều đọc ra được. Không
+      viết thành <i>"càng nhiều Tầng 2 càng ít cặp"</i>.
+    </p>
+    <p style="margin:8px 0 0">
+      <b>②  Trên ba bộ này, Tầng 2 rất hiếm khi giữ suất:</b> <code>bo_sach</code> chỉ có
+      <b>8</b> em giữ suất ở CLB mình không thi, <code>TEST_0*</code> có <b>0</b>. Nên toàn bộ
+      18 và 2 cặp <i>"bốc thăm có phần"</i> đều đến từ <b>hoà điểm</b>, không từ Tầng 2. Thí
+      nghiệm ở trên tồn tại chính vì lý do đó — nó tạo ra Tầng 2 mà dữ liệu gốc không có.
+    </p>
+  </div>
+
+  <h3>Nghĩa là gì cho phần mềm</h3>
+  <p>
+    Tổn thất đến từ chỗ <strong>CLB có ưu tiên thật</strong> (điểm thi) và ưu tiên đó
+    <strong>không trùng</strong> với nguyện vọng học sinh. Đó là đặc điểm của
+    <strong>mọi</strong> thuật toán ghép cặp giữ tính ổn định, không phải khuyết điểm của bản
+    cài đặt này. Bỏ bốc thăm đi cũng không gỡ được — số đo ở trên cho thấy bốc thăm gần như
+    vô can.
+  </p>
+  <div class="scope">
+    Bảng số này có <b>24 test canh</b> (<code>tests/test_danh_doi_on_dinh.py</code>). Sửa hàm
+    tìm cặp cho lỏng ra thì <b>3 test đỏ</b>; sửa hàm quy nguyên nhân thì thêm test đỏ nữa —
+    đã thử.<br><br>
+    <b>Phần này chỉ ĐẾM cái giá.</b> Cái giá đó có chấp nhận được không, có nên đổi cơ chế
+    không, nên nói gì với học sinh về nó — <b>học sinh tự viết</b> (Phụ lục 1).
   </div>
 
   <!-- ============ ĐỐI CHIẾU ============ -->
