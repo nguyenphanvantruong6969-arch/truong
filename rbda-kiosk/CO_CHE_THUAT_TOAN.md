@@ -206,6 +206,64 @@ trữ ra thì **5 test đỏ** — đã thử.
 
 ---
 
+## Nếu trường KHÔNG dùng suất dự trữ
+
+Suất dự trữ sinh ra từ hoàn cảnh trường công. Một trường quốc tế có thể không cần
+cơ chế đó — mọi CLB đặt `reserve_capacity = 0`. Câu hỏi: phần mềm còn chạy đúng
+không, và chỗ lệch ở mục trên có còn không?
+
+```bash
+python du_lieu_test/do_khong_du_tru.py
+```
+
+### Chỗ lệch BIẾN MẤT — và đó là điều đáng nói nhất
+
+`reserve_capacity = 0` làm `reserve_held = candidates[:0] = []`, nên
+`general_capacity = capacity` và lượt chung xét **toàn bộ** pool. Hàm lựa chọn
+thu về đúng *"sắp theo thứ hạng, lấy K em đầu"*.
+
+Cùng một pool `A, B, C, D, E` (ưu tiên A > B > C > D > E, sức chứa 3, D và E
+thuộc diện dự trữ), chỉ đổi số suất dự trữ:
+
+| Suất dự trữ | `club_choice_function` | Mô hình `Q_j` | |
+|---|---|---|---|
+| 2 | `D, E, A` | `A, B, C` | **LỆCH** |
+| 1 | `D, A, B` | `A, B, C` | **LỆCH** |
+| **0** | `A, B, C` | `A, B, C` | **khớp** |
+
+**Đọc ra:** suất dự trữ **là nguyên nhân duy nhất** làm hàm lựa chọn không phải
+một thứ tự tuyến tính. Bỏ nó đi thì RB-DA **thu về Deferred Acceptance thuần
+tuý**, và **mô hình `Q_j` trong báo cáo trở thành ĐÚNG**.
+
+Nói cách khác: chỗ lệch báo cáo ↔ phần mềm ở mục trên tồn tại **chỉ vì** dự trữ.
+
+### Kết quả phân bổ đổi bao nhiêu
+
+Bỏ hết suất dự trữ, so với giữ nguyên — quét 20 seed:
+
+| Bộ dữ liệu | Em đổi CLB | Em mất suất | Em được thêm suất | Cặp phá vỡ |
+|---|---|---|---|---|
+| `bo_sach` (140 em · 16 suất dự trữ) | TB **32,3** (23,1%) | 0,1 | 0,1 | **0** ở cả hai cấu hình |
+| `TEST_0*` (120 em · 12 suất dự trữ) | TB **22,6** (18,8%) | 5,7 | 4,2 | **0** ở cả hai cấu hình |
+
+Ba điều đọc được:
+
+1. **Phần mềm chạy đúng không cần sửa gì.** 0 cặp phá vỡ ở mọi seed, cả hai cấu
+   hình. Trường không dùng dự trữ chỉ cần để cột `reserve_capacity` bằng 0.
+2. **Nhưng kết quả không giống nhau** — khoảng **một phần năm** số em đổi CLB.
+   16 suất dự trữ trên 150 chỗ làm 32 em đổi chỗ: dự trữ đẩy dây chuyền sang cả
+   những em không thuộc diện nào.
+3. **Số em mất hẳn suất ít hơn nhiều số em đổi chỗ.** Bỏ dự trữ chủ yếu xáo lại
+   *ai vào đâu*, không phải *ai có suất*.
+
+Có **7 test canh** (`tests/test_khong_du_tru.py`), trong đó một test kiểm trên
+**200 pool ngẫu nhiên** rằng suất dự trữ 0 cho đúng mô hình `Q_j`.
+
+> **Phần này chỉ ĐẾM hệ quả.** Trường nên hay không nên dùng suất dự trữ —
+> **học sinh tự viết** (Phụ lục 1).
+
+---
+
 ## Cái giá của tính ổn định — đã đo, không phải suy luận
 
 `verify_stability` canh được **0 cặp phá vỡ**. Nhưng *"ổn định"* và *"tốt nhất

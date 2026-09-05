@@ -236,3 +236,84 @@ def test_full_pipeline_on_seeded_sample_data_has_no_integrity_problems(tmp_path)
         default_reserve_eligible_fn(students, clubs),
     ) == []
     assert sum(1 for v in result.assignment.values() if v) > 0
+
+
+# ---------------------------------------------------------------------------
+# run_full_pipeline() là đường THỬ NGHIỆM — không được chạm dữ liệu thật
+# ---------------------------------------------------------------------------
+
+def test_run_full_pipeline_tu_choi_chay_tren_csdl_da_dung_that(tmp_path):
+    """Đường dòng lệnh thiếu BỐN lớp bảo vệ mà api.run_pipeline có: không
+    tôn trọng stb_lock, không chèn ngẫu nhiên cho em vào sau, không kiểm
+    cặp phá vỡ, không ghi run_history.
+
+    Chạy nhầm nó lên app.db thật là vẽ lại toàn bộ số bốc thăm và lật kết
+    quả đã công bố — mà KHÔNG để lại dấu vết nào để kiểm toán. Chốt chặn
+    này là thứ duy nhất ngăn điều đó.
+    """
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from api import PipelineAPI
+
+    db_path = str(tmp_path / "app.db")
+    api = PipelineAPI(db_path)
+    api.create_or_update_club("clb_a", "CLB A", 5, 0, "")
+    for i in range(1, 6):
+        sid = "HS%02d" % i
+        api.create_student_if_missing(sid, "Em " + sid)
+        api.submit_preferences(sid, ["clb_a"])
+    api.run_pipeline(seed=42)          # khoá STB + ghi run_history
+
+    truoc = _bo_so_boc_tham(db_path)
+    with pytest.raises(RuntimeError) as loi_bat_duoc:
+        run_full_pipeline(db_path, seed=99, output_csv_path=str(tmp_path / "x.csv"))
+
+    assert "TU CHOI CHAY" in str(loi_bat_duoc.value)
+    assert _bo_so_boc_tham(db_path) == truoc, "đã kịp đổi số bốc thăm rồi mới chặn"
+
+
+def test_run_full_pipeline_van_chay_binh_thuong_tren_csdl_sach(tmp_path):
+    """Chốt chặn không được làm hỏng công dụng thật của hàm: chạy nhanh
+    không cần giao diện, trên CSDL mới tinh."""
+    db_path = str(tmp_path / "sach.db")
+    seed_sample_data(db_path, n_students=40, seed=7)
+
+    result = run_full_pipeline(db_path, seed=42,
+                               output_csv_path=str(tmp_path / "kq.csv"))
+    assert sum(1 for v in result.assignment.values() if v) > 0
+
+
+def _bo_so_boc_tham(db_path):
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    try:
+        return dict(conn.execute("SELECT student_id, stb_number FROM students"))
+    finally:
+        conn.close()
+
+
+def test_run_rbda_cham_tran_vong_thi_BAO_LOI_chu_khong_tra_ket_qua_do_dang():
+    """Trước đây chạm trần thì vòng lặp lặng lẽ thoát và trả kết quả dở
+    dang. verify_stability() gần như chắc chắn bắt được (em chưa thử hết
+    nguyện vọng tạo cặp phá vỡ), nhưng người đọc nhận một câu báo lỗi nói
+    SAI nguyên nhân.
+
+    Cận trên thật đã đo: số vòng = độ dài danh sách nguyện vọng dài nhất,
+    mà app chặn cứng 10 — nên trần 1000 không chạm được bằng dữ liệu thật.
+    Test này hạ trần xuống để dựng lại tình huống.
+    """
+    students = {"HS%02d" % i: {"stb": i, "reserve_group": ""} for i in range(20)}
+    clubs = {"c%d" % j: {"capacity": 1, "reserve_capacity": 0, "reserve_group": ""}
+             for j in range(5)}
+    prefs = {s: ["c%d" % j for j in range(5)] for s in students}
+    applicants = {c: list(students) for c in clubs}
+    stb = {s: i for i, s in enumerate(students)}
+    fn = default_reserve_eligible_fn(students, clubs)
+
+    with pytest.raises(RuntimeError, match="cham tran"):
+        run_rbda(students, clubs, {c: {} for c in clubs}, applicants, prefs, stb,
+                 fn, max_rounds=2)
+
+    # trần mặc định: chạy trọn, số vòng đúng bằng số nguyện vọng
+    kq = run_rbda(students, clubs, {c: {} for c in clubs}, applicants, prefs, stb, fn)
+    assert kq.rounds_run == 5

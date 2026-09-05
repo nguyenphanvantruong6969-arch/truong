@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 05/09/2026 · 460 test pass
+> Cập nhật lần cuối: 05/09/2026 · 483 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **460 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) · ~90 giây |
+| Test | **483 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) · ~90 giây |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 35 file test, 460 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 37 file test, 483 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -1167,6 +1167,106 @@ nào. Khi thử trên Windows, kiểm đúng ba điều:
    OneDrive đã chuyển hướng thư mục đó).
 2. Bấm **hai lần** → có ra `ket_qua_phan_bo (2).csv` không, hay ghi đè.
 3. Thông báo hiện ra có đúng đường dẫn đầy đủ không.
+
+
+### ĐÃ SỬA (05/09, phiên 2) — đường dòng lệnh vượt qua cả ba lớp bảo vệ
+
+**Tìm được khi rà nối backend, không phải khi đi tìm lỗi.**
+`rbda_priority_pipeline.py` có `run_full_pipeline()` — chạy được bằng
+`python rbda_priority_pipeline.py app.db 42 out.csv`. Nó **thiếu bốn lớp** mà
+`api.run_pipeline()` có:
+
+| Thiếu gì | Hậu quả nếu chạy nhầm lên `app.db` thật |
+|---|---|
+| Không tôn trọng `stb_lock` | Vẽ lại **toàn bộ** số bốc thăm, lật kết quả đã công bố |
+| Không chèn ngẫu nhiên cho em vào sau | (không đặt ra, vì nó vẽ lại tất) |
+| Không `verify_stability` / `sanity_check_result`, không rollback | Kết quả sai vẫn ghi thẳng vào CSDL |
+| **Không ghi `run_history`** | **Không để lại dấu vết nào** — lớp quan trọng nhất trong ba lớp chống dò seed biến mất |
+
+**Đã làm gì.** Thêm `_chan_neu_la_du_lieu_that()`: hàm **từ chối chạy** khi CSDL
+đã khoá số bốc thăm hoặc đã có dòng nào trong `run_history`. Trên CSDL sạch (ví
+dụ do `seed_sample_data` dựng) nó chạy như cũ, nên vẫn dùng để gỡ lỗi được.
+
+> **Vì sao KHÔNG cho nó uỷ quyền về `api.run_pipeline`** — đó là phương án nghe
+> hợp lý nhất và nó **sai**: `api.py` đã `import` từ `rbda_priority_pipeline.py`,
+> nên chiều ngược lại tạo **vòng lặp import** ngay trong mô-đun mà mọi thứ khác
+> phụ thuộc. Thêm chốt chặn rẻ hơn và không đụng gì tới đường chạy thật.
+
+Test canh: `tests/test_pipeline_core.py` — chạy trên CSDL đã dùng thật phải
+`raise` **và không kịp đổi số bốc thăm nào**; trên CSDL sạch vẫn chạy.
+
+
+### ĐÃ ĐO (05/09, phiên 2) — thử tải NGHỊCH CẢNH, không tìm ra lỗi nào
+
+`du_lieu_test/thu_tai/` cũ quét 204 cấu hình tới 5000 em, nhưng chỉ đổi **quy
+mô** — dữ liệu vẫn bình thường. Bộ mới
+`du_lieu_test/thu_tai/thu_nghich_canh.py` đổi **hình thù**:
+
+| Kịch bản | Số vòng | Kết quả |
+|---|---|---|
+| 800 em · 1 CLB 20 chỗ · mỗi em 1 nguyện vọng | 1 | đạt |
+| 300 em · 30 CLB **sức chứa 1** | 18 | đạt |
+| 500 em · **cả trường cùng điểm 8.0** | 13 | đạt |
+| 400 em · **không ai được chấm điểm** (toàn Tầng 2) | 8 | đạt |
+| CLB không ai đăng ký · em không nguyện vọng nào | 1 | đạt |
+| **Suất dự trữ = toàn bộ sức chứa** | 11 | đạt |
+| **Nạp → chạy → nạp thêm → chạy lại, 5 đợt, 2000 em** | 23 | đạt |
+| Tên là công thức Excel, có tab/xuống dòng, 300 ký tự, emoji | 1 | đạt |
+
+**Cả 8 kịch bản đạt**: không ném lỗi, **0 cặp phá vỡ**, số vòng cao nhất **23**
+so với trần 1000. Bản nhanh nằm trong bộ test thường (`tests/test_nghich_canh.py`,
+13 test, chạy dưới 2 giây).
+
+Kịch bản áp chót là đáng giá nhất: nó chạy đường chèn ngẫu nhiên viết hôm qua ở
+quy mô **2000 em qua 5 lần khoá**, gấp 66 lần quy mô nó được viết ra — và thứ tự
+tương đối của các em cũ giữ nguyên sau **mọi** đợt.
+
+
+### ĐÃ ĐO (05/09, phiên 2) — cấu hình KHÔNG có suất dự trữ
+
+Câu hỏi: trường quốc tế không cần chính sách dự trữ thì phần mềm chạy sao?
+
+**Phần mềm chạy đúng, không phải sửa gì** — chỉ cần để cột `reserve_capacity`
+bằng 0. 0 cặp phá vỡ ở mọi seed.
+
+**Nhưng có một điều đáng đưa vào báo cáo:** `reserve_capacity = 0` làm hàm lựa
+chọn thu về đúng *"sắp theo thứ hạng, lấy K em đầu"* — tức **mô hình `Q_j` trong
+báo cáo TRỞ THÀNH ĐÚNG**. Chỗ lệch báo cáo ↔ phần mềm ở mục 4b tồn tại **chỉ vì**
+có suất dự trữ.
+
+| Bỏ hết dự trữ, 20 seed | Em đổi CLB | Mất suất | Được thêm suất |
+|---|---|---|---|
+| `bo_sach` (140 em · 16 suất) | TB **32,3** (23,1%) | 0,1 | 0,1 |
+| `TEST_0*` (120 em · 12 suất) | TB **22,6** (18,8%) | 5,7 | 4,2 |
+
+16 suất dự trữ trên 150 chỗ làm **32 em** đổi chỗ — dự trữ đẩy dây chuyền sang cả
+những em không thuộc diện nào. Nhưng số em **mất hẳn suất** thì ít hơn nhiều: bỏ
+dự trữ chủ yếu xáo lại *ai vào đâu*, không phải *ai có suất*.
+
+Bộ đo `du_lieu_test/do_khong_du_tru.py`, 7 test canh
+(`tests/test_khong_du_tru.py`). Diễn giải đầy đủ ở `CO_CHE_THUAT_TOAN.md`.
+
+> **AI không kết luận hộ.** Trường nên hay không nên dùng suất dự trữ — học sinh
+> tự viết.
+
+
+### ĐÃ RÀ, KHÔNG PHẢI LỖI (05/09, phiên 2) — ba nghi ngờ đã bác bỏ bằng số đo
+
+**Đọc mục này trước khi định "sửa" ba chỗ đó.** Cả ba trông như lỗi khi đọc mã.
+
+| Nghi ngờ | Đo được |
+|---|---|
+| 33/34 hàm mở kết nối SQLite không có `finally` → **rò kết nối** | **Không rò.** Gọi 600 lần vào các nhánh lỗi: số kết nối còn sống vẫn **0**. CPython thu hồi bằng đếm tham chiếu. Vấn đề *phong cách*, không phải lỗi |
+| `max_rounds = 1000` bị chạm → **cắt cụt âm thầm** | **Không chạm được.** Cận trên thật = **độ dài danh sách nguyện vọng** (10 NV → 10 vòng; 100 → 100). App chặn cứng 10 nguyện vọng. Thử nghịch cảnh cao nhất: **23 vòng** |
+| Không có khoá chống gọi chồng | `connect_db` đã đặt `busy_timeout` dài + `synchronous=FULL`, và giao diện tự khoá nút lúc chạy. Kiosk một người dùng — đủ |
+
+Dù `max_rounds` không chạm được, `run_rbda` nay **ném lỗi tường minh** nếu chạm,
+thay vì lặng lẽ trả kết quả dở dang. Trước đây `verify_stability` sẽ bắt được
+nhưng báo **sai nguyên nhân** ("có cặp phá vỡ" thay vì "hết vòng").
+
+**Một thứ KHÔNG kiểm được và đừng tin kết quả cũ:** tôi có chạy `pyflakes` để dò
+import thừa — **máy không cài `pyflakes`**, nên kết quả rỗng lúc đó là *vô nghĩa
+chứ không phải sạch*. Muốn kiểm thật thì phải cài trước.
 
 
 ### Còn lại chưa giải quyết

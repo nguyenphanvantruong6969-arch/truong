@@ -305,8 +305,8 @@ tới — kết quả tính được bằng tay.
 
 | Đại lượng | Giá trị |
 |---|---|
-| Tệp kiểm thử | 35 |
-| Trường hợp kiểm thử | **460** |
+| Tệp kiểm thử | 37 |
+| Trường hợp kiểm thử | **483** |
 | Số trường hợp không đạt | 0 |
 | Thời gian chạy toàn bộ | ~95 giây |
 

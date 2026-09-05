@@ -225,7 +225,13 @@ def run_rbda(
         clubs: {club_id: {"capacity": int, "reserve_capacity": int}}
         tested_scores, applicants, preferences, stb_lottery: xem đầu file.
         is_reserve_eligible_fn: (student_id, club_id) -> bool.
-        max_rounds: chặn vòng lặp vô hạn nếu có lỗi dữ liệu.
+        max_rounds: chặn vòng lặp vô hạn nếu có lỗi dữ liệu. ĐÃ ĐO cận
+            trên thật: số vòng chạy đúng bằng ĐỘ DÀI DANH SÁCH NGUYỆN
+            VỌNG dài nhất (10 nguyện vọng -> 10 vòng; 100 -> 100), vì
+            mỗi vòng, mỗi em chưa có chỗ tiến đúng một nguyện vọng. App
+            chặn cứng 10 nguyện vọng (api.py), nên trần 1000 ở đây gấp
+            100 lần mức cần. Chạm được trần này nghĩa là dữ liệu hỏng
+            theo cách chưa từng thấy — xem chỗ raise ngay sau vòng lặp.
 
     Returns:
         MatchResult
@@ -299,6 +305,20 @@ def run_rbda(
             for sid in still_unassigned
             if next_choice_idx[sid] < len(preferences.get(sid, []))
         ]
+
+    # Chạm trần = vòng lặp bị CẮT CỤT giữa chừng, và kết quả trả về là
+    # dở dang: có em còn nguyện vọng chưa thử. Trước đây hàm lặng lẽ trả
+    # kết quả đó ra; verify_stability() gần như chắc chắn bắt được (em
+    # dở dang tạo cặp phá vỡ), nhưng người đọc sẽ nhận một câu báo lỗi
+    # nói SAI nguyên nhân. Nói thẳng ra ở đây rẻ hơn nhiều.
+    if unassigned and round_num >= max_rounds:
+        raise RuntimeError(
+            "run_rbda cham tran %d vong ma con %d hoc sinh chua thu het "
+            "nguyen vong. Ket qua se DO DANG nen khong tra ve. Can tren "
+            "that = do dai danh sach nguyen vong dai nhat, nen cham tran "
+            "nghia la du lieu hong hoac max_rounds bi ha xuong qua thap."
+            % (max_rounds, len(unassigned))
+        )
 
     assignment: dict[str, Optional[str]] = {sid: None for sid in students}
     matched_tier: dict[str, str] = {}
@@ -776,11 +796,66 @@ def write_match_results_to_sqlite(
     conn.close()
 
 
+def _chan_neu_la_du_lieu_that(db_path: str) -> None:
+    """Từ chối chạy đường dòng lệnh trên một CSDL đã dùng thật.
+
+    Xem cảnh báo dài ở run_full_pipeline(). Dấu hiệu "đã dùng thật" là một
+    trong hai: số bốc thăm ĐÃ KHOÁ, hoặc bảng run_history đã có dòng nào.
+    Cả hai chỉ xuất hiện sau khi chạy qua PipelineAPI.run_pipeline().
+    """
+    import sqlite3
+
+    conn = connect_db(db_path)
+    try:
+        cur = conn.cursor()
+        try:
+            row = cur.execute("SELECT is_locked FROM stb_lock WHERE id = 1").fetchone()
+            da_khoa = bool(row[0]) if row else False
+            so_lan_chay = cur.execute("SELECT COUNT(*) FROM run_history").fetchone()[0]
+        except sqlite3.Error:
+            return                       # CSDL cũ chưa có bảng -> coi như sạch
+    finally:
+        conn.close()
+
+    if da_khoa or so_lan_chay:
+        raise RuntimeError(
+            "TU CHOI CHAY: '%s' da duoc dung that (so boc tham %s, %d lan chay "
+            "trong run_history).\n"
+            "run_full_pipeline() la duong THU NGHIEM: no ve lai TOAN BO so boc "
+            "tham bat ke khoa, khong kiem cap pha vo, khong ghi run_history — "
+            "chay tiep se lat ket qua da cong bo va KHONG de lai dau vet.\n"
+            "Dung giao dien phan mem, hoac PipelineAPI(db).run_pipeline(seed)."
+            % (db_path, "DA KHOA" if da_khoa else "chua khoa", so_lan_chay)
+        )
+
+
 def run_full_pipeline(db_path: str, seed: int, output_csv_path: str) -> MatchResult:
     """
     Chạy trọn 5 bước: validate -> STB -> RB-DA -> ghi DB -> export CSV.
     Raise RuntimeError nếu validate_data_integrity() phát hiện lỗi.
+
+    ĐÂY LÀ ĐƯỜNG THỬ NGHIỆM — KHÔNG PHẢI ĐƯỜNG CHẠY THẬT
+    ====================================================
+    Đường thật là `PipelineAPI.run_pipeline()` trong api.py, và đó là thứ
+    giao diện gọi. Hàm này tồn tại để chạy nhanh không cần giao diện lúc
+    gỡ lỗi, và nó **thiếu bốn lớp bảo vệ** mà đường thật có:
+
+      1. KHÔNG tôn trọng `stb_lock` — luôn vẽ lại số bốc thăm cho MỌI học
+         sinh, kể cả khi bộ số đã khoá và kết quả đã công bố.
+      2. KHÔNG chèn ngẫu nhiên cho học sinh thêm vào sau
+         (`chen_stb_cho_hoc_sinh_moi`) — nó vẽ lại tất, nên câu hỏi đó
+         không đặt ra.
+      3. KHÔNG gọi `verify_stability()` hay `sanity_check_result()`, và
+         KHÔNG có rollback. Kết quả sai vẫn được ghi thẳng vào CSDL.
+      4. KHÔNG ghi `run_history` — không để lại dấu vết nào cho việc kiểm
+         toán. Đây là lớp quan trọng nhất trong ba lớp chống dò seed
+         (xem BAN_GIAO.md mục 5).
+
+    Vì thế hàm **TỪ CHỐI CHẠY** nếu CSDL đã được dùng thật — tức đã khoá
+    số bốc thăm hoặc đã có lịch sử chạy. Trên CSDL sạch (ví dụ do
+    `seed_sample_data` dựng) nó chạy như cũ.
     """
+    _chan_neu_la_du_lieu_that(db_path)
     init_db(db_path)
     students, clubs, tested_scores, applicants, preferences, _ = load_from_sqlite(
         db_path
@@ -969,6 +1044,9 @@ def sanity_check_result(
 if __name__ == "__main__":
     import sys
 
+    # CANH BAO: day la duong THU NGHIEM, khong phai duong chay that.
+    # No se TU CHOI CHAY neu app.db da duoc dung that. Xem docstring cua
+    # run_full_pipeline() de biet bon lop bao ve no khong co.
     db_path = sys.argv[1] if len(sys.argv) > 1 else "app.db"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 42
     out_csv = sys.argv[3] if len(sys.argv) > 3 else "match_results.csv"

@@ -437,6 +437,91 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
   </div>
 
 
+
+  <!-- ============ KHÔNG DỰ TRỮ ============ -->
+  <h2>Nếu trường KHÔNG dùng suất dự trữ</h2>
+  <p class="lede">
+    Suất dự trữ sinh ra từ hoàn cảnh trường công. Một trường quốc tế có thể không cần cơ chế
+    đó — mọi CLB đặt <code>reserve_capacity = 0</code>. Phần mềm còn chạy đúng không, và chỗ
+    lệch ở mục trên có còn không?
+  </p>
+  <pre>python du_lieu_test/do_khong_du_tru.py</pre>
+
+  <h3>Chỗ lệch BIẾN MẤT — và đó là điều đáng nói nhất</h3>
+  <p>
+    <code>reserve_capacity = 0</code> làm <code>reserve_held = candidates[:0] = []</code>, nên
+    <code>general_capacity = capacity</code> và lượt chung xét <strong>toàn bộ</strong> pool.
+    Hàm lựa chọn thu về đúng <em>"sắp theo thứ hạng, lấy K em đầu"</em>.
+  </p>
+  <blockquote>
+    <p>
+      Cùng pool <strong>A, B, C, D, E</strong> · ưu tiên A &gt; B &gt; C &gt; D &gt; E ·
+      sức chứa <strong>3</strong> · D và E thuộc diện dự trữ.<br>
+      Chỉ đổi <em>số suất dự trữ</em>.
+    </p>
+  </blockquote>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:22%">Suất dự trữ</th><th>club_choice_function</th>
+            <th>Mô hình Q_j</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr class="hl"><td class="num">2</td><td class="pick"><strong>D, E, A</strong></td>
+            <td class="pick">A, B, C</td><td class="lech">LỆCH</td></tr>
+        <tr class="hl"><td class="num">1</td><td class="pick"><strong>D, A, B</strong></td>
+            <td class="pick">A, B, C</td><td class="lech">LỆCH</td></tr>
+        <tr><td class="num"><strong>0</strong></td><td class="pick">A, B, C</td>
+            <td class="pick">A, B, C</td><td class="khop">khớp</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>Đọc ra:</strong> suất dự trữ là <strong>nguyên nhân duy nhất</strong> làm hàm lựa
+    chọn không phải một thứ tự tuyến tính. Bỏ nó đi thì RB-DA <strong>thu về Deferred
+    Acceptance thuần tuý</strong>, và <strong>mô hình <code>Q_j</code> trong báo cáo trở thành
+    ĐÚNG</strong>. Chỗ lệch ở mục trên tồn tại <strong>chỉ vì</strong> dự trữ.
+  </p>
+
+  <h3>Kết quả phân bổ đổi bao nhiêu</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Bộ dữ liệu · 20 seed</th><th class="num">Em đổi CLB</th>
+            <th class="num">Mất suất</th><th class="num">Được thêm suất</th>
+            <th class="num">Cặp phá vỡ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>bo_sach</code><br><span style="color:var(--slate)">140 em · 16 suất dự trữ</span></td>
+            <td class="num key">32,3 · 23,1%</td><td class="num">0,1</td>
+            <td class="num">0,1</td><td class="num yes">0 · cả hai cấu hình</td></tr>
+        <tr><td><code>TEST_0*</code><br><span style="color:var(--slate)">120 em · 12 suất dự trữ</span></td>
+            <td class="num key">22,6 · 18,8%</td><td class="num">5,7</td>
+            <td class="num">4,2</td><td class="num yes">0 · cả hai cấu hình</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>①  Phần mềm chạy đúng không cần sửa gì.</strong> Trường không dùng dự trữ chỉ cần
+    để cột <code>reserve_capacity</code> bằng 0.
+  </p>
+  <p>
+    <strong>②  Nhưng kết quả không giống nhau</strong> — khoảng <strong>một phần năm</strong>
+    số em đổi CLB. 16 suất dự trữ trên 150 chỗ làm 32 em đổi chỗ: dự trữ đẩy dây chuyền sang
+    cả những em không thuộc diện nào.
+  </p>
+  <p>
+    <strong>③  Số em mất hẳn suất ít hơn nhiều số em đổi chỗ.</strong> Bỏ dự trữ chủ yếu xáo
+    lại <em>ai vào đâu</em>, không phải <em>ai có suất</em>.
+  </p>
+  <div class="scope">
+    Có <b>7 test canh</b> (<code>tests/test_khong_du_tru.py</code>), trong đó một test kiểm
+    trên <b>200 pool ngẫu nhiên</b> rằng suất dự trữ 0 cho đúng mô hình <code>Q_j</code>.
+    <br><br>
+    <b>Phần này chỉ ĐẾM hệ quả.</b> Trường nên hay không nên dùng suất dự trữ —
+    <b>học sinh tự viết</b> (Phụ lục 1).
+  </div>
+
   <!-- ============ CÁI GIÁ CỦA TÍNH ỔN ĐỊNH ============ -->
   <h2>Cái giá của tính ổn định — đã đo, không phải suy luận</h2>
   <p class="lede">

@@ -65,7 +65,7 @@ def _fail(errors):
 
 
 def thu_muc_tai_ve() -> str:
-    """Thư mục Tải xuống của người dùng — nơi tệp kết quả nên rơi vào.
+    r"""Thư mục Tải xuống của người dùng — nơi tệp kết quả nên rơi vào.
 
     VÌ SAO CẦN: trước đây tệp kết quả được đặt CẠNH `app.db`, tức bên
     trong thư mục cài đặt phần mềm. Người dùng bấm "Xuất kết quả" rồi
@@ -600,6 +600,9 @@ class PipelineAPI:
         steps_log = []
         conn = None
         try:
+            # ---------------- Bước 1/6 · SAO LƯU ----------------
+            # Sao lưu hỏng KHÔNG chặn việc chạy — mất bản sao còn hơn
+            # mất luôn khả năng phân bổ. Chỉ ghi cảnh báo vào nhật ký.
             try:
                 backup_path = self._backup_db()
                 steps_log.append({
@@ -614,6 +617,9 @@ class PipelineAPI:
                     "detail": err("db_backup_failed", detail=str(e)),
                 })
 
+            # ---------------- Bước 2/6 · KIỂM TRA DỮ LIỆU ----------------
+            # Sai ở đây thì dừng hẳn, không vẽ số bốc thăm. Vẽ rồi mới
+            # phát hiện dữ liệu hỏng là đã tiêu mất một bộ số.
             steps_log.append({"step": "validate", "status": "running"})
             students, clubs, tested_scores, applicants, preferences, _ = (
                 load_from_sqlite(self.db_path)
@@ -624,6 +630,10 @@ class PipelineAPI:
                 return _fail({"steps": steps_log, "errors": errors})
             steps_log.append({"step": "validate", "status": "done"})
 
+            # ---------------- Bước 3/6 · SỐ BỐC THĂM ----------------
+            # Ba nhánh: chưa khoá -> vẽ toàn bộ rồi khoá; đã khoá + có em
+            # mới -> chèn ngẫu nhiên (giữ thứ tự tương đối em cũ); đã
+            # khoá + không em mới -> dùng lại nguyên bộ số.
             steps_log.append({"step": "stb_lottery", "status": "running"})
             conn = connect_db(self.db_path)
             cur = conn.cursor()
@@ -694,6 +704,9 @@ class PipelineAPI:
             # van nam trong CUNG MOT transaction.
             stb_lottery = {sid: info["stb"] for sid, info in students.items()}
 
+            # ---------------- Bước 4/6 · CHẠY THUẬT TOÁN ----------------
+            # Chạy xong PHẢI qua hai chốt (sanity + ổn định) rồi mới được
+            # ghi. Hỏng một trong hai là rollback toàn bộ giao dịch.
             steps_log.append({"step": "rbda_cascade", "status": "running"})
             reserve_fn = default_reserve_eligible_fn(students, clubs)
             result = run_rbda(
@@ -717,6 +730,7 @@ class PipelineAPI:
                 "detail": err("rbda_done", rounds=result.rounds_run),
             })
 
+            # ---------------- Bước 5/6 · GHI KẾT QUẢ ----------------
             steps_log.append({"step": "write_results", "status": "running"})
             cur.execute("DELETE FROM match_results")
             cur.executemany(
@@ -761,6 +775,9 @@ class PipelineAPI:
             conn = None
 
             # Xuat CSV CHI xay ra SAU KHI DB da commit thanh cong.
+            # ---------------- Bước 6/6 · XUẤT TỆP ----------------
+            # Xuất hỏng KHÔNG được huỷ kết quả đã ghi — người dùng xuất
+            # lại được bằng nút riêng.
             steps_log.append({"step": "export", "status": "running"})
             export_path = os.path.join(os.path.dirname(self.db_path), "match_results.csv")
             try:
