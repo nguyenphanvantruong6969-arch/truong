@@ -891,8 +891,10 @@
       debounce((ev) => loadMatchResults(ev.target.value), 250)
     );
     el("btnExport").addEventListener("click", () => {
-      /* Khong truyen ten file -> backend tu dat CANH app.db va tra ve
-         duong dan DAY DU, de nguoi dung biet file nam o dau. */
+      /* Khong truyen ten file -> backend tu dat vao THU MUC TAI XUONG
+         cua nguoi dung va tra ve duong dan DAY DU, de nguoi dung biet
+         file nam o dau. Da co file cung ten thi them "(2)" nhu trinh
+         duyet, khong ghi de. */
       callApi("export_csv", "").then((res) => {
         if (res.ok) showToast(t("toast_export_success", {
           n_rows: res.data.n_rows, path: res.data.path,

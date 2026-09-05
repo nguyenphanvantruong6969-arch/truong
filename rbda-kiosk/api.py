@@ -34,6 +34,7 @@ from rbda_priority_pipeline import (
     load_from_sqlite,
     validate_data_integrity,
     generate_stb_lottery,
+    chen_stb_cho_hoc_sinh_moi,
     run_rbda,
     sanity_check_result,
     verify_stability,
@@ -63,9 +64,94 @@ def _fail(errors):
     return {"ok": False, "data": None, "errors": errors}
 
 
+def thu_muc_tai_ve() -> str:
+    """Thư mục Tải xuống của người dùng — nơi tệp kết quả nên rơi vào.
+
+    VÌ SAO CẦN: trước đây tệp kết quả được đặt CẠNH `app.db`, tức bên
+    trong thư mục cài đặt phần mềm. Người dùng bấm "Xuất kết quả" rồi
+    không biết tìm ở đâu, và đó cũng là chỗ `.exe` cùng dữ liệu nằm —
+    không phải chỗ để tệp cho người ta mang đi.
+
+    Windows: hỏi thẳng hệ điều hành bằng SHGetKnownFolderPath. KHÔNG
+    ghép `%USERPROFILE%\Downloads` làm cách chính, vì người dùng dời được
+    thư mục này, và OneDrive thường chuyển hướng nó. Ghép tay là đoán.
+
+    Máy khác: đọc XDG_DOWNLOAD_DIR do môi trường bàn làm việc đặt ra,
+    không có thì `~/Downloads`.
+
+    Không bao giờ ném lỗi — trả về "" nếu không tìm được chỗ nào ghi
+    được, để bên gọi tự lùi về phương án cũ.
+    """
+    ung_vien: list[str] = []
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class GUID(ctypes.Structure):
+                _fields_ = [("d1", wintypes.DWORD), ("d2", wintypes.WORD),
+                            ("d3", wintypes.WORD), ("d4", ctypes.c_byte * 8)]
+
+            # FOLDERID_Downloads {374DE290-123F-4565-9164-39C4925E467B}
+            folderid = GUID(0x374DE290, 0x123F, 0x4565,
+                            (ctypes.c_byte * 8)(0x91, 0x64, 0x39, 0xC4,
+                                                0x92, 0x5E, 0x46, 0x7B))
+            con_tro = ctypes.c_wchar_p()
+            if ctypes.windll.shell32.SHGetKnownFolderPath(
+                    ctypes.byref(folderid), 0, None, ctypes.byref(con_tro)) == 0:
+                ung_vien.append(con_tro.value)
+                ctypes.windll.ole32.CoTaskMemFree(con_tro)
+        except Exception:
+            pass                                  # lùi xuống các phương án dưới
+        ung_vien.append(os.path.join(
+            os.environ.get("USERPROFILE", os.path.expanduser("~")), "Downloads"))
+    else:
+        try:
+            cau_hinh = os.path.expanduser("~/.config/user-dirs.dirs")
+            if os.path.isfile(cau_hinh):
+                with open(cau_hinh, encoding="utf-8") as f:
+                    for dong in f:
+                        if dong.startswith("XDG_DOWNLOAD_DIR"):
+                            gia_tri = dong.split("=", 1)[1].strip().strip('"')
+                            ung_vien.append(os.path.expandvars(
+                                gia_tri.replace("$HOME", os.path.expanduser("~"))))
+                            break
+        except Exception:
+            pass
+        ung_vien.append(os.path.expanduser("~/Downloads"))
+
+    for duong in ung_vien:
+        if duong and os.path.isdir(duong) and os.access(duong, os.W_OK):
+            return duong
+    return ""
+
+
+def duong_dan_khong_de(duong_dan: str) -> str:
+    """Kiểu trình duyệt: đã có `x.csv` thì dùng `x (2).csv`, `x (3).csv`…
+
+    Thư mục Tải xuống là thư mục của NGƯỜI DÙNG. Ghi đè im lặng ở đó là
+    xoá mất tệp họ có thể đang cần — khác hẳn khi ghi trong thư mục do
+    phần mềm tự quản.
+    """
+    if not os.path.exists(duong_dan):
+        return duong_dan
+    goc, duoi = os.path.splitext(duong_dan)
+    n = 2
+    while os.path.exists(f"{goc} ({n}){duoi}") and n < 1000:
+        n += 1
+    return f"{goc} ({n}){duoi}"
+
+
 class PipelineAPI:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, thu_muc_xuat: str = ""):
         self.db_path = db_path
+        # Nơi đặt tệp kết quả khi người dùng không tự chọn đường dẫn.
+        # Thứ tự: tham số -> biến môi trường (để test không ghi vào thư
+        # mục Tải xuống thật của máy) -> thư mục Tải xuống của hệ điều
+        # hành. Rỗng hết thì export_csv lùi về cạnh app.db.
+        self.thu_muc_xuat = (
+            thu_muc_xuat or os.environ.get("RBDA_THU_MUC_TAI_VE", "") or "")
         # DẤU GẠCH DƯỚI LÀ BẮT BUỘC, không phải quy ước cho đẹp. Xem
         # _set_window() ngay dưới đây.
         self._window = None
@@ -572,19 +658,30 @@ class PipelineAPI:
                     sid for sid, info in students.items() if info.get("stb") is None
                 ]
                 if missing:
-                    supplement = generate_stb_lottery(missing, seed=seed)
-                    # danh so tiep noi sau STB lon nhat hien co, tranh trung
-                    existing_max_row = cur.execute(
-                        "SELECT MAX(stb_number) FROM students"
-                    ).fetchone()
-                    offset = (existing_max_row[0] + 1) if existing_max_row[0] is not None else 0
+                    # CHEN NGAU NHIEN, khong noi duoi. Ban dau cho em moi
+                    # so MAX(stb)+1 "de tranh trung" — ma so nho = uu tien
+                    # cao, nen cach do dat em moi sau MOI em cu, o MOI CLB,
+                    # vinh vien. Do duoc: 20 em cu + 10 em moi tranh 10 suat
+                    # -> em moi duoc 0 suat. Xem chen_stb_cho_hoc_sinh_moi.
+                    #
+                    # Thu tu TUONG DOI cua em cu van giu nguyen tuyet doi;
+                    # chi so tuyet doi bi danh lai, ma so do khong ai nhin
+                    # thay (khong hien tren giao dien, khong nam trong tep
+                    # xuat, man cham diem co y giau).
+                    thu_tu_cu = [
+                        r[0] for r in cur.execute(
+                            "SELECT student_id FROM students "
+                            "WHERE stb_number IS NOT NULL ORDER BY stb_number"
+                        ).fetchall()
+                    ]
+                    bo_so_moi = chen_stb_cho_hoc_sinh_moi(thu_tu_cu, missing, seed=seed)
                     conn.executemany(
                         "UPDATE students SET stb_number = ? WHERE student_id = ?",
-                        [(v + offset, k) for k, v in supplement.items()],
+                        [(v, k) for k, v in bo_so_moi.items()],
                     )
                     stb_step_detail = err("stb_supplemented", n=len(missing))
-                    for sid, v in supplement.items():
-                        students[sid]["stb"] = v + offset
+                    for sid, v in bo_so_moi.items():
+                        students[sid]["stb"] = v
                 else:
                     stb_step_detail = err("stb_reused")
             steps_log.append({"step": "stb_lottery", "status": "done", "detail": stb_step_detail})
@@ -1822,21 +1919,38 @@ class PipelineAPI:
              viên phụ trách, kèm file `_chua_duoc_xep.csv` liệt kê các
              em chưa vào CLB nào (nhóm nhà trường cần xử lý tiếp).
 
-        output_path rỗng hoặc là đường dẫn TƯƠNG ĐỐI thì file được đặt
-        CẠNH app.db. Đường dẫn tương đối vốn rơi vào thư mục làm việc
-        của tiến trình — trên máy Windows chạy .exe qua shortcut, thư
-        mục đó có thể là bất kỳ đâu, người dùng không tìm ra file. Luôn
-        trả về đường dẫn ĐẦY ĐỦ để giao diện hiện đúng chỗ file nằm.
+        output_path rỗng hoặc TƯƠNG ĐỐI -> tệp rơi vào **thư mục Tải
+        xuống** của người dùng. Đường dẫn tương đối vốn rơi vào thư mục
+        làm việc của tiến trình — trên máy Windows chạy .exe qua
+        shortcut, thư mục đó có thể là bất kỳ đâu, người dùng không tìm
+        ra tệp.
+
+        Trước đây tệp được đặt CẠNH app.db. Chỗ đó tìm được, nhưng nằm
+        trong thư mục cài đặt phần mềm — không phải chỗ để tệp cho người
+        ta mang đi, và lẫn với `.exe` cùng dữ liệu. Thư mục Tải xuống là
+        chỗ ai cũng biết tìm.
+
+        Không tìm được thư mục Tải xuống (hoặc không ghi được vào đó) thì
+        LÙI VỀ cạnh app.db — không bao giờ để việc xuất kết quả thất bại
+        chỉ vì chuyện chỗ để tệp.
+
+        Đường dẫn TUYỆT ĐỐI do bên gọi truyền vào thì tôn trọng nguyên
+        văn, kể cả việc ghi đè. Luôn trả về đường dẫn ĐẦY ĐỦ để giao
+        diện hiện đúng chỗ tệp nằm.
         """
         try:
             import csv
 
             output_path = (output_path or "").strip() or "ket_qua_phan_bo.csv"
             if not os.path.isabs(output_path):
-                output_path = os.path.join(
-                    os.path.dirname(os.path.abspath(self.db_path)),
-                    os.path.basename(output_path),
-                )
+                thu_muc = self.thu_muc_xuat or thu_muc_tai_ve()
+                if not (thu_muc and os.path.isdir(thu_muc)
+                        and os.access(thu_muc, os.W_OK)):
+                    thu_muc = os.path.dirname(os.path.abspath(self.db_path))
+                output_path = os.path.join(thu_muc, os.path.basename(output_path))
+                # Chi tranh ghi de o duong CHUONG TRINH tu chon. Duong dan
+                # tuyet doi la y muon ro rang cua ben goi -> ton trong.
+                output_path = duong_dan_khong_de(output_path)
 
             conn = connect_db(self.db_path)
             conn.row_factory = sqlite3.Row

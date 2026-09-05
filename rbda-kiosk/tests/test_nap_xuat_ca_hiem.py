@@ -104,11 +104,17 @@ def _hai_lan_xuat(api):
         api.submit_club_scores(c, [{"student_id": "HS1", "score": 9},
                                    {"student_id": "HS2", "score": 8}])
     api.run_pipeline(seed=42)
-    thu_muc = api.export_csv()["data"]["per_club_dir"]
+    # Xuất vào ĐÚNG MỘT chỗ cả hai lần. Khi người dùng không tự chọn
+    # đường dẫn, phần mềm tránh ghi đè bằng hậu tố "(2)" nên mỗi lần xuất
+    # là một thư mục riêng — lúc đó không có tệp cũ nào để lẫn. Việc dọn
+    # tệp cũ chỉ áp dụng khi CÙNG một chỗ bị xuất đè lên, và đó chính là
+    # thứ test này canh.
+    dich = os.path.join(os.path.dirname(api.db_path), "ket_qua.csv")
+    thu_muc = api.export_csv(dich)["data"]["per_club_dir"]
     # Trường sửa lại nguyện vọng: không ai chọn clb_b nữa.
     api.import_csv_auto("student_id,name,pref_1\nHS1,An,clb_a\nHS2,Binh,clb_a\n")
     api.run_pipeline(seed=42)
-    api.export_csv()
+    api.export_csv(dich)
     return thu_muc
 
 
@@ -128,9 +134,10 @@ def test_khong_xoa_tep_khac_cua_nguoi_dung(api):
     api.import_csv_auto("student_id,name,pref_1\nHS1,An,clb_a\n")
     api.submit_club_scores("clb_a", [{"student_id": "HS1", "score": 9}])
     api.run_pipeline(seed=42)
-    thu_muc = api.export_csv()["data"]["per_club_dir"]
+    dich = os.path.join(os.path.dirname(api.db_path), "ket_qua.csv")
+    thu_muc = api.export_csv(dich)["data"]["per_club_dir"]
     ghi_chu = os.path.join(thu_muc, "ghi_chu_cua_thay.txt")
     io.open(ghi_chu, "w", encoding="utf-8").write("đừng xoá tôi")
-    api.export_csv()
+    api.export_csv(dich)
     assert os.path.exists(ghi_chu), "đã xoá nhầm tệp của người dùng"
     assert io.open(ghi_chu, encoding="utf-8").read() == "đừng xoá tôi"

@@ -39,7 +39,7 @@ phần mềm, mà vẫn mang rủi ro nếu giám khảo mở mã nguồn ra.
 |---|---|---|
 | 1 | Deferred Acceptance, học sinh đề xuất | `run_rbda` · **207** |
 | 2 | Dự trữ mềm + thứ tự xét | `club_choice_function` · **136** |
-| 3 | Single Tie-Breaking (STB) | `generate_stb_lottery` · **441** |
+| 3 | Single Tie-Breaking (STB) | `generate_stb_lottery` · **441** · `chen_stb_cho_hoc_sinh_moi` · **465** |
 | 4 | Ưu tiên hai tầng thi / không thi | `compute_club_priority` · **48** |
 | 5 | Kiểm chứng ổn định bằng chính hàm lựa chọn | `verify_stability` · **322** |
 
@@ -106,6 +106,24 @@ của *"single"* — trái với việc mỗi CLB bốc một bộ số riêng.
 
 > **KHÔNG viết:** *"số bốc thăm dựa trên mã học sinh"* — sai, và nghe như em tên
 > A có lợi hơn em tên Z. Viết đúng: *"bốc thăm không phụ thuộc thứ tự nhập liệu"*.
+
+**Học sinh thêm vào SAU khi bộ số đã khoá** (`chen_stb_cho_hoc_sinh_moi` ·
+dòng **465**): em mới **bốc một vị trí ngẫu nhiên** trong dàn số, thứ tự tương
+đối giữa các em đã có **giữ nguyên tuyệt đối**.
+
+Bản đầu cấp cho em mới số `MAX(stb)+1` — ghi chú trong mã nói mục đích là *"tránh
+trùng số"*. Vì số nhỏ = ưu tiên cao, cách đó đặt em mới **sau mọi em cũ, ở mọi
+CLB, vĩnh viễn**. Đo được (20 em cũ + 10 em mới tranh 10 suất, đều Tầng 2):
+
+| | Em mới giành được suất |
+|---|---|
+| Cách cũ | **0** ở mọi seed |
+| Công bằng thì kỳ vọng | ~3,3 |
+| Sau khi sửa, 20 seed | ít nhất 2 · **TB 3,5** · nhiều nhất 5 |
+
+Đây là quy tắc ở **tầng quản lý dữ liệu** (`api.py`), không phải trong thuật toán
+— năm hàm ở trên không đổi một dòng nào, và **không con số nào trong báo cáo phải
+đo lại**. Có 13 test canh: `tests/test_chen_stb_cong_bang.py`.
 
 **Vì sao dự án cần:** ở tầng không thi tuyển, nhiều em ngang nhau hoàn toàn. Phải
 có cách phá hoà, và cách đó phải tái lập được để kiểm toán.

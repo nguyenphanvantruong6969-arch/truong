@@ -111,19 +111,74 @@ def test_file_mo_bang_Excel_khong_loi_font(api_da_chay, tmp_path):
 # ------------------------------------------------------------------ #
 
 
-def test_duong_dan_tuong_doi_dat_canh_app_db_chu_khong_roi_lung_tung(api_da_chay):
-    """app.js gọi export_csv("match_results_export.csv") — đường dẫn
-    tương đối rơi vào thư mục làm việc của tiến trình, có thể là bất kỳ
-    đâu trên máy Windows chạy .exe qua shortcut."""
+def test_xuat_vao_thu_muc_tai_ve_chu_khong_vao_thu_muc_phan_mem(tmp_path, api_da_chay):
+    """Tệp kết quả phải rơi vào thư mục Tải xuống.
+
+    Trước đây nó nằm CẠNH app.db — tìm được, nhưng nằm trong thư mục cài
+    đặt, lẫn với .exe và dữ liệu. Không phải chỗ để tệp cho người ta mang
+    đi. Ràng buộc cũ vẫn giữ nguyên: KHÔNG BAO GIỜ rơi vào thư mục làm
+    việc của tiến trình, thứ có thể là bất kỳ đâu khi chạy .exe qua
+    shortcut.
+    """
+    tai_ve = tmp_path / "TaiXuong"
+    tai_ve.mkdir()
+    api_da_chay.thu_muc_xuat = str(tai_ve)
+
     res = api_da_chay.export_csv("ket_qua.csv")
     assert res["ok"] is True
     duong_dan = res["data"]["path"]
     assert os.path.isabs(duong_dan), "phải trả về đường dẫn ĐẦY ĐỦ để hiện cho người dùng"
-    assert os.path.dirname(duong_dan) == os.path.dirname(api_da_chay.db_path)
+    assert os.path.dirname(duong_dan) == str(tai_ve)
+    assert os.path.dirname(duong_dan) != os.path.dirname(api_da_chay.db_path)
     assert os.path.isfile(duong_dan)
 
 
-def test_khong_truyen_ten_file_van_xuat_duoc(api_da_chay):
+def test_duong_dan_tuyet_doi_van_duoc_ton_trong_nguyen_van(tmp_path, api_da_chay):
+    """Bên gọi tự chọn chỗ thì phần mềm không được tự ý dời đi nơi khác."""
+    api_da_chay.thu_muc_xuat = str(tmp_path / "TaiXuong")
+    cho_muon = tmp_path / "cho_rieng"
+    cho_muon.mkdir()
+    dich = cho_muon / "bao_cao.csv"
+
+    res = api_da_chay.export_csv(str(dich))
+    assert res["ok"] is True
+    assert res["data"]["path"] == str(dich)
+    assert dich.is_file()
+
+
+def test_xuat_hai_lan_khong_ghi_de_tep_cu(tmp_path, api_da_chay):
+    """Thư mục Tải xuống là thư mục của NGƯỜI DÙNG — ghi đè im lặng ở đó
+    là xoá mất tệp họ có thể đang cần. Cư xử như trình duyệt: (2), (3)…"""
+    tai_ve = tmp_path / "TaiXuong"
+    tai_ve.mkdir()
+    api_da_chay.thu_muc_xuat = str(tai_ve)
+
+    lan_1 = api_da_chay.export_csv("")["data"]
+    lan_2 = api_da_chay.export_csv("")["data"]
+
+    assert lan_1["path"] != lan_2["path"], "lần xuất thứ hai đã ghi đè lần đầu"
+    assert os.path.isfile(lan_1["path"]) and os.path.isfile(lan_2["path"])
+    # thư mục theo CLB phải đi theo đúng tệp tổng của nó, không lẫn vào nhau
+    assert lan_1["per_club_dir"] != lan_2["per_club_dir"]
+    assert os.path.isdir(lan_1["per_club_dir"])
+    assert os.path.isdir(lan_2["per_club_dir"])
+
+
+def test_khong_tim_duoc_thu_muc_tai_ve_thi_lui_ve_canh_app_db(api_da_chay):
+    """Không bao giờ để việc xuất kết quả THẤT BẠI chỉ vì chuyện chỗ để
+    tệp. Không tìm được thư mục Tải xuống thì quay về hành vi cũ."""
+    api_da_chay.thu_muc_xuat = "/khong/he/ton/tai/o/dau/ca"
+
+    res = api_da_chay.export_csv("")
+    assert res["ok"] is True, res["errors"]
+    assert os.path.dirname(res["data"]["path"]) == os.path.dirname(api_da_chay.db_path)
+    assert os.path.isfile(res["data"]["path"])
+
+
+def test_khong_truyen_ten_file_van_xuat_duoc(tmp_path, api_da_chay):
+    tai_ve = tmp_path / "TaiXuong"
+    tai_ve.mkdir()
+    api_da_chay.thu_muc_xuat = str(tai_ve)
     res = api_da_chay.export_csv()
     assert res["ok"] is True
     assert os.path.isfile(res["data"]["path"])

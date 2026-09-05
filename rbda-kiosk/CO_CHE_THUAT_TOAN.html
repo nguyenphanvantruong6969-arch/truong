@@ -263,7 +263,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
       <span class="layer-t">Bốc thăm dùng chung mọi CLB (STB)</span>
       <span class="tag miss">Báo cáo chưa có</span>
     </div>
-    <p class="where">generate_stb_lottery · dòng 441</p>
+    <p class="where">generate_stb_lottery · dòng 441 &nbsp;·&nbsp; chen_stb_cho_hoc_sinh_moi · dòng 465</p>
     <p>
       Mỗi học sinh nhận <strong>một</strong> số bốc thăm, <strong>dùng chung cho mọi CLB</strong>.
       Đó là nghĩa của <em>"single"</em> — trái với việc mỗi CLB bốc một bộ số riêng.
@@ -282,6 +282,35 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--hairline);
     <div class="warn">
       <b>KHÔNG viết:</b> <em>"số bốc thăm dựa trên mã học sinh"</em> — sai, và nghe như em tên A
       có lợi hơn em tên Z. <b>Viết đúng:</b> <em>"bốc thăm không phụ thuộc thứ tự nhập liệu"</em>.
+    </div>
+    <h3>Học sinh thêm vào SAU khi bộ số đã khoá</h3>
+    <p>
+      Em mới <strong>bốc một vị trí ngẫu nhiên</strong> trong dàn số; thứ tự tương đối giữa các
+      em đã có <strong>giữ nguyên tuyệt đối</strong>.
+    </p>
+    <p>
+      Bản đầu cấp cho em mới số <code>MAX(stb)+1</code> — ghi chú trong mã nói mục đích là
+      <em>"tránh trùng số"</em>. Vì số nhỏ = ưu tiên cao, cách đó đặt em mới <strong>sau mọi em
+      cũ, ở mọi CLB, vĩnh viễn</strong>.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:56%">20 em cũ + 10 em mới tranh 10 suất, đều Tầng 2</th>
+              <th class="num">Em mới giành được suất</th></tr>
+        </thead>
+        <tbody>
+          <tr class="hl"><td>Cách cũ (<code>MAX+1</code>)</td><td class="num key">0 · ở mọi seed</td></tr>
+          <tr><td>Công bằng thì kỳ vọng</td><td class="num">~3,3</td></tr>
+          <tr><td>Sau khi sửa · 20 seed</td><td class="num yes">2 · <b>TB 3,5</b> · 5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="scope">
+      Đây là quy tắc ở <b>tầng quản lý dữ liệu</b> (<code>api.py</code>), <b>không phải trong
+      thuật toán</b> — năm hàm ở trang này không đổi một dòng nào, và <b>không con số nào trong
+      báo cáo phải đo lại</b>. Có <b>13 test canh</b>
+      (<code>tests/test_chen_stb_cong_bang.py</code>).
     </div>
     <p class="why">
       <b>Vì sao dự án cần:</b> ở tầng không thi tuyển, nhiều em ngang nhau hoàn toàn. Phải có

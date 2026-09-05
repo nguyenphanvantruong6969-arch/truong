@@ -17,7 +17,7 @@
 5. [Ba tệp Excel — từng cột nghĩa là gì](#5-ba-tệp-excel--từng-cột-nghĩa-là-gì)
 6. [Chạy trọn quy trình — 5 bước](#6-chạy-trọn-quy-trình--5-bước)
 7. [Đọc bảng kết quả](#7-đọc-bảng-kết-quả)
-8. [Nhập tay tại kiosk](#8-nhập-tay-tại-kiosk)
+8. [Nhập tay tại chỗ](#8-nhập-tay-tại-chỗ)
 9. [Làm lại từ đầu, và chuyện sao lưu](#9-làm-lại-từ-đầu-và-chuyện-sao-lưu)
 10. [Bảng tra cảnh báo](#10-bảng-tra-cảnh-báo)
 11. [Sự cố hay gặp](#11-sự-cố-hay-gặp)
@@ -87,14 +87,14 @@ vàng thì xem [mục 11](#11-sự-cố-hay-gặp).
 Bên trái là **thanh bên**, luôn hiện. Nó cho biết cơ sở dữ liệu đang kết nối,
 lần chạy gần nhất là khi nào, và phần mềm đang vẽ cửa sổ bằng đường nào.
 
-Trên cùng là **năm tab**:
+Trên cùng là **năm thẻ**:
 
-| Tab | Dùng để |
+| Thẻ | Dùng để |
 |---|---|
-| **01 · Vận hành pipeline** | Nạp tệp, xem cảnh báo, chạy phân bổ, xuất kết quả |
+| **01 · Vận hành phân bổ** | Nạp tệp, xem cảnh báo, chạy phân bổ, xuất kết quả |
 | **02 · Kết quả** | Xem ai vào CLB nào, mỗi CLB đầy đến đâu |
 | **03 · Nhập dự phòng** | Gõ tay cho em không nộp được qua biểu mẫu |
-| **04 · Quản lý club & dự trữ** | Thêm/sửa CLB, gán diện ưu tiên, xoá dữ liệu |
+| **04 · Quản lý CLB & dự trữ** | Thêm/sửa CLB, gán diện ưu tiên, xoá dữ liệu |
 | **05 · Chấm điểm (mù)** | Giáo viên nhập điểm vòng thi |
 
 **"Chấm điểm mù" nghĩa là gì:** màn hình chấm điểm **chỉ hiện mã và họ tên**. Nó
@@ -156,7 +156,7 @@ Bộ ví dụ (3 dòng đầu):
 | HS02 | Trần Thị Bình | | clb_bongro | 8.5 | clb_mythuat | 8 |
 | HS04 | Phạm Thu Dung | chinh_sach | clb_bongro | 6 | clb_mythuat | 6.5 |
 
-Có sẵn điểm trong tệp thì **không phải gõ tay** ở tab Chấm điểm.
+Có sẵn điểm trong tệp thì **không phải gõ tay** ở thẻ Chấm điểm.
 
 ### Tệp 3 — Xếp hạng nguyện vọng
 
@@ -192,7 +192,7 @@ Bộ ví dụ (3 dòng đầu):
 
 ### Bước 1 — Nạp ba tệp
 
-Tab **01 · Vận hành pipeline**. Kéo cả ba tệp `.xlsx` thả vào ô kéo-thả, hoặc
+Thẻ **01 · Vận hành phân bổ**. Kéo cả ba tệp `.xlsx` thả vào ô kéo-thả, hoặc
 bấm vào ô đó để chọn tệp.
 
 Thả cùng lúc cả ba cũng được — **phần mềm tự sắp thứ tự nạp**, CLB trước, học
@@ -216,7 +216,7 @@ Với bộ ví dụ, chỗ này phải ghi **0 cảnh báo**. Nếu có, tra [m�
 
 ### Bước 3 — Chấm điểm *(bỏ qua nếu tệp đã có điểm)*
 
-Tab **05 · Chấm điểm (mù)**. Chọn CLB, nhập điểm cho từng em, bấm lưu.
+Thẻ **05 · Chấm điểm (mù)**. Chọn CLB, nhập điểm cho từng em, bấm lưu.
 
 > Ô điểm nhận **cả hai cách viết**: `8,5` (kiểu Việt) và `8.5` đều lưu thành
 > cùng một giá trị. Lưu xong màn hình hiện lại `8.5` — đó là cùng con số, không
@@ -226,7 +226,7 @@ Bộ ví dụ đã có sẵn điểm trong tệp 2, nên bước này bỏ qua.
 
 ### Bước 4 — Chạy phân bổ
 
-Quay lại tab **01**. Bấm **Chạy phân bổ**.
+Quay lại thẻ **01**. Bấm **Chạy phân bổ**.
 
 Phần mềm hỏi lại một lần trước khi chạy — vì chạy lần hai sẽ **ghi đè** kết quả
 lần trước. Bấm xác nhận.
@@ -244,7 +244,19 @@ thuật toán → ghi kết quả.
 
 ### Bước 5 — Xuất kết quả
 
-Bấm **Xuất kết quả**. Phần mềm ghi ra hai thứ:
+Bấm **Xuất kết quả**. Phần mềm ghi vào **thư mục Tải xuống** (`Downloads`) của
+máy — đúng chỗ trình duyệt để tệp tải về, ai cũng biết tìm. Đường dẫn đầy đủ hiện
+ngay trên thông báo sau khi xuất xong.
+
+> **Xuất nhiều lần không ghi đè lần trước.** Đã có `ket_qua_phan_bo.csv` thì lần
+> sau ra `ket_qua_phan_bo (2).csv`, rồi `(3)`… giống hệt cách trình duyệt làm.
+> Số lớn nhất là lần mới nhất.
+>
+> Máy nào không có thư mục Tải xuống (hoặc không ghi được vào đó) thì tệp quay về
+> nằm cạnh `app.db` như trước — việc xuất **không bao giờ thất bại** chỉ vì
+> chuyện chỗ để tệp.
+
+Mỗi lần xuất ra hai thứ:
 
 1. **Một tệp tổng** — toàn bộ học sinh, mỗi em một dòng.
 2. **Một thư mục kèm theo**, tên là tên tệp tổng cộng thêm `_theo_club`. Trong đó:
@@ -263,7 +275,7 @@ Mọi tệp đều mở được bằng Excel, tiếng Việt không vỡ dấu.
 
 ## 7. Đọc bảng kết quả
 
-Tab **02 · Kết quả**, hoặc mở tệp vừa xuất.
+Thẻ **02 · Kết quả**, hoặc mở tệp vừa xuất.
 
 | Cột | Nghĩa |
 |---|---|
@@ -292,7 +304,7 @@ Chạy với `seed = 42`:
 
 Sức chứa: Bóng rổ **3/3** · Mỹ thuật **2/2** · Tin học **2/2** · Nấu ăn **2/3**
 
-Ở tab **02 · Kết quả** còn có biểu đồ *Tỉ lệ lấp đầy theo club*. Mỗi thanh đọc
+Ở thẻ **02 · Kết quả** còn có biểu đồ *Tỉ lệ lấp đầy theo CLB*. Mỗi thanh đọc
 như sau: phần **vàng** là số em vào **bằng suất dự trữ**, phần **xanh** là số em
 vào ở chỉ tiêu chung, phần **trắng còn lại** là chỗ chưa lấp đầy. Hai phần màu
 cộng lại đúng bằng con số in bên phải thanh.
@@ -323,18 +335,36 @@ không chọn** — nếu có, nó đã tự quyết thay các em.
 
 ---
 
-## 8. Nhập tay tại kiosk
+## 8. Nhập tay tại chỗ
 
 Dùng khi học sinh không nộp được qua biểu mẫu.
 
-Tab **03 · Nhập dự phòng**. Ba bước tách biệt, không ảnh hưởng lẫn nhau:
+Thẻ **03 · Nhập dự phòng**. Ba bước tách biệt, không ảnh hưởng lẫn nhau:
 
 1. **Tìm hoặc tạo học sinh** — gõ mã hoặc tên. Chưa có thì bấm *Tạo học sinh mới*.
-2. **Chọn CLB muốn thi** — tick vào các CLB em muốn thi.
+2. **Chọn CLB muốn thi** — đánh dấu các CLB em muốn thi.
 3. **Xếp hạng nguyện vọng** — chọn theo thứ tự, `pref_1` là mong muốn nhất.
 
 Có nút **Xoá học sinh** cho trường hợp tạo nhầm mã. Nút này **bị chặn** nếu em đó
-đã nằm trong kết quả của lần chạy gần nhất — phải chạy lại pipeline trước.
+đã nằm trong kết quả của lần chạy gần nhất — phải chạy lại phân bổ trước.
+
+### Thêm học sinh SAU khi đã chạy lần đầu
+
+Chạy phân bổ lần đầu là **khoá bộ số bốc thăm** lại. Thêm học sinh sau đó — qua
+màn hình này hoặc bằng cách nạp thêm một tệp — thì:
+
+- **Thứ tự giữa các em đã có giữ nguyên tuyệt đối.** Không em nào bị đẩy lên hay
+  tụt xuống so với em khác vì có người mới vào.
+- **Em mới bốc một vị trí ngẫu nhiên** trong dàn số — có thể trên, có thể dưới em
+  cũ. Đúng nghĩa bốc thăm, giống như em có mặt từ đầu.
+
+> Nghĩa là **em mới có thể giành được suất mà một em cũ đang giữ**. Đó là điều
+> phải xảy ra nếu muốn công bằng: cho em mới một cơ hội thật thì cơ hội đó phải
+> lấy từ đâu đó. Việc này cũng đã đúng như vậy với **điểm thi** — một em mới điểm
+> cao vẫn luôn đánh bật được em cũ điểm thấp hơn.
+>
+> Vẫn nên **chốt danh sách trước khi chạy lần đầu**. Chạy sớm rồi thêm dần không
+> sai, nhưng kết quả công bố ở mỗi lần chạy có thể khác nhau.
 
 ---
 
@@ -350,7 +380,7 @@ Không xoá thì học sinh của lần trước vẫn chiếm suất và làm l
 
 ### Cách xoá
 
-Tab **04 · Quản lý club & dự trữ**, kéo xuống cuối trang, khối **Vùng nguy hiểm**:
+Thẻ **04 · Quản lý CLB & dự trữ**, kéo xuống cuối trang, khối **Vùng nguy hiểm**:
 
 | Nút | Xoá gì |
 |---|---|
@@ -383,15 +413,15 @@ Bảy quy tắc rà soát. Mỗi cảnh báo nói một điều **vẫn để ph
 
 | Cảnh báo | Nghĩa là gì | Sửa ở đâu |
 |---|---|---|
-| **CLB … chưa chấm điểm ai** | Có em đăng ký thi nhưng chưa ai được chấm. Cả nhóm rơi xuống tầng 2, vòng thi coi như không có tác dụng | Tab 05 · Chấm điểm |
-| **CLB … mới chấm x/y** | Em chưa có điểm bị xếp **dưới tất cả** em đã có điểm, kể cả em thấp nhất | Tab 05 · Chấm điểm |
+| **CLB … chưa chấm điểm ai** | Có em đăng ký thi nhưng chưa ai được chấm. Cả nhóm rơi xuống tầng 2, vòng thi coi như không có tác dụng | Thẻ 05 · Chấm điểm |
+| **CLB … mới chấm x/y** | Em chưa có điểm bị xếp **dưới tất cả** em đã có điểm, kể cả em thấp nhất | Thẻ 05 · Chấm điểm |
 | **n lượt thi bỏ phí** | Em đăng ký thi một CLB nhưng không xếp CLB đó vào nguyện vọng. Điểm cao mấy cũng không vào được | Sửa tệp 3, nạp lại |
-| **n em chưa xếp nguyện vọng nào** | Những em này chắc chắn không được xếp vào đâu | Sửa tệp 3, hoặc tab 03 |
-| **Nhãn dự trữ "…" không CLB nào dùng** | Gõ sai chính tả nhãn. Em mang nhãn đó **mất quyền ưu tiên ở mọi nơi**. Cảnh báo có kèm mã học sinh | Tab 04: tìm mã em, tick, để trống ô nhãn, bấm *Gán* |
-| **CLB … có suất dự trữ nhưng chưa đặt nhãn** | Các suất đó âm thầm thành suất phổ thông | Tab 04: sửa CLB |
+| **n em chưa xếp nguyện vọng nào** | Những em này chắc chắn không được xếp vào đâu | Sửa tệp 3, hoặc thẻ 03 |
+| **Nhãn dự trữ "…" không CLB nào dùng** | Gõ sai chính tả nhãn. Em mang nhãn đó **mất quyền ưu tiên ở mọi nơi**. Cảnh báo có kèm mã học sinh | Thẻ 04: tìm mã em, đánh dấu, để trống ô nhãn, bấm *Gán* |
+| **CLB … có suất dự trữ nhưng chưa đặt nhãn** | Các suất đó âm thầm thành suất phổ thông | Thẻ 04: sửa CLB |
 | **CLB … dành suất cho nhãn chưa em nào mang** | Suất dự trữ sẽ không dùng đến | Kiểm tra lại cột `reserve_group` ở tệp 2 hoặc 3 |
 | **Tổng chỗ ít hơn số học sinh** | Chắc chắn có em không có chỗ. Đây là thông tin, không phải lỗi | Tăng chỉ tiêu, hoặc chấp nhận |
-| **Club … có n điểm lệch hẳn** | Một điểm cách xa hẳn các điểm còn lại của chính CLB đó — thường là gõ `70` thay vì `7.0`. Điểm sai đẩy em đó lên đầu bảng và kéo em khác tụt xuống | Tab 05 · Chấm điểm |
+| **CLB … có n điểm lệch hẳn** | Một điểm cách xa hẳn các điểm còn lại của chính CLB đó — thường là gõ `70` thay vì `7.0`. Điểm sai đẩy em đó lên đầu bảng và kéo em khác tụt xuống | Thẻ 05 · Chấm điểm |
 
 Ngoài ra, **lúc nạp tệp** còn có cảnh báo riêng: mã trùng hoa/thường, một mã xuất
 hiện hai dòng, mã nghi bị Excel cắt mất số 0 đứng đầu, mã CLB không tồn tại, cột

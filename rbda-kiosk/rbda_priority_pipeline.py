@@ -462,6 +462,79 @@ def generate_stb_lottery(student_ids: list[str], seed: int) -> dict[str, int]:
     return {sid: idx for idx, sid in enumerate(shuffled)}
 
 
+def chen_stb_cho_hoc_sinh_moi(
+    thu_tu_cu: list[str], ma_moi: list[str], seed: int
+) -> dict[str, int]:
+    """
+    Cấp số bốc thăm cho học sinh được thêm vào SAU khi bộ số đã khoá.
+
+    Bài toán: bộ số đã khoá cho `thu_tu_cu` (đã sắp theo số bốc thăm hiện
+    có, đầu danh sách = ưu tiên cao nhất). Giờ có thêm `ma_moi`. Cấp số
+    cho các em mới thế nào cho công bằng?
+
+    CÁCH CŨ ĐÃ BỎ — và vì sao:
+        Bản đầu cấp số nối tiếp sau số lớn nhất (`MAX(stb)+1`). Vì số nhỏ
+        = ưu tiên cao (xem compute_club_priority), cách đó đặt em mới
+        đứng SAU **mọi** em cũ, ở **mọi** CLB, vĩnh viễn. Với nhóm đó bốc
+        thăm không còn tồn tại. Đo được: 20 em cũ + 10 em mới tranh 10
+        suất (đều Tầng 2, thuần bốc thăm) -> em mới được 0 suất, trong
+        khi công bằng thì kỳ vọng ~3,3.
+
+        Ghi chú trong mã lúc đó chỉ nói mục đích là "tránh trùng số" —
+        việc xếp cuối là hệ quả không ai định, không tài liệu nào nói ra,
+        và không test nào canh.
+
+    CÁCH ĐANG DÙNG — chèn ngẫu nhiên đều:
+        Chọn ngẫu nhiên `k` vị trí trong `n + k` chỗ cho các em mới, phần
+        còn lại giữ nguyên `thu_tu_cu` theo đúng thứ tự cũ.
+
+    HAI TÍNH CHẤT ĐƯỢC BẢO ĐẢM, cả hai đều có test canh:
+
+      1. Thứ tự TƯƠNG ĐỐI giữa các em cũ KHÔNG BAO GIỜ đổi. Đây là lời
+         hứa thật của việc khoá bộ số — không phải "số tuyệt đối không
+         đổi", vì số tuyệt đối không ai nhìn thấy (không hiện trên giao
+         diện, không nằm trong tệp xuất, màn chấm điểm cố ý giấu).
+      2. Mỗi em mới rơi vào vị trí phân bố đều trong dàn số — có thể trên
+         hoặc dưới em cũ, đúng nghĩa bốc thăm.
+
+    Kết quả vẫn là một hoán vị 0..n+k-1, giống generate_stb_lottery.
+
+    Args:
+        thu_tu_cu: mã học sinh đã có số, ĐÃ SẮP theo số bốc thăm tăng dần.
+        ma_moi: mã học sinh chưa có số.
+        seed: hạt giống, để chạy lại ra đúng kết quả cũ.
+
+    Returns:
+        dict[str, int]: {mã học sinh: số bốc thăm} cho TOÀN BỘ hai nhóm.
+    """
+    import random
+
+    if not ma_moi:
+        return {sid: i for i, sid in enumerate(thu_tu_cu)}
+
+    rng = random.Random(seed)
+
+    # SẮP XẾP trước khi xáo — cùng hạng lỗi với lỗi 19 đã sửa ở
+    # generate_stb_lottery: `ma_moi` đến từ thứ tự CHÈN trong CSDL, nên
+    # không sắp thì thứ tự nhập liệu lại lén quyết định ai được số tốt.
+    moi = sorted(ma_moi)
+    rng.shuffle(moi)
+
+    n, k = len(thu_tu_cu), len(moi)
+    vi_tri_cua_em_moi = set(rng.sample(range(n + k), k))
+
+    ra: dict[str, int] = {}
+    i_cu = i_moi = 0
+    for cho in range(n + k):
+        if cho in vi_tri_cua_em_moi:
+            ra[moi[i_moi]] = cho
+            i_moi += 1
+        else:
+            ra[thu_tu_cu[i_cu]] = cho
+            i_cu += 1
+    return ra
+
+
 def export_match_results(match_result: MatchResult, output_path: str) -> None:
     """
     Xuất kết quả ra CSV: student_id, club_id, matched_tier,

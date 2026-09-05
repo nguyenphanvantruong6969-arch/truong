@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 03/09/2026 · 439 test pass
+> Cập nhật lần cuối: 05/09/2026 · 460 test pass
 
 ---
 
@@ -25,7 +25,7 @@ trong SQLite một file (`app.db`). Không có server, không đăng nhập (ch�
 |---|---|
 | Repo | `nguyenphanvantruong6969-arch/truong`, thư mục `rbda-kiosk/` |
 | Nhánh | `claude/project-testing-development-zf9ajs` |
-| Test | **439 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) · ~90 giây |
+| Test | **460 test, tất cả pass** (`xvfb-run -a ./.venv/bin/python -m pytest -q`) · ~90 giây |
 | Bản `.exe` | Build qua GitHub Actions (workflow `build-windows-exe.yml`, chạy tay) |
 
 **Chạy thử:**
@@ -58,7 +58,7 @@ python3 -m venv .venv                        # XEM LƯU Ý bên dưới
   (test `test_i18n_sync.py` bắt buộc)
 - `recovery.py` / `recovery.html` / `recovery.js` — màn hình phục hồi khi `app.db` hỏng
 - `browser_host.py` (237) — chế độ chạy dự phòng bằng trình duyệt
-- `tests/` — 33 file test, 439 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
+- `tests/` — 35 file test, 460 test case (5 file chạy giao diện thật bằng Playwright + Chromium)
 - `mau_csv/` — 5 file CSV mẫu + 3 file Excel mẫu + `HUONG_DAN_CSV.md`
   + `tao_mau_excel.py` (sinh lại bộ Excel từ bộ CSV)
 - `du_lieu_test/` — **ba bộ dữ liệu MÔ PHỎNG**, mỗi bộ một mục đích khác nhau:
@@ -243,8 +243,11 @@ tài liệu phải ghi rõ điều đó — trình bày như phân bố nguyện
 3. **pywebview là chính, trình duyệt là dự phòng.** Không bỏ pywebview.
    Lý do có chế độ dự phòng: xem mục 5.
 
-4. **Số bốc thăm STB khoá sau lần chạy đầu.** Chạy lại chỉ vẽ bổ sung cho học sinh mới.
-   Vẽ lại toàn bộ cần xác nhận 2 bước trên UI.
+4. **Số bốc thăm STB khoá sau lần chạy đầu.** Lời hứa của việc khoá là **thứ tự
+   TƯƠNG ĐỐI giữa các em đã có không bao giờ đổi** — không phải "số tuyệt đối
+   không đổi", vì số tuyệt đối không hiện ở đâu cho ai thấy. Học sinh thêm vào sau
+   được **chèn ngẫu nhiên** vào dàn số (`chen_stb_cho_hoc_sinh_moi`). Vẽ lại toàn
+   bộ cần xác nhận 2 bước trên giao diện. Xem khối "ĐÃ SỬA (05/09)" ở mục 5.
 
 5. **Không thêm hệ thống đăng nhập.** Đúng thiết kế "offline-first" đã chốt.
 
@@ -1055,6 +1058,117 @@ Số liệu đầy đủ: `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3d và
 `CO_CHE_THUAT_TOAN.md`.
 
 
+### ĐÃ SỬA (05/09) — em vào sau luôn xếp CUỐI, và tài liệu đang hứa ngược lại
+
+**Phát hiện thế nào.** Học sinh hỏi *"bốc thăm có vấn đề gì không"*. Đọc lại mã
+thì thấy nhánh vẽ bổ sung cấp cho em mới số bắt đầu từ `MAX(stb_number)+1`. Ghi
+chú trong mã nói mục đích là *"tránh trùng số"* — **không nhắc gì tới hệ quả**.
+
+Mà **số nhỏ = ưu tiên cao** (`compute_club_priority`: *"bằng điểm → STB tăng
+dần"*, Tầng 2 *"thuần STB tăng dần"*). Nên cách đó đặt em mới **sau MỌI em cũ, ở
+MỌI câu lạc bộ, vĩnh viễn**.
+
+**Đo được, không phải suy luận.** 20 em cũ + 10 em mới tranh 10 suất, tất cả đều
+Tầng 2 nên thứ tự hoàn toàn do bốc thăm:
+
+| | Em mới giành được suất |
+|---|---|
+| Cách cũ (`MAX+1`) | **0** — ở mọi seed |
+| Công bằng thì kỳ vọng | ~3,3 |
+| Sau khi sửa (20 seed) | ít nhất 2 · **TB 3,5** · nhiều nhất 5 |
+
+Không phải "hơi thiệt". Với nhóm đó **bốc thăm không còn tồn tại**.
+
+**Vì sao bắt buộc phải sửa, chứ không phải chỉ ghi chú lại.**
+`HUONG_DAN_SU_DUNG.md` bước 4 đang hứa nguyên văn: *"Em `HS01` không hề có lợi
+thế nào so với em cuối danh sách."* Câu đó **sai** với mọi em thêm vào sau — tài
+liệu đang nói một điều phần mềm không làm. Ba đường thêm học sinh đều dẫn vào đây
+(`api.py` dòng 1393, 1533, 2317 — tất cả ghi `stb_number = NULL`), và mục 8 của
+hướng dẫn tồn tại **đúng để phục vụ em nộp muộn**.
+
+**Đã làm gì.** Thêm `chen_stb_cho_hoc_sinh_moi` cạnh `generate_stb_lottery`
+(`rbda_priority_pipeline.py`): chọn ngẫu nhiên `k` vị trí trong `n+k` chỗ cho em
+mới, phần còn lại giữ nguyên thứ tự cũ. `sorted()` trước khi xáo — **cùng hạng
+lỗi với lỗi 19**, không sắp thì thứ tự nhập liệu lại lén quyết định.
+
+> **KHÔNG phải thay đổi thuật toán.** Không sửa một dòng nào trong năm hàm
+> (`compute_club_priority`, `club_choice_function`, `run_rbda`,
+> `verify_stability`, `generate_stb_lottery`) — chỉ **thêm** một hàm cạnh chúng.
+> Nhánh vẽ bổ sung vốn nằm ở `api.py`, tầng quản lý dữ liệu.
+>
+> **Không con số nào trong báo cáo phải đo lại.** Đã kiểm cả 6 bộ đo: tất cả nạp
+> trọn danh sách rồi chạy **một lần**, không bộ nào chạm nhánh vẽ bổ sung.
+
+**Cái giá, nói thẳng:** em cũ **có thể** mất suất vào tay em mới qua bốc thăm.
+Không tránh được — cho em mới một cơ hội thật thì cơ hội đó phải lấy từ đâu đó.
+Và chuyện này vốn đã đúng với **điểm thi**: một em mới điểm cao luôn đánh bật
+được em cũ điểm thấp hơn, vì Tầng 1 đứng trọn trước Tầng 2. Bản vá chỉ làm bốc
+thăm hành xử nhất quán với điểm.
+
+Có **13 test canh** (`tests/test_chen_stb_cong_bang.py`). Chạy đột biến: trả lại
+cách dồn xuống cuối làm **4 test đỏ**, bỏ `sorted()` làm **1 test đỏ**.
+
+
+### ĐÃ SỬA (05/09) — tệp kết quả rơi vào thư mục cài đặt
+
+`export_csv` đặt tệp **cạnh `app.db`**, tức bên trong thư mục cài đặt, lẫn với
+`.exe` và dữ liệu. Tìm được, nhưng không phải chỗ để tệp cho người ta mang đi.
+
+Nay tệp vào **thư mục Tải xuống** của người dùng (`thu_muc_tai_ve()` trong
+`api.py`). Trên Windows hỏi thẳng hệ điều hành bằng `SHGetKnownFolderPath` với
+`FOLDERID_Downloads` — **không** ghép `%USERPROFILE%\Downloads` làm cách chính,
+vì người dùng dời được thư mục đó và OneDrive thường chuyển hướng nó.
+
+- Xuất nhiều lần **không ghi đè**: `ket_qua_phan_bo (2).csv`, `(3)`… như trình duyệt.
+  Thư mục Tải xuống là thư mục của **người dùng** — ghi đè im lặng ở đó là xoá mất
+  tệp họ có thể đang cần.
+- Không tìm được thư mục Tải xuống → **lùi về cạnh `app.db`** như cũ. Việc xuất
+  không bao giờ thất bại chỉ vì chuyện chỗ để tệp.
+- Đường dẫn **tuyệt đối** do bên gọi truyền vào vẫn được tôn trọng nguyên văn.
+- `tests/conftest.py` có fixture `autouse` đặt `RBDA_THU_MUC_TAI_VE` vào thư mục
+  tạm — **không test nào được rải tệp vào Downloads thật của người chạy**.
+
+
+### ĐÃ SỬA (05/09) — giao diện tiếng Việt còn lẫn tiếng Anh
+
+Đếm được trong chuỗi hiển thị: `pipeline` 15 · `club` 60 · `file` 11 · `STB` 10 ·
+`tab`, `tick`, `kiosk`, `hardcode`… Và giao diện **mâu thuẫn với chính hướng
+dẫn**: nút ghi *"Chạy pipeline"*, hướng dẫn bước 4 ghi *"Bấm **Chạy phân bổ**"*.
+
+Đã Việt hoá `i18n.js`, `i18n_errors.py` và chữ mặc định trong `index.html`.
+Bảng từ: pipeline → *phân bổ* · club → *CLB* · file → *tệp* · tab → *thẻ* ·
+tick → *đánh dấu* · kiosk → *tại chỗ* · hardcode → *cài cứng*.
+
+**Giữ nguyên tiếng Anh có chủ ý — đừng "sửa nốt":**
+
+- `(STB)` và `(seed)` trong ngoặc đơn, ở lần xuất hiện đầu mỗi màn hình — để
+  người đọc báo cáo hoặc mã nguồn nối được với nút trên màn hình. Học sinh chọn.
+- `capacity`, `reserve_capacity`, `reserve_group`, `club_id` — **tên cột thật
+  trong tệp CSV người dùng tự gõ**. Dịch chúng là chỉ sai chỗ cần sửa.
+- `tab General` / `Unblock` trong `HUONG_DAN_CAI_DAT` — đúng chữ trên hộp thoại
+  Windows.
+
+Có lưới chắn: `tests/test_giao_dien_tieng_viet_sach.py` quét cả ba nơi và đỏ nếu
+chuỗi mới lẫn tiếng Anh. Bản thân lưới chắn cũng có test canh (nếu bộ lọc quá
+rộng thì nó xanh một cách vô nghĩa).
+
+
+### ⚠️ PHẢI LÀM TRƯỚC KHI NỘP — build lại `.exe` và thử trên Windows
+
+Ba thay đổi ngày 05/09 đụng **cả Python lẫn JS/HTML**, nên bản `.exe` hiện có đã
+lạc hậu. Phải build lại qua GitHub Actions (`build-windows-exe.yml`) rồi tải về
+máy Windows thật thử.
+
+**Một thứ KHÔNG thử được trong môi trường phát triển:** đường dẫn thư mục Tải
+xuống trên Windows (`SHGetKnownFolderPath`). Trên Linux nhánh đó không chạy lần
+nào. Khi thử trên Windows, kiểm đúng ba điều:
+
+1. Bấm **Xuất kết quả** → tệp có nằm trong `Downloads` thật không (kể cả khi
+   OneDrive đã chuyển hướng thư mục đó).
+2. Bấm **hai lần** → có ra `ket_qua_phan_bo (2).csv` không, hay ghi đè.
+3. Thông báo hiện ra có đúng đường dẫn đầy đủ không.
+
+
 ### Còn lại chưa giải quyết
 
 - **`ky_va_tin_cay.ps1` chưa chạy ở đâu bao giờ.** Nếu demo trên máy không có quyền
@@ -1345,10 +1459,10 @@ bỏ 1 câu trùng.
 **Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
 artifact, cập nhật số liệu ở Mục 4.
 
-**Trạng thái nhật ký AI (03/09/2026):** đã cập nhật tới **câu lệnh #96**, phủ hết
-ngày 02–03/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ
+**Trạng thái nhật ký AI (05/09/2026):** đã cập nhật tới **câu lệnh #97**, phủ hết
+ngày 02–05/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ
 câu hỏi khảo sát 16 câu, việc chuyển sang Microsoft Forms, trang
-`CO_CHE_THUAT_TOAN`, và bộ đo cái giá của tính ổn định.
+`CO_CHE_THUAT_TOAN`, bộ đo cái giá của tính ổn định, và ba việc ngày 05/09.
 
 > **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
 > Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:
