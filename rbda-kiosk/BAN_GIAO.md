@@ -1,7 +1,7 @@
 # BÀN GIAO NGỮ CẢNH — Dự án RB-DA
 
 > **Đọc file này đầu tiên khi bắt đầu phiên làm việc mới.**
-> Cập nhật lần cuối: 05/09/2026 · 483 test pass
+> Cập nhật lần cuối: 06/09/2026 · 483 test pass
 
 ---
 
@@ -1267,6 +1267,47 @@ nhưng báo **sai nguyên nhân** ("có cặp phá vỡ" thay vì "hết vòng")
 **Một thứ KHÔNG kiểm được và đừng tin kết quả cũ:** tôi có chạy `pyflakes` để dò
 import thừa — **máy không cài `pyflakes`**, nên kết quả rỗng lúc đó là *vô nghĩa
 chứ không phải sạch*. Muốn kiểm thật thì phải cài trước.
+
+
+### QUY ƯỚC (06/09) — mở kết nối CSDL bằng `with`, đừng viết tay nữa
+
+`api.py` từng lặp đúng một mẫu **33 lần**:
+
+```python
+conn = connect_db(self.db_path)
+conn.row_factory = sqlite3.Row
+cur = conn.cursor()
+... câu SQL ...
+conn.close()
+```
+
+Ba dòng đầu và dòng cuối không nói gì về việc hàm đang làm — chúng chỉ che mất
+câu SQL, thứ duy nhất đáng đọc. Nay có hai trình quản lý ngữ cảnh:
+
+| Dùng khi | Gọi thế nào | Nó lo giúp |
+|---|---|---|
+| Chỉ đọc | `with self._ket_noi_doc() as cur:` | `row_factory`, con trỏ, và **luôn đóng** kể cả khi ném lỗi |
+| Có ghi, một giao dịch | `with self._ket_noi_ghi() as cur:` | như trên, cộng **commit** khi trọn vẹn và **rollback** khi lỗi |
+
+**Đã chuyển 25/33 hàm.** Tám hàm còn lại **cố ý để nguyên**:
+
+- **`run_pipeline`** — học sinh dặn *"đừng động vào"*. Nó điều phối rollback và
+  ghi nhật ký nhiều bước; đó là hàm quan trọng nhất của phần mềm.
+- **Bảy hàm ghi có đường `return` sớm** (`delete_club`, `set_student_reserve_group`,
+  `submit_club_scores`, `submit_test_selection`, `submit_preferences`,
+  `reset_student_entry`, `delete_student`). Chuyển máy móc sang "tự commit khi
+  thoát khối `with`" là **đổi ngữ nghĩa**: một `return` giữa chừng sau khi đã ghi,
+  hiện đang KHÔNG commit, sẽ thành CÓ commit. Muốn chuyển thì phải soi từng hàm,
+  không chạy script hàng loạt.
+
+> `rollback()` trong `_ket_noi_ghi` **không đổi hành vi** — đóng kết nối SQLite khi
+> chưa commit thì giao dịch tự huỷ. Viết ra thành chữ để đọc mã không phải nhớ
+> luật đó mới biết dữ liệu có an toàn không.
+
+**Đã chứng minh không đổi hành vi**, không chỉ dựa vào test: diff bỏ qua thụt lề
+chỉ còn **78 thêm / 97 xoá**, và mọi dòng xoá đều là mẫu lặp; vân tay kết quả xếp
+lớp của cả ba bộ dữ liệu trùng khớp từng ký tự với bản trước khi sửa; và commit
+lẫn rollback được kiểm bằng cách đọc thẳng tệp `.db` từ một tiến trình khác.
 
 
 ### Còn lại chưa giải quyết

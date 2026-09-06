@@ -20,6 +20,7 @@ kèm data khi ok=True) là MỘT trong hai dạng:
 người dùng đang chọn ngôn ngữ nào.
 """
 
+import contextlib
 import csv
 import datetime
 import io
@@ -208,11 +209,8 @@ class PipelineAPI:
     def get_last_run_info(self):
         """Thông tin lần chạy pipeline gần nhất — để hiện ở sidebar/dashboard."""
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            row = cur.execute("SELECT * FROM run_meta WHERE id = 1").fetchone()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                row = cur.execute("SELECT * FROM run_meta WHERE id = 1").fetchone()
             return _ok(dict(row) if row else None)
         except Exception as e:
             return _fail(err("error_reading_last_run", detail=str(e)))
@@ -220,20 +218,18 @@ class PipelineAPI:
     def get_dashboard_status(self):
         """Số liệu tổng quan để hiển thị ngay khi mở tab Pipeline."""
         try:
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            n_students = cur.execute("SELECT COUNT(*) FROM students").fetchone()[0]
-            n_clubs = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
-            n_prefs = cur.execute(
-                "SELECT COUNT(DISTINCT student_id) FROM preferences"
-            ).fetchone()[0]
-            n_matched = cur.execute(
-                "SELECT COUNT(*) FROM match_results WHERE club_id IS NOT NULL"
-            ).fetchone()[0]
-            has_results = cur.execute(
-                "SELECT COUNT(*) FROM match_results"
-            ).fetchone()[0] > 0
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                n_students = cur.execute("SELECT COUNT(*) FROM students").fetchone()[0]
+                n_clubs = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
+                n_prefs = cur.execute(
+                    "SELECT COUNT(DISTINCT student_id) FROM preferences"
+                ).fetchone()[0]
+                n_matched = cur.execute(
+                    "SELECT COUNT(*) FROM match_results WHERE club_id IS NOT NULL"
+                ).fetchone()[0]
+                has_results = cur.execute(
+                    "SELECT COUNT(*) FROM match_results"
+                ).fetchone()[0] > 0
             return _ok({
                 "n_students": n_students,
                 "n_clubs": n_clubs,
@@ -298,165 +294,162 @@ class PipelineAPI:
         "high" (gần như chắc chắn làm sai kết quả) hoặc "medium"/"info".
         """
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            warnings = []
+            with self._ket_noi_doc() as cur:
+                warnings = []
 
-            def warn(severity, code, **params):
-                entry = err(code, **params)
-                entry["severity"] = severity
-                warnings.append(entry)
+                def warn(severity, code, **params):
+                    entry = err(code, **params)
+                    entry["severity"] = severity
+                    warnings.append(entry)
 
-            # --- 1. Chấm điểm thiếu / chưa chấm ---------------------------
-            for row in cur.execute("""
-                SELECT c.club_id,
-                       COUNT(DISTINCT t.student_id) AS n_applicants,
-                       COUNT(DISTINCT sc.student_id) AS n_scored
-                FROM clubs c
-                JOIN club_test_selection t ON t.club_id = c.club_id
-                LEFT JOIN club_scores sc
-                       ON sc.club_id = c.club_id AND sc.student_id = t.student_id
-                GROUP BY c.club_id
-                ORDER BY c.club_id
-            """).fetchall():
-                n_app, n_scored = row["n_applicants"], row["n_scored"]
-                if n_app == 0:
-                    continue
-                if n_scored == 0:
-                    warn("high", "health_scoring_none",
-                         club_id=row["club_id"], n_applicants=n_app)
-                elif n_scored < n_app:
-                    warn("high", "health_scoring_partial",
-                         club_id=row["club_id"], n_applicants=n_app,
-                         n_scored=n_scored, n_missing=n_app - n_scored)
+                # --- 1. Chấm điểm thiếu / chưa chấm ---------------------------
+                for row in cur.execute("""
+                    SELECT c.club_id,
+                           COUNT(DISTINCT t.student_id) AS n_applicants,
+                           COUNT(DISTINCT sc.student_id) AS n_scored
+                    FROM clubs c
+                    JOIN club_test_selection t ON t.club_id = c.club_id
+                    LEFT JOIN club_scores sc
+                           ON sc.club_id = c.club_id AND sc.student_id = t.student_id
+                    GROUP BY c.club_id
+                    ORDER BY c.club_id
+                """).fetchall():
+                    n_app, n_scored = row["n_applicants"], row["n_scored"]
+                    if n_app == 0:
+                        continue
+                    if n_scored == 0:
+                        warn("high", "health_scoring_none",
+                             club_id=row["club_id"], n_applicants=n_app)
+                    elif n_scored < n_app:
+                        warn("high", "health_scoring_partial",
+                             club_id=row["club_id"], n_applicants=n_app,
+                             n_scored=n_scored, n_missing=n_app - n_scored)
 
-            # --- 2. Đăng ký thi nhưng không xếp nguyện vọng club đó -------
-            wasted = cur.execute("""
-                SELECT t.student_id, t.club_id
-                FROM club_test_selection t
-                LEFT JOIN preferences p
-                       ON p.student_id = t.student_id AND p.club_id = t.club_id
-                WHERE p.student_id IS NULL
-                ORDER BY t.student_id, t.club_id
-            """).fetchall()
-            if wasted:
-                sample = ", ".join(
-                    f"{r['student_id']}→{r['club_id']}"
-                    for r in wasted[:self._HEALTH_SAMPLE_LIMIT]
-                )
-                warn("high", "health_tested_not_ranked",
-                     n=len(wasted), sample=sample)
+                # --- 2. Đăng ký thi nhưng không xếp nguyện vọng club đó -------
+                wasted = cur.execute("""
+                    SELECT t.student_id, t.club_id
+                    FROM club_test_selection t
+                    LEFT JOIN preferences p
+                           ON p.student_id = t.student_id AND p.club_id = t.club_id
+                    WHERE p.student_id IS NULL
+                    ORDER BY t.student_id, t.club_id
+                """).fetchall()
+                if wasted:
+                    sample = ", ".join(
+                        f"{r['student_id']}→{r['club_id']}"
+                        for r in wasted[:self._HEALTH_SAMPLE_LIMIT]
+                    )
+                    warn("high", "health_tested_not_ranked",
+                         n=len(wasted), sample=sample)
 
-            # --- 3. Học sinh chưa xếp nguyện vọng nào ---------------------
-            no_pref = cur.execute("""
-                SELECT s.student_id FROM students s
-                LEFT JOIN preferences p ON p.student_id = s.student_id
-                WHERE p.student_id IS NULL
-                ORDER BY s.student_id
-            """).fetchall()
-            if no_pref:
-                warn("medium", "health_student_no_preferences",
-                     n=len(no_pref),
-                     sample=", ".join(r["student_id"] for r in no_pref[:self._HEALTH_SAMPLE_LIMIT]))
+                # --- 3. Học sinh chưa xếp nguyện vọng nào ---------------------
+                no_pref = cur.execute("""
+                    SELECT s.student_id FROM students s
+                    LEFT JOIN preferences p ON p.student_id = s.student_id
+                    WHERE p.student_id IS NULL
+                    ORDER BY s.student_id
+                """).fetchall()
+                if no_pref:
+                    warn("medium", "health_student_no_preferences",
+                         n=len(no_pref),
+                         sample=", ".join(r["student_id"] for r in no_pref[:self._HEALTH_SAMPLE_LIMIT]))
 
-            # --- 4. Nhãn dự trữ của học sinh mà không club nào dùng -------
-            # Kèm MÃ HỌC SINH như hai mục trên. Không có mã thì cảnh báo
-            # bảo "kiểm tra xem có gõ sai chính tả không" mà người dùng
-            # phải tự dò tay qua cả danh sách mới biết dò em nào.
-            for row in cur.execute("""
-                SELECT s.reserve_group AS g, COUNT(*) AS n,
-                       GROUP_CONCAT(s.student_id) AS ids
-                FROM students s
-                WHERE s.reserve_group IS NOT NULL AND TRIM(s.reserve_group) <> ''
-                  AND s.reserve_group NOT IN (
-                      SELECT reserve_group FROM clubs
-                      WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
-                  )
-                GROUP BY s.reserve_group ORDER BY s.reserve_group
-            """).fetchall():
-                # GROUP_CONCAT không hứa thứ tự — phải sắp TRƯỚC khi cắt,
-                # nếu không mỗi lần bấm "Kiểm tra lại" lại ra một mẫu khác
-                # và người dùng tưởng dữ liệu vừa đổi.
-                ids = sorted((row["ids"] or "").split(","))
-                warn("high", "health_orphan_student_group",
-                     reserve_group=row["g"], n=row["n"],
-                     sample=", ".join(ids[:self._HEALTH_SAMPLE_LIMIT]))
+                # --- 4. Nhãn dự trữ của học sinh mà không club nào dùng -------
+                # Kèm MÃ HỌC SINH như hai mục trên. Không có mã thì cảnh báo
+                # bảo "kiểm tra xem có gõ sai chính tả không" mà người dùng
+                # phải tự dò tay qua cả danh sách mới biết dò em nào.
+                for row in cur.execute("""
+                    SELECT s.reserve_group AS g, COUNT(*) AS n,
+                           GROUP_CONCAT(s.student_id) AS ids
+                    FROM students s
+                    WHERE s.reserve_group IS NOT NULL AND TRIM(s.reserve_group) <> ''
+                      AND s.reserve_group NOT IN (
+                          SELECT reserve_group FROM clubs
+                          WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                      )
+                    GROUP BY s.reserve_group ORDER BY s.reserve_group
+                """).fetchall():
+                    # GROUP_CONCAT không hứa thứ tự — phải sắp TRƯỚC khi cắt,
+                    # nếu không mỗi lần bấm "Kiểm tra lại" lại ra một mẫu khác
+                    # và người dùng tưởng dữ liệu vừa đổi.
+                    ids = sorted((row["ids"] or "").split(","))
+                    warn("high", "health_orphan_student_group",
+                         reserve_group=row["g"], n=row["n"],
+                         sample=", ".join(ids[:self._HEALTH_SAMPLE_LIMIT]))
 
-            # --- 5. Club có suất dự trữ nhưng chưa đặt nhãn ---------------
-            for row in cur.execute("""
-                SELECT club_id, reserve_capacity FROM clubs
-                WHERE reserve_capacity > 0
-                  AND (reserve_group IS NULL OR TRIM(reserve_group) = '')
-                ORDER BY club_id
-            """).fetchall():
-                warn("high", "health_club_reserve_no_group",
-                     club_id=row["club_id"], reserve_capacity=row["reserve_capacity"])
+                # --- 5. Club có suất dự trữ nhưng chưa đặt nhãn ---------------
+                for row in cur.execute("""
+                    SELECT club_id, reserve_capacity FROM clubs
+                    WHERE reserve_capacity > 0
+                      AND (reserve_group IS NULL OR TRIM(reserve_group) = '')
+                    ORDER BY club_id
+                """).fetchall():
+                    warn("high", "health_club_reserve_no_group",
+                         club_id=row["club_id"], reserve_capacity=row["reserve_capacity"])
 
-            # --- 6. Club dành suất cho nhãn chưa học sinh nào mang --------
-            for row in cur.execute("""
-                SELECT club_id, reserve_group, reserve_capacity FROM clubs
-                WHERE reserve_capacity > 0
-                  AND reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
-                  AND reserve_group NOT IN (
-                      SELECT reserve_group FROM students
-                      WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
-                  )
-                ORDER BY club_id
-            """).fetchall():
-                warn("medium", "health_club_group_no_students",
-                     club_id=row["club_id"], reserve_group=row["reserve_group"],
-                     reserve_capacity=row["reserve_capacity"])
+                # --- 6. Club dành suất cho nhãn chưa học sinh nào mang --------
+                for row in cur.execute("""
+                    SELECT club_id, reserve_group, reserve_capacity FROM clubs
+                    WHERE reserve_capacity > 0
+                      AND reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                      AND reserve_group NOT IN (
+                          SELECT reserve_group FROM students
+                          WHERE reserve_group IS NOT NULL AND TRIM(reserve_group) <> ''
+                      )
+                    ORDER BY club_id
+                """).fetchall():
+                    warn("medium", "health_club_group_no_students",
+                         club_id=row["club_id"], reserve_group=row["reserve_group"],
+                         reserve_capacity=row["reserve_capacity"])
 
-            # --- 7. Tổng chỗ ít hơn số học sinh đã nộp nguyện vọng --------
-            n_seats = cur.execute(
-                "SELECT COALESCE(SUM(capacity), 0) FROM clubs"
-            ).fetchone()[0]
-            n_with_prefs = cur.execute(
-                "SELECT COUNT(DISTINCT student_id) FROM preferences"
-            ).fetchone()[0]
-            if n_with_prefs > n_seats:
-                warn("info", "health_oversubscribed",
-                     n_seats=n_seats, n_students=n_with_prefs,
-                     n_short=n_with_prefs - n_seats)
+                # --- 7. Tổng chỗ ít hơn số học sinh đã nộp nguyện vọng --------
+                n_seats = cur.execute(
+                    "SELECT COALESCE(SUM(capacity), 0) FROM clubs"
+                ).fetchone()[0]
+                n_with_prefs = cur.execute(
+                    "SELECT COUNT(DISTINCT student_id) FROM preferences"
+                ).fetchone()[0]
+                if n_with_prefs > n_seats:
+                    warn("info", "health_oversubscribed",
+                         n_seats=n_seats, n_students=n_with_prefs,
+                         n_short=n_with_prefs - n_seats)
 
-            # --- 8. Điểm lệch hẳn khỏi phân bố của chính CLB đó ----------
-            # Gõ 70 thay vì 7.0 thì phần mềm vẫn nhận, và em đó nhảy lên
-            # đầu bảng. Đo trên bộ ví dụ: MỘT lỗi gõ làm BA em đổi chỗ,
-            # vì em bị đẩy ra lại đi đẩy em khác.
-            #
-            # KHÔNG đặt trần cứng ở 10 — trường có thể chấm thang 100, và
-            # chặn cứng là chặn nhầm. So với TRUNG VỊ CỦA CHÍNH CLB đó thì
-            # thang nào cũng đúng, và bắt được cả hai phía: 70 (thừa) lẫn
-            # 0.85 (thiếu).
-            diem_theo_clb: dict = {}
-            for row in cur.execute("""
-                SELECT club_id, student_id, score FROM club_scores
-                ORDER BY club_id, student_id
-            """).fetchall():
-                diem_theo_clb.setdefault(row["club_id"], []).append(
-                    (row["student_id"], row["score"])
-                )
-            for club_id in sorted(diem_theo_clb):
-                cap = diem_theo_clb[club_id]
-                # Dưới 3 điểm thì không có phân bố nào để mà so.
-                if len(cap) < 3:
-                    continue
-                giua = statistics.median([s for _, s in cap])
-                if giua <= 0:
-                    continue
-                la = [(sid, s) for sid, s in cap
-                      if s > self._NGUONG_DIEM_LA * giua
-                      or s * self._NGUONG_DIEM_LA < giua]
-                if la:
-                    warn("high", "health_score_outlier",
-                         club_id=club_id, n=len(la),
-                         trung_vi=("%g" % giua),
-                         sample=", ".join(
-                             "%s (%g)" % (sid, s)
-                             for sid, s in la[:self._HEALTH_SAMPLE_LIMIT]))
+                # --- 8. Điểm lệch hẳn khỏi phân bố của chính CLB đó ----------
+                # Gõ 70 thay vì 7.0 thì phần mềm vẫn nhận, và em đó nhảy lên
+                # đầu bảng. Đo trên bộ ví dụ: MỘT lỗi gõ làm BA em đổi chỗ,
+                # vì em bị đẩy ra lại đi đẩy em khác.
+                #
+                # KHÔNG đặt trần cứng ở 10 — trường có thể chấm thang 100, và
+                # chặn cứng là chặn nhầm. So với TRUNG VỊ CỦA CHÍNH CLB đó thì
+                # thang nào cũng đúng, và bắt được cả hai phía: 70 (thừa) lẫn
+                # 0.85 (thiếu).
+                diem_theo_clb: dict = {}
+                for row in cur.execute("""
+                    SELECT club_id, student_id, score FROM club_scores
+                    ORDER BY club_id, student_id
+                """).fetchall():
+                    diem_theo_clb.setdefault(row["club_id"], []).append(
+                        (row["student_id"], row["score"])
+                    )
+                for club_id in sorted(diem_theo_clb):
+                    cap = diem_theo_clb[club_id]
+                    # Dưới 3 điểm thì không có phân bố nào để mà so.
+                    if len(cap) < 3:
+                        continue
+                    giua = statistics.median([s for _, s in cap])
+                    if giua <= 0:
+                        continue
+                    la = [(sid, s) for sid, s in cap
+                          if s > self._NGUONG_DIEM_LA * giua
+                          or s * self._NGUONG_DIEM_LA < giua]
+                    if la:
+                        warn("high", "health_score_outlier",
+                             club_id=club_id, n=len(la),
+                             trung_vi=("%g" % giua),
+                             sample=", ".join(
+                                 "%s (%g)" % (sid, s)
+                                 for sid, s in la[:self._HEALTH_SAMPLE_LIMIT]))
 
-            conn.close()
             return _ok({
                 "warnings": warnings,
                 "n_warnings": len(warnings),
@@ -473,18 +466,16 @@ class PipelineAPI:
         STB cũ chứ không vẽ lại — chỉ vẽ lại nếu force_redraw_stb=True).
         """
         try:
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            has_results = cur.execute(
-                "SELECT COUNT(*) FROM match_results"
-            ).fetchone()[0] > 0
-            lock_row = cur.execute(
-                "SELECT is_locked, locked_at FROM stb_lock WHERE id = 1"
-            ).fetchone()
-            last_run = cur.execute(
-                "SELECT run_at, seed FROM run_meta WHERE id = 1"
-            ).fetchone()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                has_results = cur.execute(
+                    "SELECT COUNT(*) FROM match_results"
+                ).fetchone()[0] > 0
+                lock_row = cur.execute(
+                    "SELECT is_locked, locked_at FROM stb_lock WHERE id = 1"
+                ).fetchone()
+                last_run = cur.execute(
+                    "SELECT run_at, seed FROM run_meta WHERE id = 1"
+                ).fetchone()
             return _ok({
                 "has_existing_results": has_results,
                 "stb_locked": bool(lock_row[0]) if lock_row else False,
@@ -497,12 +488,10 @@ class PipelineAPI:
 
     def get_stb_lock_status(self):
         try:
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            row = cur.execute(
-                "SELECT is_locked, locked_at, unlocked_at FROM stb_lock WHERE id = 1"
-            ).fetchone()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                row = cur.execute(
+                    "SELECT is_locked, locked_at, unlocked_at FROM stb_lock WHERE id = 1"
+                ).fetchone()
             if not row:
                 return _ok({"is_locked": False, "locked_at": None, "unlocked_at": None})
             return _ok({
@@ -517,20 +506,68 @@ class PipelineAPI:
         """Nhật ký toàn bộ các lần chạy pipeline, mới nhất trước — phục vụ kiểm toán."""
         try:
             limit = max(1, min(int(limit), 200))
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT run_id, seed, run_at, rounds_run, n_matched, n_total, stb_redrawn "
-                "FROM run_history ORDER BY run_id DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute(
+                    "SELECT run_id, seed, run_at, rounds_run, n_matched, n_total, stb_redrawn "
+                    "FROM run_history ORDER BY run_id DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_run_history", detail=str(e)))
 
     _MAX_BACKUPS = 10
+
+    @contextlib.contextmanager
+    def _ket_noi_doc(self):
+        """Kết nối CHỈ ĐỌC, trả về sẵn con trỏ.
+
+        Gom lại một mẫu lặp 33 lần trong tệp này:
+
+            conn = connect_db(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            ... truy vấn ...
+            conn.close()
+
+        Ba dòng đầu và dòng cuối chẳng nói gì về việc hàm đang làm; chúng
+        chỉ che mất câu SQL — thứ duy nhất đáng đọc. Gom vào đây thì mỗi
+        hàm còn đúng phần việc của nó.
+
+        Và `close()` nay nằm trong `finally`: trước đây nó là dòng cuối
+        của khối `try`, nên bất kỳ lỗi nào ở giữa cũng bỏ qua nó. Đã đo:
+        trên CPython đếm tham chiếu thu hồi kịp nên KHÔNG rò thật (600
+        lần gọi lỗi, 0 kết nối còn sống) — nhưng dựa vào chi tiết cài đặt
+        của trình thông dịch để đóng tệp thì không phải cách viết đúng.
+        """
+        conn = connect_db(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn.cursor()
+        finally:
+            conn.close()
+
+    @contextlib.contextmanager
+    def _ket_noi_ghi(self):
+        """Kết nối CÓ GHI: commit khi chạy trọn, rollback khi ném lỗi, luôn đóng.
+
+        `rollback()` ở đây KHÔNG đổi hành vi — đóng một kết nối SQLite khi
+        chưa commit thì giao dịch đang mở tự bị huỷ. Viết ra thành chữ vì
+        đọc mã không nên phải nhớ luật đó mới biết dữ liệu có an toàn không.
+
+        Đây là mẫu cho các thao tác ghi ĐƠN GIẢN, một giao dịch. `run_pipeline`
+        KHÔNG dùng cái này: nó điều phối rollback và ghi nhật ký nhiều bước,
+        và đó là hàm quan trọng nhất của phần mềm — để nguyên.
+        """
+        conn = connect_db(self.db_path)
+        try:
+            yield conn.cursor()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def _backup_db(self) -> str:
         """
@@ -1078,57 +1115,54 @@ class PipelineAPI:
                 if bat_buoc not in fieldnames:
                     return _fail(err("csv_missing_columns", fieldnames=fieldnames))
 
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            da_co = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
+            with self._ket_noi_ghi() as cur:
+                da_co = {r[0] for r in cur.execute("SELECT club_id FROM clubs")}
 
-            n_tao, n_sua, n_bo = 0, 0, 0
-            canh_bao = []
-            for i, row in enumerate(rows, start=2):   # dong 1 la tieu de
-                club_id = (row.get("club_id") or "").strip()
-                if not club_id:
-                    canh_bao.append(err("csv_club_row_invalid", line=i,
-                                        reason="club_id"))
-                    n_bo += 1
-                    continue
-                try:
-                    capacity = int(row.get("capacity") or 0)
-                    reserve_capacity = int(row.get("reserve_capacity") or 0)
-                except ValueError:
-                    canh_bao.append(err("csv_club_row_invalid", line=i,
-                                        reason="capacity"))
-                    n_bo += 1
-                    continue
-                # Cung dung dieu kien nhu create_or_update_club — khong de
-                # duong CSV lot qua thu duong UI da chan.
-                if capacity <= 0 or reserve_capacity > capacity:
-                    canh_bao.append(err("csv_club_row_invalid", line=i,
-                                        reason="capacity"))
-                    n_bo += 1
-                    continue
+                n_tao, n_sua, n_bo = 0, 0, 0
+                canh_bao = []
+                for i, row in enumerate(rows, start=2):   # dong 1 la tieu de
+                    club_id = (row.get("club_id") or "").strip()
+                    if not club_id:
+                        canh_bao.append(err("csv_club_row_invalid", line=i,
+                                            reason="club_id"))
+                        n_bo += 1
+                        continue
+                    try:
+                        capacity = int(row.get("capacity") or 0)
+                        reserve_capacity = int(row.get("reserve_capacity") or 0)
+                    except ValueError:
+                        canh_bao.append(err("csv_club_row_invalid", line=i,
+                                            reason="capacity"))
+                        n_bo += 1
+                        continue
+                    # Cung dung dieu kien nhu create_or_update_club — khong de
+                    # duong CSV lot qua thu duong UI da chan.
+                    if capacity <= 0 or reserve_capacity > capacity:
+                        canh_bao.append(err("csv_club_row_invalid", line=i,
+                                            reason="capacity"))
+                        n_bo += 1
+                        continue
 
-                cur.execute(
-                    """
-                    INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(club_id) DO UPDATE SET
-                        name=excluded.name,
-                        capacity=excluded.capacity,
-                        reserve_capacity=excluded.reserve_capacity,
-                        reserve_group=excluded.reserve_group
-                    """,
-                    (club_id, (row.get("name") or "").strip(), capacity,
-                     reserve_capacity,
-                     self.chuan_hoa_nhom_du_tru(row.get("reserve_group")) or None),
-                )
-                if club_id in da_co:
-                    n_sua += 1
-                else:
-                    n_tao += 1
-                    da_co.add(club_id)
+                    cur.execute(
+                        """
+                        INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(club_id) DO UPDATE SET
+                            name=excluded.name,
+                            capacity=excluded.capacity,
+                            reserve_capacity=excluded.reserve_capacity,
+                            reserve_group=excluded.reserve_group
+                        """,
+                        (club_id, (row.get("name") or "").strip(), capacity,
+                         reserve_capacity,
+                         self.chuan_hoa_nhom_du_tru(row.get("reserve_group")) or None),
+                    )
+                    if club_id in da_co:
+                        n_sua += 1
+                    else:
+                        n_tao += 1
+                        da_co.add(club_id)
 
-            conn.commit()
-            conn.close()
             return _ok({
                 "n_clubs_created": n_tao,
                 "n_clubs_updated": n_sua,
@@ -1154,9 +1188,8 @@ class PipelineAPI:
             is_wide = any(f.startswith("pref_") or f.startswith("test_club_") for f in fieldnames)
             fmt = "wide" if is_wide else "long"
 
-            conn = connect_db(self.db_path)
-            existing_ids = {r[0] for r in conn.execute("SELECT student_id FROM students")}
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                existing_ids = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
             row_student_ids = {r.get("student_id", "") for r in rows if r.get("student_id")}
             new_students = [sid for sid in row_student_ids if sid not in existing_ids]
@@ -1456,81 +1489,78 @@ class PipelineAPI:
                                  if r.get("reserve_group")), "")
                     grouped[sid] = (name, [r["club_id"] for r in sid_rows], nhom)
 
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            khop_club = self._khop_club_id(cur)
-            existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
+            with self._ket_noi_ghi() as cur:
+                khop_club = self._khop_club_id(cur)
+                existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
-            n_created, n_updated, n_skipped = 0, 0, 0
-            row_errors = self._soat_dong_trung(rows, is_wide)
-            row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
-            row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
-            # Điểm chỉ thuộc file CHỌN CLB THI. Gặp cột điểm ở đây là
-            # người nhập tưởng đã nạp điểm rồi — im lặng bỏ qua đúng là
-            # loại lỗi im lặng dự án này đã phải sửa nhiều lần.
-            if any(f == "score" or f.startswith("score_") for f in fieldnames):
-                row_errors.append(err("csv_scores_ignored_here"))
-            nhom_da_ghi: dict = {}
+                n_created, n_updated, n_skipped = 0, 0, 0
+                row_errors = self._soat_dong_trung(rows, is_wide)
+                row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
+                row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
+                # Điểm chỉ thuộc file CHỌN CLB THI. Gặp cột điểm ở đây là
+                # người nhập tưởng đã nạp điểm rồi — im lặng bỏ qua đúng là
+                # loại lỗi im lặng dự án này đã phải sửa nhiều lần.
+                if any(f == "score" or f.startswith("score_") for f in fieldnames):
+                    row_errors.append(err("csv_scores_ignored_here"))
+                nhom_da_ghi: dict = {}
 
-            for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
-                # loai bo trung lap giu thu tu xuat hien dau tien
-                seen = set()
-                deduped = []
-                for cid in ordered_clubs:
-                    if cid not in seen:
-                        seen.add(cid)
-                        deduped.append(cid)
-                if len(deduped) != len(ordered_clubs):
-                    row_errors.append(err("csv_pref_duplicate_deduped", student_id=sid))
+                for sid, (name, ordered_clubs, nhom_du_tru) in grouped.items():
+                    # loai bo trung lap giu thu tu xuat hien dau tien
+                    seen = set()
+                    deduped = []
+                    for cid in ordered_clubs:
+                        if cid not in seen:
+                            seen.add(cid)
+                            deduped.append(cid)
+                    if len(deduped) != len(ordered_clubs):
+                        row_errors.append(err("csv_pref_duplicate_deduped", student_id=sid))
 
-                if len(deduped) > 10:
-                    row_errors.append(err("csv_pref_too_many_skipped", student_id=sid, count=len(deduped)))
-                    n_skipped += 1
-                    continue
-
-                # Doi ma nguoi dung go ve dung ma GOC trong DB (chap nhan
-                # khac hoa/thuong) truoc khi kiem tra ton tai.
-                da_khop = [(c, khop_club(c)) for c in deduped]
-                invalid_clubs = [c for c, that in da_khop if that is None]
-                if invalid_clubs:
-                    row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
-                    n_skipped += 1
-                    continue
-                deduped = [that for _, that in da_khop]
-
-                if sid not in existing_students:
-                    if not create_missing_students:
-                        row_errors.append(err("csv_student_missing_skipped", student_id=sid))
+                    if len(deduped) > 10:
+                        row_errors.append(err("csv_pref_too_many_skipped", student_id=sid, count=len(deduped)))
                         n_skipped += 1
                         continue
-                    cur.execute(
-                        "INSERT INTO students (student_id, name, stb_number, reserve_group) "
-                        "VALUES (?, ?, NULL, NULL)",
-                        (sid, name or sid),
+
+                    # Doi ma nguoi dung go ve dung ma GOC trong DB (chap nhan
+                    # khac hoa/thuong) truoc khi kiem tra ton tai.
+                    da_khop = [(c, khop_club(c)) for c in deduped]
+                    invalid_clubs = [c for c, that in da_khop if that is None]
+                    if invalid_clubs:
+                        row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
+                        n_skipped += 1
+                        continue
+                    deduped = [that for _, that in da_khop]
+
+                    if sid not in existing_students:
+                        if not create_missing_students:
+                            row_errors.append(err("csv_student_missing_skipped", student_id=sid))
+                            n_skipped += 1
+                            continue
+                        cur.execute(
+                            "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                            "VALUES (?, ?, NULL, NULL)",
+                            (sid, name or sid),
+                        )
+                        existing_students.add(sid)
+                        n_created += 1
+                    elif name:
+                        cur.execute(
+                            "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
+                            (name, sid),
+                        )
+
+                    nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                    if nhan:
+                        nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
+
+                    cur.execute("DELETE FROM preferences WHERE student_id = ?", (sid,))
+                    cur.executemany(
+                        "INSERT INTO preferences (student_id, club_id, rank) VALUES (?, ?, ?)",
+                        [(sid, cid, i + 1) for i, cid in enumerate(deduped)],
                     )
-                    existing_students.add(sid)
-                    n_created += 1
-                elif name:
-                    cur.execute(
-                        "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
-                        (name, sid),
-                    )
+                    n_updated += 1
 
-                nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
-                if nhan:
-                    nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
+                row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
 
-                cur.execute("DELETE FROM preferences WHERE student_id = ?", (sid,))
-                cur.executemany(
-                    "INSERT INTO preferences (student_id, club_id, rank) VALUES (?, ?, ?)",
-                    [(sid, cid, i + 1) for i, cid in enumerate(deduped)],
-                )
-                n_updated += 1
-
-            row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
-
-            conn.commit()
-            conn.close()
 
             return _ok({
                 "n_students_created": n_created,
@@ -1616,92 +1646,89 @@ class PipelineAPI:
                     if d:
                         diem_tho.setdefault(sid, {})[row["club_id"]] = d
 
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            khop_club = self._khop_club_id(cur)
-            existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
+            with self._ket_noi_ghi() as cur:
+                khop_club = self._khop_club_id(cur)
+                existing_students = {r[0] for r in cur.execute("SELECT student_id FROM students")}
 
-            n_created, n_updated, n_skipped, n_diem = 0, 0, 0, 0
-            row_errors = list(loi_som)
-            row_errors += self._soat_dong_trung(rows, is_wide)
-            row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
-            row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
-            nhom_da_ghi: dict = {}
+                n_created, n_updated, n_skipped, n_diem = 0, 0, 0, 0
+                row_errors = list(loi_som)
+                row_errors += self._soat_dong_trung(rows, is_wide)
+                row_errors += self._soat_ma_trung_hoa_thuong(cur, grouped.keys())
+                row_errors += self._soat_ma_nghi_bi_cat(grouped.keys())
+                nhom_da_ghi: dict = {}
 
-            for sid, (name, club_ids, nhom_du_tru) in grouped.items():
-                deduped = sorted(set(club_ids), key=club_ids.index)
-                da_khop = [(c, khop_club(c)) for c in deduped]
-                invalid_clubs = [c for c, that in da_khop if that is None]
-                if invalid_clubs:
-                    row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
-                    n_skipped += 1
-                    continue
-                deduped = [that for _, that in da_khop]
-
-                if sid not in existing_students:
-                    if not create_missing_students:
-                        row_errors.append(err("csv_student_missing_skipped", student_id=sid))
+                for sid, (name, club_ids, nhom_du_tru) in grouped.items():
+                    deduped = sorted(set(club_ids), key=club_ids.index)
+                    da_khop = [(c, khop_club(c)) for c in deduped]
+                    invalid_clubs = [c for c, that in da_khop if that is None]
+                    if invalid_clubs:
+                        row_errors.append(err("csv_unknown_clubs_skipped", student_id=sid, club_ids=invalid_clubs))
                         n_skipped += 1
                         continue
-                    cur.execute(
-                        "INSERT INTO students (student_id, name, stb_number, reserve_group) "
-                        "VALUES (?, ?, NULL, NULL)",
-                        (sid, name or sid),
-                    )
-                    existing_students.add(sid)
-                    n_created += 1
-                elif name:
-                    cur.execute(
-                        "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
-                        (name, sid),
-                    )
+                    deduped = [that for _, that in da_khop]
 
-                nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
-                if nhan:
-                    nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
-
-                cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (sid,))
-                cur.executemany(
-                    "INSERT INTO club_test_selection (student_id, club_id) VALUES (?, ?)",
-                    [(sid, cid) for cid in deduped],
-                )
-                n_updated += 1
-
-                # Điểm ghi SAU lựa chọn thi, và ghi bằng club_id ĐÃ KHỚP
-                # (khop_club chấp nhận lệch hoa/thường), không phải chuỗi
-                # thô trong file — ghi thô sẽ tạo một dòng điểm mồ côi mà
-                # không màn hình nào đọc tới.
-                diem_hs = diem_tho.get(sid)
-                if diem_hs:
-                    anh_xa = {tho: that for tho, that in da_khop}
-                    for tho, chuoi in diem_hs.items():
-                        that = anh_xa.get(tho)
-                        if that is None:
-                            row_errors.append(err("csv_score_for_unselected_club",
-                                                  student_id=sid, club_id=tho))
-                            continue
-                        so = self._doc_diem(chuoi)
-                        if so is None:
-                            # Chỉ bỏ RIÊNG ô điểm này. Bỏ cả học sinh vì
-                            # một ô gõ sai là mất nhiều hơn được.
-                            row_errors.append(err("csv_score_not_a_number",
-                                                  student_id=sid, club_id=that, score=chuoi))
-                            continue
-                        if so < 0:
-                            row_errors.append(err("csv_score_negative",
-                                                  student_id=sid, club_id=that, score=chuoi))
+                    if sid not in existing_students:
+                        if not create_missing_students:
+                            row_errors.append(err("csv_student_missing_skipped", student_id=sid))
+                            n_skipped += 1
                             continue
                         cur.execute(
-                            "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
-                            "ON CONFLICT(student_id, club_id) DO UPDATE SET score = excluded.score",
-                            (sid, that, so),
+                            "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                            "VALUES (?, ?, NULL, NULL)",
+                            (sid, name or sid),
                         )
-                        n_diem += 1
+                        existing_students.add(sid)
+                        n_created += 1
+                    elif name:
+                        cur.execute(
+                            "UPDATE students SET name = ? WHERE student_id = ? AND (name IS NULL OR name = '')",
+                            (name, sid),
+                        )
 
-            row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
+                    nhan = self._ghi_nhom_du_tru(cur, sid, nhom_du_tru)
+                    if nhan:
+                        nhom_da_ghi[nhan] = nhom_da_ghi.get(nhan, 0) + 1
 
-            conn.commit()
-            conn.close()
+                    cur.execute("DELETE FROM club_test_selection WHERE student_id = ?", (sid,))
+                    cur.executemany(
+                        "INSERT INTO club_test_selection (student_id, club_id) VALUES (?, ?)",
+                        [(sid, cid) for cid in deduped],
+                    )
+                    n_updated += 1
+
+                    # Điểm ghi SAU lựa chọn thi, và ghi bằng club_id ĐÃ KHỚP
+                    # (khop_club chấp nhận lệch hoa/thường), không phải chuỗi
+                    # thô trong file — ghi thô sẽ tạo một dòng điểm mồ côi mà
+                    # không màn hình nào đọc tới.
+                    diem_hs = diem_tho.get(sid)
+                    if diem_hs:
+                        anh_xa = {tho: that for tho, that in da_khop}
+                        for tho, chuoi in diem_hs.items():
+                            that = anh_xa.get(tho)
+                            if that is None:
+                                row_errors.append(err("csv_score_for_unselected_club",
+                                                      student_id=sid, club_id=tho))
+                                continue
+                            so = self._doc_diem(chuoi)
+                            if so is None:
+                                # Chỉ bỏ RIÊNG ô điểm này. Bỏ cả học sinh vì
+                                # một ô gõ sai là mất nhiều hơn được.
+                                row_errors.append(err("csv_score_not_a_number",
+                                                      student_id=sid, club_id=that, score=chuoi))
+                                continue
+                            if so < 0:
+                                row_errors.append(err("csv_score_negative",
+                                                      student_id=sid, club_id=that, score=chuoi))
+                                continue
+                            cur.execute(
+                                "INSERT INTO club_scores (student_id, club_id, score) VALUES (?, ?, ?) "
+                                "ON CONFLICT(student_id, club_id) DO UPDATE SET score = excluded.score",
+                                (sid, that, so),
+                            )
+                            n_diem += 1
+
+                row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
+
 
             return _ok({
                 "n_students_created": n_created,
@@ -1725,20 +1752,17 @@ class PipelineAPI:
     def get_scoring_overview(self):
         """Tổng quan tiến độ chấm điểm theo từng club — cho màn hình chọn club để chấm."""
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute("""
-                SELECT c.club_id, c.name,
-                       COUNT(DISTINCT t.student_id) AS n_applicants,
-                       COUNT(DISTINCT sc.student_id) AS n_scored
-                FROM clubs c
-                LEFT JOIN club_test_selection t ON t.club_id = c.club_id
-                LEFT JOIN club_scores sc ON sc.club_id = c.club_id AND sc.student_id = t.student_id
-                GROUP BY c.club_id
-                ORDER BY c.club_id
-            """).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute("""
+                    SELECT c.club_id, c.name,
+                           COUNT(DISTINCT t.student_id) AS n_applicants,
+                           COUNT(DISTINCT sc.student_id) AS n_scored
+                    FROM clubs c
+                    LEFT JOIN club_test_selection t ON t.club_id = c.club_id
+                    LEFT JOIN club_scores sc ON sc.club_id = c.club_id AND sc.student_id = t.student_id
+                    GROUP BY c.club_id
+                    ORDER BY c.club_id
+                """).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_scoring_overview", detail=str(e)))
@@ -1750,29 +1774,25 @@ class PipelineAPI:
         kèm thứ hạng nguyện vọng — đúng yêu cầu chấm mù (blind scoring).
         """
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            club = cur.execute(
-                "SELECT club_id, name FROM clubs WHERE club_id = ?", (club_id,)
-            ).fetchone()
-            if not club:
-                conn.close()
-                return _fail(err("club_not_found", club_id=club_id))
-            rows = cur.execute("""
-                SELECT s.student_id, s.name, sc.score
-                FROM club_test_selection t
-                JOIN students s ON s.student_id = t.student_id
-                LEFT JOIN club_scores sc ON sc.student_id = t.student_id AND sc.club_id = t.club_id
-                WHERE t.club_id = ?
-                ORDER BY s.student_id
-            """, (club_id,)).fetchall()
-            conn.close()
-            return _ok({
-                "club_id": club["club_id"],
-                "club_name": club["name"],
-                "applicants": [dict(r) for r in rows],
-            })
+            with self._ket_noi_doc() as cur:
+                club = cur.execute(
+                    "SELECT club_id, name FROM clubs WHERE club_id = ?", (club_id,)
+                ).fetchone()
+                if not club:
+                    return _fail(err("club_not_found", club_id=club_id))
+                rows = cur.execute("""
+                    SELECT s.student_id, s.name, sc.score
+                    FROM club_test_selection t
+                    JOIN students s ON s.student_id = t.student_id
+                    LEFT JOIN club_scores sc ON sc.student_id = t.student_id AND sc.club_id = t.club_id
+                    WHERE t.club_id = ?
+                    ORDER BY s.student_id
+                """, (club_id,)).fetchall()
+                return _ok({
+                    "club_id": club["club_id"],
+                    "club_name": club["name"],
+                    "applicants": [dict(r) for r in rows],
+                })
         except Exception as e:
             return _fail(err("error_reading_scoring_list", detail=str(e)))
 
@@ -1854,23 +1874,20 @@ class PipelineAPI:
     def get_match_results(self, search: str = ""):
         """Bảng kết quả, lọc theo student_id/name nếu search có giá trị."""
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            query = """
-                SELECT m.student_id, s.name, m.club_id, c.name as club_name,
-                       m.matched_tier, m.rank_in_student_pref
-                FROM match_results m
-                JOIN students s ON s.student_id = m.student_id
-                LEFT JOIN clubs c ON c.club_id = m.club_id
-            """
-            params = ()
-            if search:
-                query += " WHERE m.student_id LIKE ? OR s.name LIKE ?"
-                params = (f"%{search}%", f"%{search}%")
-            query += " ORDER BY m.student_id"
-            rows = cur.execute(query, params).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                query = """
+                    SELECT m.student_id, s.name, m.club_id, c.name as club_name,
+                           m.matched_tier, m.rank_in_student_pref
+                    FROM match_results m
+                    JOIN students s ON s.student_id = m.student_id
+                    LEFT JOIN clubs c ON c.club_id = m.club_id
+                """
+                params = ()
+                if search:
+                    query += " WHERE m.student_id LIKE ? OR s.name LIKE ?"
+                    params = (f"%{search}%", f"%{search}%")
+                query += " ORDER BY m.student_id"
+                rows = cur.execute(query, params).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_results", detail=str(e)))
@@ -1878,25 +1895,22 @@ class PipelineAPI:
     def get_club_fill_stats(self):
         """Tỉ lệ lấp đầy mỗi club — dùng vẽ thanh progress bar."""
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            # matched_reserve: SỐ EM THỰC SỰ VÀO BẰNG SUẤT DỰ TRỮ — khác
-            # với reserve_capacity là chỉ tiêu dự trữ của CLB. Biểu đồ
-            # trước đây vẽ theo chỉ tiêu, tức là vẽ một thuộc tính của
-            # CLB chứ không phải điều đã xảy ra. Dữ liệu vốn có sẵn ở
-            # match_results.matched_tier, chỉ là câu lệnh chưa lấy.
-            rows = cur.execute("""
-                SELECT c.club_id, c.name, c.capacity, c.reserve_capacity,
-                       COUNT(m.student_id) as matched,
-                       SUM(CASE WHEN m.matched_tier = 'reserve' THEN 1 ELSE 0 END)
-                           AS matched_reserve
-                FROM clubs c
-                LEFT JOIN match_results m ON m.club_id = c.club_id
-                GROUP BY c.club_id
-                ORDER BY c.club_id
-            """).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                # matched_reserve: SỐ EM THỰC SỰ VÀO BẰNG SUẤT DỰ TRỮ — khác
+                # với reserve_capacity là chỉ tiêu dự trữ của CLB. Biểu đồ
+                # trước đây vẽ theo chỉ tiêu, tức là vẽ một thuộc tính của
+                # CLB chứ không phải điều đã xảy ra. Dữ liệu vốn có sẵn ở
+                # match_results.matched_tier, chỉ là câu lệnh chưa lấy.
+                rows = cur.execute("""
+                    SELECT c.club_id, c.name, c.capacity, c.reserve_capacity,
+                           COUNT(m.student_id) as matched,
+                           SUM(CASE WHEN m.matched_tier = 'reserve' THEN 1 ELSE 0 END)
+                               AS matched_reserve
+                    FROM clubs c
+                    LEFT JOIN match_results m ON m.club_id = c.club_id
+                    GROUP BY c.club_id
+                    ORDER BY c.club_id
+                """).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_club_stats", detail=str(e)))
@@ -1969,19 +1983,16 @@ class PipelineAPI:
                 # tuyet doi la y muon ro rang cua ben goi -> ton trong.
                 output_path = duong_dan_khong_de(output_path)
 
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute("""
-                SELECT m.student_id, s.name AS ho_ten, m.club_id,
-                       c.name AS ten_club, m.rank_in_student_pref, m.matched_tier,
-                       s.reserve_group
-                FROM match_results m
-                LEFT JOIN students s ON s.student_id = m.student_id
-                LEFT JOIN clubs   c ON c.club_id   = m.club_id
-                ORDER BY m.student_id
-            """).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute("""
+                    SELECT m.student_id, s.name AS ho_ten, m.club_id,
+                           c.name AS ten_club, m.rank_in_student_pref, m.matched_tier,
+                           s.reserve_group
+                    FROM match_results m
+                    LEFT JOIN students s ON s.student_id = m.student_id
+                    LEFT JOIN clubs   c ON c.club_id   = m.club_id
+                    ORDER BY m.student_id
+                """).fetchall()
 
             def an_toan_cho_excel(o):
                 """Chan Excel hieu noi dung o thanh CONG THUC.
@@ -2090,14 +2101,11 @@ class PipelineAPI:
         tưởng chưa gán gì và đi cấu hình lại nhầm.
         """
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT club_id, name, capacity, reserve_capacity, reserve_group "
-                "FROM clubs ORDER BY club_id"
-            ).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute(
+                    "SELECT club_id, name, capacity, reserve_capacity, reserve_group "
+                    "FROM clubs ORDER BY club_id"
+                ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_club_list", detail=str(e)))
@@ -2123,22 +2131,19 @@ class PipelineAPI:
 
             reserve_group_value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
 
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(club_id) DO UPDATE SET
-                    name=excluded.name,
-                    capacity=excluded.capacity,
-                    reserve_capacity=excluded.reserve_capacity,
-                    reserve_group=excluded.reserve_group
-                """,
-                (club_id.strip(), name.strip(), capacity, reserve_capacity, reserve_group_value),
-            )
-            conn.commit()
-            conn.close()
+            with self._ket_noi_ghi() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(club_id) DO UPDATE SET
+                        name=excluded.name,
+                        capacity=excluded.capacity,
+                        reserve_capacity=excluded.reserve_capacity,
+                        reserve_group=excluded.reserve_group
+                    """,
+                    (club_id.strip(), name.strip(), capacity, reserve_capacity, reserve_group_value),
+                )
             return _ok({"club_id": club_id, "action": "upserted"})
         except Exception as e:
             return _fail(err("error_saving_club", detail=str(e)))
@@ -2175,14 +2180,12 @@ class PipelineAPI:
     def list_reserve_groups_in_use(self):
         """Danh sách các reserve_group đang được dùng (để gợi ý trong form, tránh gõ sai chính tả)."""
         try:
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT DISTINCT reserve_group FROM clubs WHERE reserve_group IS NOT NULL "
-                "UNION "
-                "SELECT DISTINCT reserve_group FROM students WHERE reserve_group IS NOT NULL"
-            ).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute(
+                    "SELECT DISTINCT reserve_group FROM clubs WHERE reserve_group IS NOT NULL "
+                    "UNION "
+                    "SELECT DISTINCT reserve_group FROM students WHERE reserve_group IS NOT NULL"
+                ).fetchall()
             return _ok(sorted(r[0] for r in rows if r[0]))
         except Exception as e:
             return _fail(err("error_reading_reserve_groups", detail=str(e)))
@@ -2215,19 +2218,16 @@ class PipelineAPI:
             if not isinstance(student_ids, list) or not student_ids:
                 return _fail(err("student_ids_must_be_nonempty_list"))
             value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            existing_ids = {
-                r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
-            }
-            missing = [sid for sid in student_ids if sid not in existing_ids]
-            valid_ids = [sid for sid in student_ids if sid in existing_ids]
-            cur.executemany(
-                "UPDATE students SET reserve_group = ? WHERE student_id = ?",
-                [(value, sid) for sid in valid_ids],
-            )
-            conn.commit()
-            conn.close()
+            with self._ket_noi_ghi() as cur:
+                existing_ids = {
+                    r[0] for r in cur.execute("SELECT student_id FROM students").fetchall()
+                }
+                missing = [sid for sid in student_ids if sid not in existing_ids]
+                valid_ids = [sid for sid in student_ids if sid in existing_ids]
+                cur.executemany(
+                    "UPDATE students SET reserve_group = ? WHERE student_id = ?",
+                    [(value, sid) for sid in valid_ids],
+                )
             return _ok({"n_updated": len(valid_ids), "not_found": missing})
         except Exception as e:
             return _fail(err("error_bulk_assigning", detail=str(e)))
@@ -2244,26 +2244,23 @@ class PipelineAPI:
             page_size = max(1, min(int(page_size), 500))
             offset = (page - 1) * page_size
 
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
+            with self._ket_noi_doc() as cur:
 
-            where_clause = ""
-            params: tuple = ()
-            if search:
-                where_clause = " WHERE student_id LIKE ? OR name LIKE ?"
-                params = (f"%{search}%", f"%{search}%")
+                where_clause = ""
+                params: tuple = ()
+                if search:
+                    where_clause = " WHERE student_id LIKE ? OR name LIKE ?"
+                    params = (f"%{search}%", f"%{search}%")
 
-            total = cur.execute(
-                f"SELECT COUNT(*) FROM students{where_clause}", params
-            ).fetchone()[0]
+                total = cur.execute(
+                    f"SELECT COUNT(*) FROM students{where_clause}", params
+                ).fetchone()[0]
 
-            rows = cur.execute(
-                f"SELECT student_id, name, reserve_group FROM students{where_clause} "
-                "ORDER BY student_id LIMIT ? OFFSET ?",
-                params + (page_size, offset),
-            ).fetchall()
-            conn.close()
+                rows = cur.execute(
+                    f"SELECT student_id, name, reserve_group FROM students{where_clause} "
+                    "ORDER BY student_id LIMIT ? OFFSET ?",
+                    params + (page_size, offset),
+                ).fetchall()
 
             total_pages = max(1, (total + page_size - 1) // page_size)
             return _ok({
@@ -2282,28 +2279,22 @@ class PipelineAPI:
 
     def list_clubs(self):
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT club_id, name, capacity, reserve_capacity FROM clubs ORDER BY club_id"
-            ).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute(
+                    "SELECT club_id, name, capacity, reserve_capacity FROM clubs ORDER BY club_id"
+                ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_club_list", detail=str(e)))
 
     def search_students(self, query: str):
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            rows = cur.execute(
-                "SELECT student_id, name FROM students "
-                "WHERE student_id LIKE ? OR name LIKE ? LIMIT 20",
-                (f"%{query}%", f"%{query}%"),
-            ).fetchall()
-            conn.close()
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute(
+                    "SELECT student_id, name FROM students "
+                    "WHERE student_id LIKE ? OR name LIKE ? LIMIT 20",
+                    (f"%{query}%", f"%{query}%"),
+                ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_searching_students", detail=str(e)))
@@ -2314,38 +2305,34 @@ class PipelineAPI:
         'Nhập dự phòng' hiển thị lại nếu học sinh quay lại kiosk.
         """
         try:
-            conn = connect_db(self.db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            student = cur.execute(
-                "SELECT student_id, name FROM students WHERE student_id = ?",
-                (student_id,),
-            ).fetchone()
-            if not student:
-                conn.close()
-                return _fail(err("student_not_found", student_id=student_id))
+            with self._ket_noi_doc() as cur:
+                student = cur.execute(
+                    "SELECT student_id, name FROM students WHERE student_id = ?",
+                    (student_id,),
+                ).fetchone()
+                if not student:
+                    return _fail(err("student_not_found", student_id=student_id))
 
-            tested = [
-                r["club_id"]
-                for r in cur.execute(
-                    "SELECT club_id FROM club_test_selection WHERE student_id = ?",
-                    (student_id,),
-                ).fetchall()
-            ]
-            prefs = [
-                r["club_id"]
-                for r in cur.execute(
-                    "SELECT club_id FROM preferences WHERE student_id = ? ORDER BY rank",
-                    (student_id,),
-                ).fetchall()
-            ]
-            conn.close()
-            return _ok({
-                "student_id": student["student_id"],
-                "name": student["name"],
-                "tested_clubs": tested,
-                "ranked_clubs": prefs,
-            })
+                tested = [
+                    r["club_id"]
+                    for r in cur.execute(
+                        "SELECT club_id FROM club_test_selection WHERE student_id = ?",
+                        (student_id,),
+                    ).fetchall()
+                ]
+                prefs = [
+                    r["club_id"]
+                    for r in cur.execute(
+                        "SELECT club_id FROM preferences WHERE student_id = ? ORDER BY rank",
+                        (student_id,),
+                    ).fetchall()
+                ]
+                return _ok({
+                    "student_id": student["student_id"],
+                    "name": student["name"],
+                    "tested_clubs": tested,
+                    "ranked_clubs": prefs,
+                })
         except Exception as e:
             return _fail(err("error_reading_student_state", detail=str(e)))
 
@@ -2438,19 +2425,16 @@ class PipelineAPI:
     def create_student_if_missing(self, student_id: str, name: str):
         """Kiosk fallback: nếu học sinh chưa có trong students, tạo mới (chưa có STB)."""
         try:
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            exists = cur.execute(
-                "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
-            ).fetchone()
-            if not exists:
-                cur.execute(
-                    "INSERT INTO students (student_id, name, stb_number, reserve_group) "
-                    "VALUES (?, ?, NULL, NULL)",
-                    (student_id, name),
-                )
-                conn.commit()
-            conn.close()
+            with self._ket_noi_ghi() as cur:
+                exists = cur.execute(
+                    "SELECT 1 FROM students WHERE student_id = ?", (student_id,)
+                ).fetchone()
+                if not exists:
+                    cur.execute(
+                        "INSERT INTO students (student_id, name, stb_number, reserve_group) "
+                        "VALUES (?, ?, NULL, NULL)",
+                        (student_id, name),
+                    )
             return _ok({"student_id": student_id, "created": not exists})
         except Exception as e:
             return _fail(err("error_creating_student", detail=str(e)))
@@ -2561,33 +2545,30 @@ class PipelineAPI:
 
             backup_path = self._backup_db()
 
-            conn = connect_db(self.db_path)
-            cur = conn.cursor()
-            # Đếm TRƯỚC khi xoá — báo sau khi xoá thì con số nào cũng 0.
-            da_xoa = {
-                ten: cur.execute("SELECT COUNT(*) FROM %s" % ten).fetchone()[0]
-                for ten in bang
-            }
-            for ten in bang:
-                cur.execute("DELETE FROM %s" % ten)
+            with self._ket_noi_ghi() as cur:
+                # Đếm TRƯỚC khi xoá — báo sau khi xoá thì con số nào cũng 0.
+                da_xoa = {
+                    ten: cur.execute("SELECT COUNT(*) FROM %s" % ten).fetchone()[0]
+                    for ten in bang
+                }
+                for ten in bang:
+                    cur.execute("DELETE FROM %s" % ten)
 
-            # run_meta mô tả lần chạy gần nhất, mà lần chạy đó nay không
-            # còn dữ liệu nào phía sau.
-            cur.execute("DELETE FROM run_meta")
+                # run_meta mô tả lần chạy gần nhất, mà lần chạy đó nay không
+                # còn dữ liệu nào phía sau.
+                cur.execute("DELETE FROM run_meta")
 
-            # Mở khoá STB. Bỏ bước này thì lần chạy sau đi vào nhánh "đã
-            # khoá" và ghi nhật ký là "tái sử dụng STB" cho một bộ số bốc
-            # thăm không còn tồn tại — sai cho phần kiểm toán.
-            cur.execute(
-                "UPDATE stb_lock SET is_locked = 0, unlocked_at = ? WHERE id = 1",
-                (_now(),),
-            )
-            # Đếm CLB CÒN LẠI ở đây chứ không để giao diện tự suy ra từ
-            # phạm vi — suy ra là đoán, và đoán sai thì toast báo một con
-            # số không ai kiểm chứng được.
-            n_clb_con_lai = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
-            conn.commit()
-            conn.close()
+                # Mở khoá STB. Bỏ bước này thì lần chạy sau đi vào nhánh "đã
+                # khoá" và ghi nhật ký là "tái sử dụng STB" cho một bộ số bốc
+                # thăm không còn tồn tại — sai cho phần kiểm toán.
+                cur.execute(
+                    "UPDATE stb_lock SET is_locked = 0, unlocked_at = ? WHERE id = 1",
+                    (_now(),),
+                )
+                # Đếm CLB CÒN LẠI ở đây chứ không để giao diện tự suy ra từ
+                # phạm vi — suy ra là đoán, và đoán sai thì toast báo một con
+                # số không ai kiểm chứng được.
+                n_clb_con_lai = cur.execute("SELECT COUNT(*) FROM clubs").fetchone()[0]
 
             return _ok({
                 "pham_vi": pham_vi,
