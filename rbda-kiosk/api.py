@@ -1626,7 +1626,7 @@ class PipelineAPI:
                             # Có điểm mà không có club -> gần như chắc là
                             # gõ lệch cột. Báo, đừng đoán club nào.
                             loi_som.append(err("csv_score_without_club",
-                                               student_id=sid, cot="score_" + n))
+                                               student_id=sid, cot=n))
                     grouped[sid] = (row.get("name", ""), selected,
                                     row.get("reserve_group", ""))
                     if diem_hs:

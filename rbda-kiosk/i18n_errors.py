@@ -43,7 +43,7 @@ MESSAGES = {
     },
     "error_running_pipeline": {
         "vi": "Lỗi không xác định khi chạy phân bổ: {detail}",
-        "en": "Unexpected error while running the pipeline: {detail}",
+        "en": "Unexpected error while running the allocation: {detail}",
     },
     "error_reading_csv_preview": {
         "vi": "Lỗi đọc trước CSV: {detail}",
@@ -79,7 +79,7 @@ MESSAGES = {
     },
     "error_importing_csv_auto": {
         "vi": "Lỗi nhập CSV: {detail}",
-        "en": "CSV import failed: {detail}",
+        "en": "Error importing CSV: {detail}",
     },
     "error_importing_clubs_csv": {
         "vi": "Lỗi nhập CSV danh sách CLB: {detail}",
@@ -106,8 +106,8 @@ MESSAGES = {
         "en": "The Excel file has no data.",
     },
     "xlsx_support_missing": {
-        "vi": "Bản cài này thiếu thư viện đọc Excel (openpyxl). Hãy lưu tệp sang định dạng CSV UTF-8 rồi nạp lại.",
-        "en": "This build is missing the Excel reader (openpyxl). Save the file as CSV UTF-8 and try again.",
+        "vi": "Bản cài này không đọc được tệp Excel. Hãy lưu tệp sang định dạng CSV UTF-8 rồi nạp lại.",
+        "en": "This build cannot read Excel files. Save the file as CSV UTF-8 and try again.",
     },
     "csv_reserve_group_unknown": {
         "vi": "Nhãn dự trữ {reserve_group} ({n} học sinh) không CLB nào nhận — các em này sẽ KHÔNG được xét diện dự trữ. Có phải bạn định ghi {goi_y}?",
@@ -130,8 +130,8 @@ MESSAGES = {
         "en": "Student {student_id} has a score for club {club_id} but did not register to test for it — the score is skipped. Check for a mistyped club id.",
     },
     "csv_score_without_club": {
-        "vi": "Học sinh {student_id} có điểm ở cột {cot} nhưng ô mã CLB cùng số thứ tự lại để trống — nhiều khả năng gõ lệch cột. Điểm đó bị bỏ qua.",
-        "en": "Student {student_id} has a score in column {cot} but the club column with the same number is empty — the columns are probably misaligned. That score is skipped.",
+        "vi": "Học sinh {student_id} có điểm ở ô điểm số {cot} nhưng ô mã CLB tương ứng lại để trống — nhiều khả năng gõ lệch cột. Điểm đó bị bỏ qua.",
+        "en": "Student {student_id} has a score in score slot {cot} but the matching club column is empty — the columns are probably misaligned. That score is skipped.",
     },
     "csv_scores_ignored_here": {
         "vi": "Tệp này có cột điểm, nhưng đây là tệp XẾP HẠNG NGUYỆN VỌNG — điểm KHÔNG được nạp từ đây. Đưa cột điểm sang tệp chọn CLB muốn thi.",
@@ -210,12 +210,12 @@ MESSAGES = {
         "en": "Error deleting student: {detail}",
     },
     "reset_confirmation_mismatch": {
-        "vi": "Chưa xoá gì cả — thiếu xác nhận. Muốn xoá thật thì phải gửi đúng chữ \"{can_go}\".",
-        "en": "Nothing was deleted — confirmation missing. A real reset must send exactly \"{can_go}\".",
+        "vi": "Chưa xoá gì cả — thiếu xác nhận. Muốn xoá thật thì phải gõ đúng chữ \"{can_go}\".",
+        "en": "Nothing was deleted — confirmation missing. To confirm a real reset, type exactly \"{can_go}\".",
     },
     "reset_scope_unknown": {
-        "vi": "Chưa xoá gì cả — không hiểu phạm vi \"{pham_vi}\". Chỉ nhận: {hop_le}.",
-        "en": "Nothing was deleted — unknown scope \"{pham_vi}\". Accepted values: {hop_le}.",
+        "vi": "Chưa xoá gì cả — yêu cầu xoá không hợp lệ. Hãy dùng đúng nút xoá trong ứng dụng thay vì gọi trực tiếp.",
+        "en": "Nothing was deleted — the reset request was invalid. Use the reset buttons in the app instead of calling this directly.",
     },
     "error_resetting_data": {
         "vi": "Lỗi khi xoá dữ liệu: {detail}. Bản sao lưu (nếu đã tạo) vẫn nằm cạnh app.db.",
@@ -228,14 +228,14 @@ MESSAGES = {
         "en": "The CSV file is empty, or no rows could be read.",
     },
     "csv_missing_columns": {
-        "vi": "CSV dạng \"dài\" cần có cột student_id và club_id (cột hiện có: {fieldnames})",
-        "en": "\"Long\" format CSV needs student_id and club_id columns (columns found: {fieldnames})",
+        "vi": "CSV dạng \"dài\" cần có cột mã học sinh (student_id) và mã CLB (club_id) — cột hiện có trong tệp: {fieldnames}",
+        "en": "\"Long\" format CSV needs a student ID column (student_id) and a club ID column (club_id) — columns found in the file: {fieldnames}",
     },
 
     # --- validation (surfaced directly to the kiosk operator) ---
     "capacity_must_be_positive": {
-        "vi": "Tổng chỗ (capacity) phải > 0",
-        "en": "Capacity must be greater than 0",
+        "vi": "Tổng chỗ phải lớn hơn 0",
+        "en": "Total seats must be greater than 0",
     },
     "reserve_capacity_exceeds_capacity": {
         "vi": "Suất dự trữ không được lớn hơn tổng chỗ",
@@ -247,7 +247,7 @@ MESSAGES = {
     },
     "cannot_delete_club_referenced": {
         "vi": "Không thể xoá: CLB {club_id} đã có {n_prefs} nguyện vọng và {n_matches} kết quả tham chiếu tới. Phải xử lý dữ liệu liên quan trước.",
-        "en": "Cannot delete: club {club_id} is referenced by {n_prefs} preference(s) and {n_matches} match result(s). Handle the related data first.",
+        "en": "Cannot delete: {n_prefs} student preference(s) and {n_matches} match result(s) still point to club {club_id}. Handle that data first.",
     },
     "student_not_found": {
         "vi": "Học sinh {student_id} không tồn tại",
@@ -262,20 +262,20 @@ MESSAGES = {
         "en": "Unknown club(s): {club_ids}",
     },
     "scores_must_be_nonempty_list": {
-        "vi": "scores phải là danh sách không rỗng",
-        "en": "scores must be a non-empty list",
+        "vi": "Danh sách điểm không được để trống",
+        "en": "The list of scores cannot be empty",
     },
     "student_ids_must_be_nonempty_list": {
-        "vi": "student_ids phải là danh sách không rỗng",
-        "en": "student_ids must be a non-empty list",
+        "vi": "Danh sách mã học sinh không được để trống",
+        "en": "The list of student IDs cannot be empty",
     },
     "club_ids_must_be_list": {
-        "vi": "club_ids phải là danh sách",
-        "en": "club_ids must be a list",
+        "vi": "Danh sách mã CLB không hợp lệ",
+        "en": "The list of club IDs is invalid",
     },
     "ordered_club_ids_must_be_list": {
-        "vi": "ordered_club_ids phải là danh sách",
-        "en": "ordered_club_ids must be a list",
+        "vi": "Danh sách xếp hạng CLB không hợp lệ",
+        "en": "The ranked club list is invalid",
     },
     "must_rank_at_least_one": {
         "vi": "Phải xếp hạng ít nhất 1 nguyện vọng",
@@ -291,7 +291,7 @@ MESSAGES = {
     },
     "cannot_delete_student_matched": {
         "vi": "Không thể xoá: học sinh {student_id} đã có trong kết quả của lần chạy phân bổ gần nhất. Hãy chạy lại phân bổ sau khi xử lý.",
-        "en": "Cannot delete: student {student_id} is already in the results of the latest pipeline run. Re-run the pipeline after handling this.",
+        "en": "Cannot delete: student {student_id} is already in the results of the latest allocation run. Re-run the allocation after handling this.",
     },
 
     # --- pipeline step details (shown in the stepper, not just errors) ---
@@ -308,8 +308,8 @@ MESSAGES = {
         "en": "STB already locked — reused all existing numbers, no redraw.",
     },
     "rbda_done": {
-        "vi": "{rounds} vòng lặp, không lỗi",
-        "en": "{rounds} round(s), no errors",
+        "vi": "Hoàn tất, không phát sinh lỗi ({rounds} vòng xử lý).",
+        "en": "Completed with no errors ({rounds} processing round(s)).",
     },
     "db_backed_up": {
         "vi": "Đã sao lưu app.db trước khi chạy: {backup_name}",
@@ -321,13 +321,13 @@ MESSAGES = {
     },
     "pipeline_rolled_back": {
         "vi": "Đã huỷ toàn bộ thay đổi của lần chạy này (kể cả số bốc thăm vừa vẽ, nếu có) do lỗi giữa chừng — dữ liệu quay lại đúng trạng thái trước khi bấm chạy.",
-        "en": "Rolled back every change from this run (including any freshly drawn STB numbers) because of a mid-run error — data is back to exactly the state before you clicked run.",
+        "en": "Undid every change from this run (including any freshly drawn STB numbers) because of a mid-run error — data is back to exactly the state before you clicked run.",
     },
 
     # --- validate_data_integrity (rbda_priority_pipeline.py) ---
     "pref_student_not_in_students": {
-        "vi": "Học sinh {student_id} có nguyện vọng nhưng không có trong students",
-        "en": "Student {student_id} has preferences but is not in students",
+        "vi": "Học sinh {student_id} có nguyện vọng nhưng không có trong danh sách học sinh",
+        "en": "Student {student_id} has preferences but is not in the student list",
     },
     "pref_duplicate_club": {
         "vi": "Học sinh {student_id} có CLB trùng lặp trong danh sách nguyện vọng",
@@ -342,20 +342,20 @@ MESSAGES = {
         "en": "Student {student_id} ranked a club that does not exist: {club_id}",
     },
     "club_capacity_not_positive": {
-        "vi": "CLB {club_id} có capacity <= 0",
-        "en": "Club {club_id} has capacity <= 0",
+        "vi": "CLB {club_id} có tổng chỗ bằng 0 hoặc âm — phải lớn hơn 0",
+        "en": "Club {club_id} has a total seat count of 0 or less — it must be greater than 0",
     },
     "club_reserve_exceeds_capacity": {
-        "vi": "CLB {club_id} có reserve_capacity > capacity",
-        "en": "Club {club_id} has reserve_capacity > capacity",
+        "vi": "CLB {club_id} có suất dự trữ lớn hơn tổng chỗ",
+        "en": "Club {club_id} has more reserved seats than total seats",
     },
     "applicants_unknown_club": {
         "vi": "Danh sách đăng ký thi tham chiếu tới CLB không tồn tại: {club_id}",
-        "en": "applicants references a club that does not exist: {club_id}",
+        "en": "The tryout registration list references a club that does not exist: {club_id}",
     },
     "applicants_unknown_student": {
-        "vi": "applicants tham chiếu học sinh không tồn tại: {student_id}",
-        "en": "applicants references a student that does not exist: {student_id}",
+        "vi": "Danh sách đăng ký thi tham chiếu tới học sinh không tồn tại: {student_id}",
+        "en": "The tryout registration list references a student that does not exist: {student_id}",
     },
 
     # --- sanity_check_result ---
@@ -364,18 +364,18 @@ MESSAGES = {
         "en": "{student_id} was assigned to {club_id} but it is not in their preferences",
     },
     "club_over_capacity": {
-        "vi": "CLB {club_id} vượt capacity: {count}/{capacity}",
-        "en": "Club {club_id} exceeds capacity: {count}/{capacity}",
+        "vi": "CLB {club_id} có {count} học sinh nhưng chỉ {capacity} chỗ — vượt quá tổng chỗ",
+        "en": "Club {club_id} has {count} student(s) holding seats but only {capacity} seat(s) total — over capacity",
     },
     "club_over_reserve_capacity": {
-        "vi": "CLB {club_id} vượt reserve_capacity ở tier dự trữ: {count}/{reserve_capacity}",
-        "en": "Club {club_id} exceeds reserve_capacity in the reserve tier: {count}/{reserve_capacity}",
+        "vi": "CLB {club_id} có {count} học sinh giữ suất dự trữ nhưng chỉ có {reserve_capacity} suất — vượt quá suất dự trữ",
+        "en": "Club {club_id} has {count} student(s) holding a reserved seat but only {reserve_capacity} reserved seat(s) exist — over the reserve limit",
     },
 
     # --- verify_stability ---
     "blocking_pair": {
-        "vi": "Blocking pair: {student_id} thích {club_id} hơn {current_club}, và sẽ được nhận nếu áp dụng lại club_choice_function (hiện có {n_holders}/{capacity} chỗ)",
-        "en": "Blocking pair: {student_id} prefers {club_id} over {current_club}, and would be accepted if club_choice_function were re-applied (currently {n_holders}/{capacity} seats held)",
+        "vi": "Có thể chưa công bằng: học sinh {student_id} thích CLB {club_id} hơn CLB hiện tại {current_club}, và đủ điều kiện được nhận vào {club_id} nếu xét lại từ đầu (CLB đó hiện có {n_holders}/{capacity} chỗ đã nhận).",
+        "en": "Possible fairness gap: student {student_id} prefers club {club_id} over their current club {current_club}, and would qualify for a seat there if it were re-evaluated from scratch (that club currently holds {n_holders}/{capacity} seats).",
     },
 
     # --- CSV import row warnings (returned inside a successful "ok" response) ---
@@ -392,16 +392,16 @@ MESSAGES = {
         "en": "{student_id}: unknown club(s) {club_ids} — this student was skipped.",
     },
     "csv_student_missing_skipped": {
-        "vi": "{student_id}: chưa có trong hệ thống, bỏ qua (create_missing_students=False).",
-        "en": "{student_id}: not yet in the system, skipped (create_missing_students=False).",
+        "vi": "{student_id}: chưa có trong hệ thống, bị bỏ qua vì chưa bật tuỳ chọn tự tạo học sinh mới.",
+        "en": "{student_id}: not yet in the system, skipped because auto-creating new students is turned off.",
     },
     "score_not_applicant": {
         "vi": "{student_id}: không nằm trong danh sách thi/xét CLB này",
         "en": "{student_id}: is not registered to test/apply for this club",
     },
     "score_not_a_number": {
-        "vi": "{student_id}: điểm '{score}' không phải số",
-        "en": "{student_id}: score '{score}' is not a number",
+        "vi": "{student_id}: điểm '{score}' không phải số — ô điểm đó KHÔNG được lưu.",
+        "en": "{student_id}: score '{score}' is not a number — that score was NOT saved.",
     },
     "score_negative": {
         "vi": "{student_id}: điểm '{score}' là số ÂM — gần như chắc chắn thừa dấu trừ. Ô điểm đó KHÔNG được lưu.",
@@ -413,8 +413,8 @@ MESSAGES = {
     # Nhưng mỗi mục dưới đây đều làm KẾT QUẢ THAY ĐỔI theo cách người vận
     # hành không nhìn thấy, nên phải cảnh báo TRƯỚC khi chạy.
     "health_scoring_none": {
-        "vi": "CLB {club_id}: có {n_applicants} học sinh đăng ký thi nhưng CHƯA CHẤM ĐIỂM AI. Toàn bộ các em này sẽ rơi xuống Tầng 2 và chỉ được xét bằng số bốc thăm — vòng thi coi như không có tác dụng.",
-        "en": "Club {club_id}: {n_applicants} student(s) registered for the tryout but NOBODY has been scored. All of them drop to Tier 2 and will be decided by lottery only — the tryout will have no effect.",
+        "vi": "CLB {club_id}: có {n_applicants} học sinh đăng ký thi nhưng CHƯA CHẤM ĐIỂM AI. Toàn bộ các em này sẽ rơi xuống nhóm xét sau (chỉ dựa vào số bốc thăm, không có điểm) — vòng thi coi như không có tác dụng.",
+        "en": "Club {club_id}: {n_applicants} student(s) registered for the tryout but NOBODY has been scored. All of them drop to the lottery-only group (no score to rank by) — the tryout will have no effect.",
     },
     "health_scoring_partial": {
         "vi": "CLB {club_id}: mới chấm {n_scored}/{n_applicants} học sinh. {n_missing} em chưa có điểm sẽ bị xếp dưới TẤT CẢ các em đã có điểm, kể cả em điểm thấp nhất.",
@@ -429,8 +429,8 @@ MESSAGES = {
         "en": "{n} student(s) have not ranked any preference — they cannot be placed in any club. For example: {sample}",
     },
     "health_orphan_student_group": {
-        "vi": "Nhãn dự trữ \"{reserve_group}\" đang gán cho {n} học sinh nhưng KHÔNG CLB nào dùng nhãn này. Ví dụ: {sample}. Các em đó sẽ không được ưu tiên ở đâu cả — kiểm tra xem có gõ sai chính tả không. Sửa ở thẻ Quản lý: tìm mã em, đánh dấu, để trống ô nhãn rồi bấm \"Gán cho học sinh đã đánh dấu\".",
-        "en": "Reserve label \"{reserve_group}\" is assigned to {n} student(s) but NO club uses it. For example: {sample}. Those students get no priority anywhere — check for a typo. Fix it in the Admin tab: search for the student id, tick it, leave the label box empty and click \"Apply to ticked students\".",
+        "vi": "Nhãn dự trữ \"{reserve_group}\" đang gán cho {n} học sinh nhưng KHÔNG CLB nào dùng nhãn này (ví dụ: {sample}) — các em đó sẽ không được ưu tiên ở đâu cả, có thể do gõ sai chính tả. Sửa ở thẻ Quản lý: tìm mã em, đánh dấu, để trống ô nhãn rồi bấm \"Gán cho học sinh đã đánh dấu\".",
+        "en": "Reserve label \"{reserve_group}\" is assigned to {n} student(s) but NO club uses it (for example: {sample}) — those students get no priority anywhere, possibly a typo. Fix it in the Admin tab: search the student id, tick it, leave the label box empty, and click \"Assign to ticked students\".",
     },
     "health_club_reserve_no_group": {
         "vi": "CLB {club_id} có {reserve_capacity} suất dự trữ nhưng chưa đặt nhãn dự trữ. Các suất này sẽ âm thầm chuyển thành suất phổ thông.",
@@ -453,7 +453,7 @@ MESSAGES = {
     # hỏng/mất và PipelineAPI không khởi tạo được (xem main.py) ---
     "recovery_no_backups": {
         "vi": "Không tìm thấy bản sao lưu nào — có thể chưa từng chạy phân bổ lần nào trên máy này, hoặc thư mục sao lưu đã bị xoá.",
-        "en": "No backups found — the pipeline may never have run on this machine, or the backup folder was deleted.",
+        "en": "No backups found — the allocation may never have run on this machine, or the backup folder was deleted.",
     },
     "recovery_all_backups_corrupt": {
         "vi": "Đã thử cả {n_tried} bản sao lưu tìm thấy nhưng không bản nào đọc được nguyên vẹn.",

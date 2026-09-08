@@ -32,7 +32,7 @@
         <span class="nav-icon">02</span> <span data-i18n="nav_results">Kết quả</span>
       </button>
       <button class="nav-item" data-tab="fallback">
-        <span class="nav-icon">03</span> <span data-i18n="nav_fallback">Nhập dự phòng</span>
+        <span class="nav-icon">03</span> <span data-i18n="nav_fallback">Nhập tại chỗ</span>
       </button>
       <button class="nav-item" data-tab="admin">
         <span class="nav-icon">04</span> <span data-i18n="nav_admin">Quản lý CLB &amp; dự trữ</span>
@@ -58,7 +58,7 @@
     <section class="view is-active" id="view-pipeline">
       <header class="view-header">
         <h1 data-i18n="pipeline_title">Vận hành phân bổ</h1>
-        <p class="view-desc" data-i18n="pipeline_desc">Kiểm tra dữ liệu, sinh số bốc thăm, chạy thuật toán RB-DA và xuất kết quả.</p>
+        <p class="view-desc" data-i18n="pipeline_desc">Kiểm tra dữ liệu, sinh số bốc thăm, xếp học sinh vào CLB, và xuất kết quả.</p>
       </header>
 
       <div class="status-strip" id="statusStrip">
@@ -109,10 +109,10 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h2 data-i18n="steps_panel_title">5 bước xử lý</h2>
+          <h2 data-i18n="steps_panel_title">Các bước xử lý</h2>
           <div class="panel-actions">
             <label class="seed-input-wrap">
-              <span data-i18n="label_seed">Hạt giống bốc thăm (seed)</span>
+              <span data-i18n="label_seed">Hạt giống bốc thăm</span>
               <input type="number" id="seedInput" value="42" class="seed-input">
             </label>
             <button class="btn btn-secondary" id="btnValidate" data-i18n="btn_validate">Kiểm tra dữ liệu</button>
@@ -140,21 +140,21 @@
           <li class="step" data-step="rbda_cascade">
             <span class="step-dot"></span>
             <div class="step-body">
-              <div class="step-title" data-i18n="step_title_rbda">Chạy vòng lặp RB-DA</div>
+              <div class="step-title" data-i18n="step_title_rbda">Xếp học sinh vào CLB</div>
               <div class="step-detail" data-i18n="step_not_run_yet">Chưa chạy</div>
             </div>
           </li>
           <li class="step" data-step="write_results">
             <span class="step-dot"></span>
             <div class="step-body">
-              <div class="step-title" data-i18n="step_title_write">Ghi kết quả vào cơ sở dữ liệu</div>
+              <div class="step-title" data-i18n="step_title_write">Lưu kết quả</div>
               <div class="step-detail" data-i18n="step_not_run_yet">Chưa chạy</div>
             </div>
           </li>
           <li class="step" data-step="export">
             <span class="step-dot"></span>
             <div class="step-body">
-              <div class="step-title" data-i18n="step_title_export">Xuất tệp CSV</div>
+              <div class="step-title" data-i18n="step_title_export">Xuất kết quả</div>
               <div class="step-detail" data-i18n="step_not_run_yet">Chưa chạy</div>
             </div>
           </li>
@@ -181,7 +181,7 @@
             <th data-i18n="th_rounds">Vòng lặp</th>
             <th data-i18n="th_matched_count">Đã xếp</th>
             <th data-i18n="th_total">Tổng</th>
-            <th data-i18n="th_redrawn">Bốc thăm lại?</th>
+            <th data-i18n="th_redrawn">Đã bốc lại</th>
           </tr></thead>
           <tbody id="historyTableBody"></tbody>
         </table>
@@ -191,7 +191,7 @@
     <!-- ---------- TAB 2: KẾT QUẢ ---------- -->
     <section class="view" id="view-results">
       <header class="view-header">
-        <h1 data-i18n="results_title">Kết quả phân bổ</h1>
+        <h1 data-i18n="results_title">Kết quả</h1>
         <p class="view-desc" data-i18n="results_desc">Danh sách học sinh đã được xếp CLB và tình trạng lấp đầy từng CLB.</p>
       </header>
 
@@ -221,8 +221,8 @@
               <th data-i18n="th_student_id">Mã học sinh</th>
               <th data-i18n="th_name">Họ tên</th>
               <th data-i18n="th_club">Câu lạc bộ</th>
-              <th data-i18n="th_tier">Diện</th>
-              <th data-i18n="th_pref_rank">Nguyện vọng</th>
+              <th data-i18n="th_tier">Loại chỗ</th>
+              <th data-i18n="th_pref_rank">Hạng nguyện vọng</th>
             </tr>
           </thead>
           <tbody id="resultsTableBody"></tbody>
@@ -231,15 +231,15 @@
       </div>
     </section>
 
-    <!-- ---------- TAB 3: NHẬP DỰ PHÒNG (KIOSK) ---------- -->
+    <!-- ---------- TAB 3: NHẬP TẠI CHỖ (KIOSK) ---------- -->
     <section class="view" id="view-fallback">
       <header class="view-header">
-        <h1 data-i18n="fallback_title">Nhập dự phòng tại chỗ</h1>
-        <p class="view-desc" data-i18n="fallback_desc">Dùng khi học sinh không thể nộp qua Microsoft Forms. Hai bước tách biệt — chọn CLB để thi và xếp hạng nguyện vọng — không ảnh hưởng lẫn nhau.</p>
+        <h1 data-i18n="fallback_title">Nhập tại chỗ</h1>
+        <p class="view-desc" data-i18n="fallback_desc">Tìm hoặc tạo học sinh trước, sau đó có hai bước độc lập: chọn CLB để thi và xếp hạng nguyện vọng — không ảnh hưởng lẫn nhau.</p>
       </header>
 
       <div class="panel">
-        <div class="panel-head"><h2 data-i18n="fallback_step0_title">Bước 0 — Tìm hoặc tạo học sinh</h2></div>
+        <div class="panel-head"><h2 data-i18n="fallback_step0_title">Tìm hoặc tạo học sinh</h2></div>
         <div class="search-row">
           <input type="text" id="studentSearchInput" class="text-input" data-i18n-placeholder="placeholder_fallback_search" placeholder="Nhập mã học sinh hoặc tên…">
           <button class="btn btn-secondary" id="btnStudentSearch" data-i18n="btn_search">Tìm</button>
@@ -294,8 +294,8 @@
     <!-- ---------- TAB 4: QUẢN LÝ CLUB & DỰ TRỮ ---------- -->
     <section class="view" id="view-admin">
       <header class="view-header">
-        <h1 data-i18n="admin_title">Quản lý CLB &amp; diện dự trữ</h1>
-        <p class="view-desc" data-i18n="admin_desc">Tạo/sửa CLB và gán diện dự trữ cho học sinh. Tiêu chí dự trữ hoàn toàn do trường tự đặt — hệ thống chỉ so khớp nhãn (reserve_group) giữa CLB và học sinh, không cài cứng quy tắc nào.</p>
+        <h1 data-i18n="admin_title">Quản lý CLB &amp; dự trữ</h1>
+        <p class="view-desc" data-i18n="admin_desc">Tạo/sửa CLB và gán diện dự trữ cho học sinh. Tiêu chí dự trữ hoàn toàn do trường tự đặt — hệ thống chỉ so khớp nhãn dự trữ giữa CLB và học sinh, không cài cứng quy tắc nào.</p>
       </header>
 
       <div class="panel">
@@ -341,7 +341,7 @@
           </tr></thead>
           <tbody id="adminStudentTableBody"></tbody>
         </table>
-        <div id="adminStudentEmptyState" class="empty-state" hidden data-i18n="admin_student_empty">Chưa có học sinh nào trong hệ thống — thêm qua thẻ "Nhập dự phòng" hoặc nạp từ Microsoft Forms.</div>
+        <div id="adminStudentEmptyState" class="empty-state" hidden data-i18n="admin_student_empty">Chưa có học sinh nào trong hệ thống — thêm qua thẻ "Nhập tại chỗ" hoặc nạp từ Microsoft Forms.</div>
         <div class="pagination-row" id="adminStudentPagination">
           <button class="btn btn-ghost" id="btnAdminPrevPage" data-i18n="btn_prev_page">‹ Trước</button>
           <span class="pagination-label" id="adminPaginationLabel">—</span>
@@ -352,7 +352,7 @@
       <div class="panel">
         <div class="panel-head"><h2 data-i18n="danger_zone_title">Vùng nguy hiểm — xoá dữ liệu để làm lại từ đầu</h2></div>
         <p class="hint-text" data-i18n="danger_zone_desc">Nạp tệp chỉ CỘNG THÊM học sinh, không xoá em cũ. Muốn chạy thử lại từ đầu với bộ dữ liệu khác thì xoá ở đây, nếu không học sinh của lần trước vẫn chiếm suất và làm lệch kết quả.</p>
-        <p class="hint-text" data-i18n="danger_zone_safety">Cả hai nút đều TỰ SAO LƯU app.db trước khi xoá, và đều KHÔNG xoá nhật ký các lần chạy (run_history) — dấu vết kiểm toán được giữ nguyên.</p>
+        <p class="hint-text" data-i18n="danger_zone_safety">Cả hai nút đều TỰ SAO LƯU app.db trước khi xoá, và đều KHÔNG xoá nhật ký các lần chạy — dấu vết kiểm toán được giữ nguyên.</p>
         <div class="search-row">
           <button class="btn btn-danger" id="btnResetStudents" data-i18n="btn_reset_students">Xoá toàn bộ học sinh (giữ CLB)</button>
           <button class="btn btn-danger" id="btnResetAll" data-i18n="btn_reset_all">Xoá toàn bộ dữ liệu (cả CLB)</button>
@@ -360,7 +360,7 @@
       </div>
     </section>
 
-    <!-- ---------- TAB 5: CHẤM ĐIỂM (MÙ) ---------- -->
+    <!-- ---------- TAB 5: NHẬP ĐIỂM ---------- -->
     <section class="view" id="view-scoring">
       <header class="view-header">
         <h1 data-i18n="scoring_title">Nhập điểm</h1>
@@ -373,7 +373,7 @@
           <thead><tr>
             <th data-i18n="th_club_id">Mã CLB</th>
             <th data-i18n="th_name_short">Tên</th>
-            <th data-i18n="th_n_applicants">Số học sinh thi/xét</th>
+            <th data-i18n="th_n_applicants">Đã đăng ký</th>
             <th data-i18n="th_n_scored">Đã chấm</th>
             <th></th>
           </tr></thead>
