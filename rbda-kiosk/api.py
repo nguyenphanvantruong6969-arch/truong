@@ -2238,6 +2238,10 @@ class PipelineAPI:
         CÓ PHÂN TRANG (trước đây LIMIT 100 cứng khiến trường >100 học
         sinh bị ẩn âm thầm không báo). Trả kèm total/total_pages để UI
         vẽ nút điều hướng trang.
+
+        Mỗi dòng kèm thêm n_tested/n_ranked (số CLB đã chọn thi / số
+        nguyện vọng đã xếp) — dùng ở tab Nhập dự phòng để người vận hành
+        thấy ngay em nào còn thiếu mà không phải bấm vào từng em.
         """
         try:
             page = max(1, int(page))
@@ -2249,16 +2253,30 @@ class PipelineAPI:
                 where_clause = ""
                 params: tuple = ()
                 if search:
-                    where_clause = " WHERE student_id LIKE ? OR name LIKE ?"
+                    where_clause = " WHERE s.student_id LIKE ? OR s.name LIKE ?"
                     params = (f"%{search}%", f"%{search}%")
 
                 total = cur.execute(
-                    f"SELECT COUNT(*) FROM students{where_clause}", params
+                    f"SELECT COUNT(*) FROM students s{where_clause}", params
                 ).fetchone()[0]
 
                 rows = cur.execute(
-                    f"SELECT student_id, name, reserve_group FROM students{where_clause} "
-                    "ORDER BY student_id LIMIT ? OFFSET ?",
+                    f"""
+                    SELECT s.student_id, s.name, s.reserve_group,
+                           COALESCE(ts.n_tested, 0) AS n_tested,
+                           COALESCE(pr.n_ranked, 0) AS n_ranked
+                    FROM students s
+                    LEFT JOIN (
+                        SELECT student_id, COUNT(*) AS n_tested
+                        FROM club_test_selection GROUP BY student_id
+                    ) ts ON ts.student_id = s.student_id
+                    LEFT JOIN (
+                        SELECT student_id, COUNT(*) AS n_ranked
+                        FROM preferences GROUP BY student_id
+                    ) pr ON pr.student_id = s.student_id
+                    {where_clause}
+                    ORDER BY s.student_id LIMIT ? OFFSET ?
+                    """,
                     params + (page_size, offset),
                 ).fetchall()
 

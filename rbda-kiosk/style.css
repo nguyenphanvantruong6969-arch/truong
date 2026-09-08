@@ -723,6 +723,12 @@ button, input {
 
 .search-result-item:hover { border-color: var(--gold); }
 
+.search-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .search-result-id {
   font-family: var(--font-mono);
   font-size: 12px;

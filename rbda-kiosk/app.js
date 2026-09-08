@@ -1034,7 +1034,11 @@
       res.data.rows.forEach((s) => {
         const row = document.createElement("div");
         row.className = "search-result-item";
-        row.innerHTML = `<span>${esc(s.name)}</span><span class="search-result-id">${esc(s.student_id)}</span>`;
+        const testedTag = `<span class="club-tag${s.n_tested ? "" : " is-empty"}">${t("fallback_tag_tested", { n: s.n_tested })}</span>`;
+        const rankedTag = `<span class="club-tag${s.n_ranked ? "" : " is-empty"}">${t("fallback_tag_ranked", { n: s.n_ranked })}</span>`;
+        row.innerHTML =
+          `<span>${esc(s.name)}</span>` +
+          `<span class="search-result-meta">${testedTag}${rankedTag}<span class="search-result-id">${esc(s.student_id)}</span></span>`;
         row.addEventListener("click", () => selectFallbackStudent(s.student_id));
         box.appendChild(row);
       });
