@@ -912,17 +912,36 @@
   let currentFallbackStudent = null;
   let currentClubs = [];
   let currentRanking = [];
+  let fallbackStudentPage = 1;
+  const FALLBACK_PAGE_SIZE = 8;
 
   function loadFallbackTab() {
-    // không cần tải gì mặc định — chờ tìm/tạo học sinh
+    fallbackStudentPage = 1;
+    loadFallbackStudentList();
   }
 
   function initFallbackHandlers() {
-    el("btnStudentSearch").addEventListener("click", doFallbackSearch);
+    el("btnStudentSearch").addEventListener("click", () => {
+      fallbackStudentPage = 1;
+      loadFallbackStudentList();
+    });
     el("studentSearchInput").addEventListener(
       "input",
-      debounce(() => doFallbackSearch(), 250)
+      debounce(() => {
+        fallbackStudentPage = 1;
+        loadFallbackStudentList();
+      }, 250)
     );
+    el("btnFallbackPrevPage").addEventListener("click", () => {
+      if (fallbackStudentPage > 1) {
+        fallbackStudentPage -= 1;
+        loadFallbackStudentList();
+      }
+    });
+    el("btnFallbackNextPage").addEventListener("click", () => {
+      fallbackStudentPage += 1;
+      loadFallbackStudentList();
+    });
     el("btnCreateStudent").addEventListener("click", () => {
       const id = el("newStudentId").value.trim();
       const name = el("newStudentName").value.trim();
@@ -938,6 +957,7 @@
         showToast(res.data.created ? t("toast_student_created") : t("toast_student_exists"), "success");
         el("newStudentId").value = "";
         el("newStudentName").value = "";
+        loadFallbackStudentList();
         selectFallbackStudent(id);
       });
     });
@@ -991,7 +1011,7 @@
           currentFallbackStudent = null;
           el("fallbackWorkArea").hidden = true;
           el("studentSearchInput").value = "";
-          clear(el("studentSearchResults"));
+          loadFallbackStudentList();
         } else {
           showToast(t("toast_delete_failed_prefix", { errors: trErrs(res.errors).join("; ") }), "error");
         }
@@ -999,27 +1019,31 @@
     });
   }
 
-  function doFallbackSearch() {
+  function loadFallbackStudentList() {
     const q = el("studentSearchInput").value.trim();
-    if (!q) {
-      clear(el("studentSearchResults"));
-      return;
-    }
-    callApi("search_students", q).then((res) => {
+    callApi("list_students_admin", q, fallbackStudentPage, FALLBACK_PAGE_SIZE).then((res) => {
       const box = el("studentSearchResults");
+      const pagination = el("fallbackStudentPagination");
       clear(box);
-      if (!res.ok || !res.data.length) {
+      if (!res.ok || !res.data.rows.length) {
         box.innerHTML = '<div class="empty-state"></div>';
         box.firstChild.textContent = t("search_no_students_found");
+        pagination.hidden = true;
         return;
       }
-      res.data.forEach((s) => {
+      res.data.rows.forEach((s) => {
         const row = document.createElement("div");
         row.className = "search-result-item";
         row.innerHTML = `<span>${esc(s.name)}</span><span class="search-result-id">${esc(s.student_id)}</span>`;
         row.addEventListener("click", () => selectFallbackStudent(s.student_id));
         box.appendChild(row);
       });
+      pagination.hidden = false;
+      el("fallbackPaginationLabel").textContent = t("pagination_label", {
+        page: res.data.page, total_pages: res.data.total_pages, total: res.data.total,
+      });
+      el("btnFallbackPrevPage").disabled = res.data.page <= 1;
+      el("btnFallbackNextPage").disabled = res.data.page >= res.data.total_pages;
     });
   }
 
