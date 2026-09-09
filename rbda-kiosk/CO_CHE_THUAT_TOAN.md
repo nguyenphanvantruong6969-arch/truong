@@ -367,6 +367,31 @@ nữa — đã thử.
 
 ---
 
+## Còn câu "có phải cặp ghép TỐT NHẤT không"
+
+Mục trên đo **cái giá** của tính ổn định. Câu hỏi gốc — *kết quả này có phải
+cách ghép tốt nhất không* — được trả lời riêng ở **`NGHIEN_CUU_TOI_UU.md`**
+(bản có biểu đồ: `NGHIEN_CUU_TOI_UU.html`), bằng sáu thí nghiệm.
+
+Ba kết quả liên quan thẳng tới năm lớp cơ chế mô tả ở trên:
+
+| Phát hiện | Nối vào lớp nào |
+|---|---|
+| RB-DA là ma trận ổn định **tốt nhất cho học sinh** — 0 phản ví dụ trên **2 088** thể hiện vét cạn, kể cả cấu hình **có dự trữ** | Lớp 1 + Lớp 2 |
+| **Không em nào khai gian nguyện vọng mà có lợi** — 0/1 400 lượt vét cạn; cùng phép dò cho ra 258/1 400 dưới cơ chế Boston | Lớp 4 (ràng buộc chống nội sinh, dòng 63–72) |
+| **Nhiễu điểm ±0,5 xáo 15,14% số em, đổi seed chỉ xáo 4,36%** | Lớp 3 (bốc thăm chỉ đứng sau điểm) |
+
+Kết quả thứ nhất đáng chú ý vì mục ngay trên đã chứng minh **dự trữ phá được mô
+hình một danh sách `Q_j`**. Nó phá mô hình, nhưng **không** phá tính tối ưu —
+hai chuyện khác nhau, và cả hai đều đã đo.
+
+Ngược lại, kết quả **không tối ưu Pareto** ở mục trên được đo lại rộng hơn: bộ
+đếm cũ chỉ thấy chu trình độ dài 2, bộ đo mới tìm mọi độ dài và thấy **16 chu
+trình** trên `bo_sach`, trong đó **7 chu trình dài hơn 2** — tức bộ đếm cũ bỏ
+sót gần một nửa.
+
+---
+
 ## Bảng đối chiếu báo cáo ↔ phần mềm
 
 | Phần mềm chạy | Báo cáo đã mô tả? |

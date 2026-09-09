@@ -286,6 +286,66 @@ python du_lieu_test/do_danh_doi_on_dinh.py
 Có **24 test canh** con số này: `tests/test_danh_doi_on_dinh.py`. Diễn giải đầy
 đủ ở `CO_CHE_THUAT_TOAN.md` và `BAN_GIAO.md` mục 5.
 
+## 3e. Thuật toán có đưa ra cặp ghép TỐT NHẤT không?
+
+Mục 3d ở trên đếm **cặp đôi cùng có lợi** — triệu chứng của việc không tối ưu
+Pareto. Nhưng nó chưa trả lời được câu gốc: *kết quả này có phải cách ghép tốt
+nhất không?* Sáu thí nghiệm mới trả lời câu đó, đầy đủ ở
+**`NGHIEN_CUU_TOI_UU.md`** (bản có biểu đồ: `NGHIEN_CUU_TOI_UU.html`).
+
+Chữ "tốt nhất" có bốn nghĩa, và một cơ chế có thể đạt nghĩa này mà hỏng nghĩa
+kia:
+
+| Nghĩa | Đạt? | Số đo |
+|---|---|---|
+| Tốt nhất trong các cách ghép **ổn định** | ✅ **Có** | 0 phản ví dụ / **2 088** thể hiện vét cạn |
+| **Tối ưu Pareto** | ❌ **Không** | 16 chu trình · 32/140 em cùng lên hạng được |
+| **Khai thật có lợi nhất** | ✅ **Có** | 0 / **1 400** em khai gian được (Boston: 258) |
+| **Bền** trước nhiễu | ✅ **Có** | 0 cặp phá vỡ / **392** phép thử nhiễu |
+
+Bốn con số đáng chú ý nhất:
+
+1. **Suất dự trữ KHÔNG phá tính tối ưu.** Vét cạn toàn bộ tập ổn định trên
+   1 073 thể hiện *có* dự trữ: RB-DA tối ưu ở **1 073/1 073**. Đáng ngạc nhiên,
+   vì dự trữ *có* phá được mô hình một-danh-sách `Q_j` (mục "hai cảnh dự trữ"
+   trong `CO_CHE_THUAT_TOAN.md`).
+2. **Tập em CÓ SUẤT là bất biến** ở mọi ma trận ổn định (240/240 thể hiện khó).
+   Hệ quả: **đổi sang cơ chế ổn định khác không cứu được em nào đang trượt** —
+   nó chỉ đổi *ai vào CLB nào*.
+3. **Bốc thăm KHÔNG phải thứ kéo mạnh.** Nhiễu điểm ±0,5 xáo **15,14%** số em;
+   đổi seed bốc thăm chỉ xáo **4,36%**. Xác nhận mệnh đề trung tâm của
+   `GIAI_DAP_BOC_THAM`: bốc thăm chỉ đứng sau điểm.
+4. **Boston cho 92 em nguyện vọng 1 còn RB-DA chỉ cho 54** — nhưng Boston tạo
+   50 cặp phá vỡ và **18,43%** số em khai gian được dưới nó. Nên *"tỉ lệ được
+   nguyện vọng 1"* một mình **không phải** thước đo chất lượng.
+
+Bảng năm cơ chế trên `bo_sach` (140 em, seed 42):
+
+| Cơ chế | NV1 | NV2 | NV3+ | Trượt | Hạng TB | Cặp phá vỡ |
+|---|---|---|---|---|---|---|
+| **RB-DA (phần mềm)** | 54 | 46 | 40 | 0 | 2,100 | **0** |
+| DA do CLB đề xuất | 54 | 46 | 40 | 0 | 2,100 | **0** |
+| Boston / nhận ngay | 92 | 14 | 32 | 2 | 1,826 | 50 |
+| Xét theo bốc thăm | 81 | 24 | 33 | 2 | 1,928 | 121 |
+| TTC | 80 | 29 | 31 | 0 | 1,879 | 118 |
+
+Trên cả ba bộ, **DA do học sinh đề xuất và DA do CLB đề xuất cho kết quả giống
+hệt nhau ở 20/20 seed** — tức tập ổn định chỉ có đúng một phần tử. Đó là tính
+chất của dữ liệu (điểm thi làm ưu tiên rất phân tán), không phải của bộ đo:
+test canh dựng một ví dụ nơi hai bản **khác nhau**.
+
+```
+python3 du_lieu_test/do_toi_uu_on_dinh.py
+python3 du_lieu_test/do_khai_that.py
+python3 du_lieu_test/do_ben_vung.py
+```
+
+Số liệu thô: `du_lieu_test/so_lieu_toi_uu.json`, `so_lieu_khai_that.json`,
+`so_lieu_ben_vung.json` — ba tệp này là **nguồn sự thật duy nhất**, mọi bảng
+đọc từ đó. Có **29 test canh**: `tests/test_toi_uu_on_dinh.py`, trong đó một
+nhóm **đối chứng ngược** đỏ ngay nếu bộ đếm cặp phá vỡ hoặc bộ dò khai gian
+hỏng thành "lúc nào cũng báo 0".
+
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 
 Xem `NHAP_TAY.md` — 8 học sinh, 3 CLB.
