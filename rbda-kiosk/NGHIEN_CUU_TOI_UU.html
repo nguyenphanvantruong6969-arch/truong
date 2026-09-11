@@ -235,20 +235,23 @@ footer {
   <h1>Tối ưu hay chỉ ổn định?</h1>
   <p class="lede">Phần mềm đã canh được <strong>0 cặp phá vỡ</strong> — kết quả
   <em>ổn định</em>. Nhưng ổn định chỉ nghĩa là <em>không ai phá được</em>, chưa
-  phải <em>tốt nhất</em>. Sáu thí nghiệm dưới đây đo bốn nghĩa khác nhau của chữ
-  “tốt nhất”, và ba trong bốn nghĩa đó đạt.</p>
+  phải <em>tốt nhất</em>. Sáu thí nghiệm đầu đo bốn nghĩa khác nhau của chữ
+  “tốt nhất”, và ba trong bốn nghĩa đó đạt. Thí nghiệm thứ bảy hỏi một câu
+  khác: khi phần mềm xếp câu lạc bộ cho cả <em>tuần</em>, trong ba thiết kế bốc
+  thăm thì thiết kế nào tốt nhất.</p>
   <div class="meta">
     <span><b>2 088</b> thể hiện vét cạn</span>
     <span><b>1 400</b> lượt thử khai gian</span>
     <span><b>392</b> phép thử nhiễu</span>
-    <span><b>29</b> test canh</span>
+    <span><b>300</b> lượt dò khai gian theo tuần</span>
+    <span><b>52</b> test canh</span>
     <span>Seed mốc <b>42</b></span>
   </div>
 </header>
 
 <div class="cols">
 <nav class="toc" aria-label="Mục lục">
-  <h2>Sáu thí nghiệm</h2>
+  <h2>Bảy thí nghiệm</h2>
   <ol>
     <li><a href="#tn1"><span class="tn">TN1</span><span>Ma trận ổn định tốt nhất?</span></a></li>
     <li><a href="#tn2"><span class="tn">TN2</span><span>Đổi bên đề xuất</span></a></li>
@@ -266,7 +269,8 @@ footer {
 <section id="tomtat">
   <h2 class="q"><span class="num">TRẢ LỜI NGẮN</span>Bốn nghĩa của “tốt nhất”</h2>
   <p>Một cơ chế có thể đạt nghĩa này mà hỏng nghĩa kia. Đây là kết quả đo cho
-  cả bốn nghĩa — không phải một câu trả lời chung chung.</p>
+  cả bốn nghĩa — không phải một câu trả lời chung chung. Câu hỏi riêng về ba
+  thiết kế bốc thăm cho cả tuần nằm ở <a href="#tn7">TN7</a>.</p>
 
   <div class="meanings">
     <div class="mean">
@@ -309,7 +313,8 @@ footer {
   <pre><code>python3 du_lieu_test/do_toi_uu_on_dinh.py     # TN1, TN2, TN4, TN5
 python3 du_lieu_test/do_khai_that.py          # TN3
 python3 du_lieu_test/do_ben_vung.py           # TN6
-python3 -m pytest tests/test_toi_uu_on_dinh.py -v</code></pre>
+python3 du_lieu_test/do_boc_tham.py           # TN7
+python3 -m pytest tests/test_toi_uu_on_dinh.py tests/test_boc_tham.py -v</code></pre>
 </section>
 
 <section id="tn1">
