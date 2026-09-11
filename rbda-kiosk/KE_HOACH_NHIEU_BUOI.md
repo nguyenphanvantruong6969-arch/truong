@@ -1,8 +1,8 @@
 # Kế hoạch mở rộng: phân bổ CLB cho NHIỀU BUỔI trong tuần
 
-> **Đây là tài liệu THIẾT KẾ, chưa phải phần mềm.** Không dòng mã nào trong kế
-> hoạch này đã được viết. Mục đích của nó là hình dung cho hết trước khi lập
-> trình — chỗ nào giữ nguyên được, chỗ nào phải sửa, và chỗ nào là bẫy.
+> **Giai đoạn 1–3 ĐÃ LÀM XONG.** Tài liệu này giữ nguyên như lúc thiết kế, để
+> đối chiếu được cái đã hình dung với cái đã dựng. Phần đã làm, phần còn lại,
+> và những chỗ thiết kế phải sửa khi chạm vào mã thật — xem mục 12 ở cuối.
 >
 > Bản trình bày có sơ đồ: `KE_HOACH_NHIEU_BUOI.html`. Bản trực tuyến:
 > https://claude.ai/code/artifact/64494a54-773d-4a8d-ad4a-1e19d15c036a
@@ -335,3 +335,68 @@ chưa chắc còn nói về đoạn mã đang chạy.
 *Tài liệu này mô tả **thiết kế và hệ quả kỹ thuật**. Phần nhận định về việc
 trường nên chọn thiết kế bốc thăm nào, cái giá nào chấp nhận được, và ý nghĩa
 khoa học của kết quả — người thực hiện đề tài tự viết (Phụ lục 1).*
+
+
+---
+
+## 12. Đã làm tới đâu
+
+**Giai đoạn 1–3 xong.** Phần mềm khai báo được buổi, xếp được cả tuần, và có
+đủ ba màn hình mới. `512 test xanh` (thêm 37 test mới), ba bộ đo cũ ra đúng số
+cũ, và năm hàm lõi không sửa một dòng.
+
+| Giai đoạn | Trạng thái |
+|---|---|
+| 1 — Buổi vào dữ liệu, di trú, `.gitignore` | ✅ xong |
+| 2 — `run_rbda_nhieu_buoi`, ba cách bốc thăm, xuất thời khoá biểu | ✅ xong |
+| 3 — Lịch tuần, bảng tải, thời khoá biểu, độ phủ, song ngữ | ✅ xong |
+| 4 — Đo lường TN7 và mở rộng trang nghiên cứu | ⏳ chưa |
+| 5 — Bộ câu hỏi Microsoft Forms mới | ⏳ chưa |
+
+### Bốn chỗ thiết kế phải sửa khi chạm vào mã thật
+
+1. **Một buổi thì ba cách bốc thăm phải cho CÙNG kết quả.** Bản đầu để
+   `stb_ngay` xáo lại cả khi chỉ có một buổi — nghĩa là một trường chỉ tổ chức
+   một buổi mà lỡ chọn cách đó sẽ nhận kết quả khác bản cũ, không vì lý do gì.
+   Đã chặn ở `sinh_stb_theo_buoi`, có test canh.
+
+2. **Ba cách bốc thăm đều phải dẫn xuất từ bộ số ĐÃ KHOÁ.** Thiết kế ban đầu
+   để `stb_ngay` tự bốc bộ số mới mỗi buổi — làm thế thì cơ chế `stb_lock` mất
+   nghĩa ở đúng cách bốc thăm cần nó nhất. Bản cài đặt hoán vị VỊ TRÍ trong
+   dàn số đã khoá, nên tính "không phụ thuộc thứ tự nhập liệu" được thừa kế
+   nguyên vẹn.
+
+3. **Tỉ lệ chọi phải đếm theo SỐ HỌC SINH, không phải số lượt nguyện vọng.**
+   Mỗi em chỉ lấy được một chỗ trong một buổi, nên đếm theo lượt làm mọi buổi
+   trông như nhau (đo được: 4,1× tới 6,5× ở mọi buổi) đúng lúc cần nó phân
+   biệt buổi chật với buổi rộng (đếm đúng: 0,88× tới 4,92×).
+
+4. **Bảng kết quả và huy hiệu "chưa được xếp" phải đổi nghĩa.** Một em giờ có
+   một dòng cho mỗi buổi, nên bảng phồng lên gấp số buổi (160 em × 5 buổi =
+   800 dòng) và huy hiệu đếm số Ô TRỐNG chứ không phải số EM trắng tay — 593
+   thay vì 38. Ở chế độ nhiều buổi, bảng chỉ liệt kê chỗ đã xếp thật, còn con
+   số "em trắng tay" lấy từ bảng Độ phủ.
+
+### Một điều đo được, chưa giải thích được — để dành cho giai đoạn 4
+
+Bảng đối chiếu ba cách bốc thăm, chạy trên bộ mẫu 5 buổi (160 em, seed 42):
+
+| Cách bốc thăm | Trắng tay cả tuần | CLB TB/em | Độ lệch | Ô xếp khác |
+|---|---|---|---|---|
+| Một lần cho cả tuần | 38 | 1,294 | 0,953 | mốc |
+| Lại mỗi buổi | 38 | 1,288 | 0,945 | 21 |
+| Có bù | 37 | 1,288 | 0,931 | 6 |
+
+Dự đoán nêu ở mục 3 là **STB ngày sẽ giảm hẳn số em trắng tay**. Trên bộ này
+nó **không giảm** — 38 so với 38.
+
+Chưa vội kết luận dự đoán sai. Cách đọc đáng ngờ nhất: trên bộ dữ liệu này,
+phần lớn em trắng tay trượt vì **thiếu chỗ** chứ không vì **thua bốc thăm** —
+Thứ 4 có 128 em muốn mà chỉ 26 chỗ, nên đổi cách phá hoà không cứu được ai.
+Nếu đúng vậy thì dự đoán vẫn có thể đúng ở một bộ dữ liệu rộng chỗ hơn.
+
+**Phân biệt hai điều đó là việc của giai đoạn 4**, và phải làm bằng cách quét
+nhiều seed cùng nhiều mức chật — không phải bằng một lần chạy trên một bộ dữ
+liệu được dựng cố ý cho chật. Cột "Ô xếp khác" cho thấy ba cách **thật sự cho
+kết quả khác nhau** (21 và 6 ô), nên bộ chọn không hỏng; chỉ là khác biệt ấy
+chưa đổi được con số tổng.

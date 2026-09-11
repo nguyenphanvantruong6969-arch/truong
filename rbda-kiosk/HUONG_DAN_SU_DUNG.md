@@ -119,6 +119,7 @@ bỏ qua, vì mã CLB các em tham chiếu chưa tồn tại.
 | `capacity` | ✔ | **Tổng** số chỗ |
 | `reserve_capacity` | | Trong tổng số đó, bao nhiêu chỗ **dành riêng** cho diện ưu tiên |
 | `reserve_group` | | Nhãn diện ưu tiên. Bỏ trống nếu CLB không có suất dự trữ |
+| `buoi` | | **Buổi sinh hoạt trong tuần**, vd `thu_3`. Xem mục 5b |
 
 Bộ ví dụ:
 
@@ -185,6 +186,91 @@ Bộ ví dụ (3 dòng đầu):
    vọng vào đó là lượt thi bỏ phí — dù điểm cao cũng không vào được.
 3. **Mã học sinh phân biệt hoa/thường.** `HS01` và `hs01` là **hai** người khác
    nhau. Phần mềm cảnh báo khi thấy hai cách viết chỉ khác hoa/thường.
+
+---
+
+## 5b. Nếu trường tổ chức CLB vào NHIỀU buổi trong tuần
+
+Bỏ qua mục này nếu trường chỉ tổ chức một buổi — khi đó không cần khai gì
+thêm, và màn hình cũng không hiện thêm thứ gì.
+
+### Khai buổi cho từng CLB
+
+Thêm cột `buoi` vào Tệp 1. Giá trị là nhãn do trường tự đặt — `thu_3`,
+`thu_5`… Quy tắc duy nhất: **hai CLB cùng giá trị `buoi` là trùng giờ**, nên
+một em chỉ vào được một trong hai.
+
+| club_id | name | capacity | buoi |
+|---|---|---|---|
+| clb_bongda | CLB Bóng đá | 20 | thu_3 |
+| clb_tinhoc | CLB Tin học | 16 | thu_5 |
+
+Nếu sau này trường tổ chức hai tiết khác nhau trong cùng một ngày thì đặt
+`thu_3_tiet_9` và `thu_3_tiet_10` — phần mềm không cần đổi gì.
+
+> ⚠️ **Khai buổi cho một số CLB rồi bỏ trống số còn lại là hỏng.** Những CLB
+> bỏ trống sẽ bị gom vào một buổi chung, tức là bị coi là trùng giờ với nhau.
+> Phần mềm có kêu cảnh báo, nhưng tốt nhất là khai đủ hoặc bỏ trống tất cả.
+
+### Nguyện vọng: mỗi buổi một danh sách
+
+Trên Microsoft Forms, đặt **một câu xếp hạng cho mỗi buổi** — *"Thứ 3 (tiết 9)
+em muốn CLB nào?"*. Cột trong tệp mang tiền tố buổi:
+
+| student_id | name | thu_3_pref_1 | thu_3_pref_2 | thu_5_pref_1 |
+|---|---|---|---|---|
+| HS001 | Nguyễn Văn A | clb_bongda | clb_covua | clb_tinhoc |
+
+Em **bận buổi nào thì bỏ trống danh sách buổi đó** — không có cột riêng để
+khai lịch bận, danh sách rỗng đã nói đúng điều đó.
+
+Ghi nhầm một CLB sang cột của buổi khác thì phần mềm **bỏ qua nguyện vọng đó
+và nêu đích danh dòng** — sửa tệp rồi nạp lại.
+
+### Xem trước tải từng buổi TRƯỚC khi chạy
+
+Thẻ **Quản lý CLB & dự trữ** có bảng **Tải theo buổi**: mỗi buổi có bao nhiêu
+chỗ, bao nhiêu em muốn, và tỉ lệ chọi.
+
+Buổi nào chọi cao mà buổi khác còn trống thì **dời một CLB sang buổi vắng** —
+sửa được trước khi chạy, thay vì chạy xong mới đi giải thích vì sao nhiều em
+trượt.
+
+*Tỉ lệ chọi đếm theo **số học sinh**, không phải số lượt nguyện vọng, vì mỗi
+em chỉ lấy được một chỗ trong một buổi.*
+
+### Chọn cách bốc thăm
+
+Thẻ **Vận hành phân bổ** có ba lựa chọn. Chúng chỉ khác nhau khi có nhiều
+buổi; một buổi thì cả ba cho cùng kết quả.
+
+| Cách | Nghĩa |
+|---|---|
+| **Bốc thăm một lần cho cả tuần** (mặc định) | Mỗi em một số dùng chung mọi buổi. Dễ giải thích nhất, nhưng em bốc phải số xấu đứng cuối ở **mọi** buổi |
+| **Bốc thăm lại mỗi buổi** | Mỗi buổi xáo lại thứ tự từ chính bộ số đã khoá, nên may rủi san đều |
+| **Bốc thăm có bù** | Em chưa có CLB nào được xét trước ở buổi sau |
+
+> ⚠️ **Cách thứ ba có bẫy.** Nó làm ưu tiên buổi sau phụ thuộc kết quả buổi
+> trước, nên một em có thể cố ý bỏ trống buổi đầu để giành ưu tiên buổi sau.
+> Hai cách đầu không có chỗ nào để làm thế.
+
+Chưa biết chọn cách nào thì bấm **So sánh ba cách trên dữ liệu này**: phần mềm
+chạy thử cả ba ngay trên dữ liệu của trường và hiện bảng đối chiếu. Đây chỉ là
+xem trước — **không ghi kết quả, không thêm dòng nhật ký, không đụng số bốc
+thăm của ai**.
+
+### Kết quả đọc ở đâu
+
+Thẻ **Kết quả** có thêm hai khối khi trường dùng nhiều buổi:
+
+- **Thời khoá biểu tuần** — mỗi em một dòng, mỗi buổi một ô. Ô trống nghĩa là
+  buổi đó em không có CLB nào.
+- **Độ phủ theo học sinh** — bao nhiêu em được mấy CLB, và **bao nhiêu em
+  không có CLB nào cả tuần**. Con số cuối là thứ tỉ lệ lấp đầy từng CLB không
+  bao giờ cho thấy.
+
+Nút xuất kết quả tạo thêm `..._thoi_khoa_bieu.csv` (dán bảng được) và thư mục
+`..._theo_buoi/` (một tệp mỗi buổi, cho giáo viên trực ngày đó).
 
 ---
 

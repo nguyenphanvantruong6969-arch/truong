@@ -75,6 +75,20 @@ def test_backup_retention_keeps_only_max_backups(api):
     assert len(backups) == api._MAX_BACKUPS
 
 
+# CHO TIEM LOI: `run_rbda_nhieu_buoi`, khong phai `run_rbda`.
+#
+# Ba test duoi day gia lap mot lan chay no giua chung giao dich, de kiem
+# rang MOI THU deu bi rollback — ke ca so boc tham vua ve. Chung lam viec
+# do bang cach thay tam ham ma run_pipeline goi.
+#
+# Tu khi co tinh nang nhieu buoi, run_pipeline goi run_rbda_nhieu_buoi;
+# ham do goi run_rbda nhung goi qua ten TRONG module thuat toan, nen vá
+# `api_module.run_rbda` khong con chan duoc gi. Test van xanh mot cach vo
+# nghia: khong co exception nao duoc nem, pipeline chay tron, va phep so
+# "khong doi gi" thanh ra so mot trang thai voi chinh no.
+#
+# Da vap dung loi do khi lam tinh nang nay (test bao run_history tang 2
+# thay vi 1). Doi ten o day la SUA DIEM TIEM, khong phai noi long test.
 def test_ordinary_exception_mid_transaction_fully_rolls_back(api):
     """A bug/exception between the STB draw and the final commit must undo
     the STB draw too — never leave a locked-but-resultless STB state."""
@@ -83,12 +97,12 @@ def test_ordinary_exception_mid_transaction_fully_rolls_back(api):
     assert res0["ok"] is True
     baseline = _snapshot(api.db_path)
 
-    original_run_rbda = api_module.run_rbda
-    api_module.run_rbda = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("simulated bug"))
+    original_run_rbda = api_module.run_rbda_nhieu_buoi
+    api_module.run_rbda_nhieu_buoi = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("simulated bug"))
     try:
         res = api.run_pipeline(seed=99, force_redraw_stb=True)
     finally:
-        api_module.run_rbda = original_run_rbda
+        api_module.run_rbda_nhieu_buoi = original_run_rbda
 
     assert res["ok"] is False
     error_steps = [s["step"] for s in res["errors"]["steps"] if s["status"] == "error"]
@@ -108,13 +122,13 @@ def test_base_exception_mid_transaction_rolls_back_and_reraises(api):
     assert res0["ok"] is True
     baseline = _snapshot(api.db_path)
 
-    original_run_rbda = api_module.run_rbda
-    api_module.run_rbda = lambda *a, **kw: (_ for _ in ()).throw(KeyboardInterrupt("simulated interrupt"))
+    original_run_rbda = api_module.run_rbda_nhieu_buoi
+    api_module.run_rbda_nhieu_buoi = lambda *a, **kw: (_ for _ in ()).throw(KeyboardInterrupt("simulated interrupt"))
     try:
         with pytest.raises(KeyboardInterrupt):
             api.run_pipeline(seed=98, force_redraw_stb=True)
     finally:
-        api_module.run_rbda = original_run_rbda
+        api_module.run_rbda_nhieu_buoi = original_run_rbda
 
     assert _snapshot(api.db_path) == baseline
 
@@ -124,12 +138,12 @@ def test_pipeline_still_usable_after_a_rolled_back_crash(api):
     api.run_pipeline(seed=1)
     n_history_before = _snapshot(api.db_path)[2]
 
-    original_run_rbda = api_module.run_rbda
-    api_module.run_rbda = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom"))
+    original_run_rbda = api_module.run_rbda_nhieu_buoi
+    api_module.run_rbda_nhieu_buoi = lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom"))
     try:
         api.run_pipeline(seed=2, force_redraw_stb=True)
     finally:
-        api_module.run_rbda = original_run_rbda
+        api_module.run_rbda_nhieu_buoi = original_run_rbda
 
     res = api.run_pipeline(seed=3)
     assert res["ok"] is True

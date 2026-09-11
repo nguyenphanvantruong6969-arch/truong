@@ -25,6 +25,7 @@ import csv
 import datetime
 import io
 import os
+import re
 import sys
 import traceback
 
@@ -42,6 +43,14 @@ from rbda_priority_pipeline import (
     export_match_results,
     default_reserve_eligible_fn,
     connect_db,
+    BUOI_MAC_DINH,
+    CHE_DO_BOC_THAM,
+    CHE_DO_BOC_THAM_MAC_DINH,
+    cac_dong_match_results,
+    cat_du_lieu_theo_buoi,
+    nhom_theo_buoi,
+    run_rbda_nhieu_buoi,
+    verify_stability_tuan,
 )
 from i18n_errors import err
 
@@ -225,10 +234,11 @@ class PipelineAPI:
                     "SELECT COUNT(DISTINCT student_id) FROM preferences"
                 ).fetchone()[0]
                 n_matched = cur.execute(
-                    "SELECT COUNT(*) FROM match_results WHERE club_id IS NOT NULL"
+                    "SELECT COUNT(DISTINCT student_id) FROM match_results "
+                    "WHERE club_id IS NOT NULL"
                 ).fetchone()[0]
                 has_results = cur.execute(
-                    "SELECT COUNT(*) FROM match_results"
+                    "SELECT COUNT(DISTINCT student_id) FROM match_results"
                 ).fetchone()[0] > 0
             return _ok({
                 "n_students": n_students,
@@ -468,7 +478,7 @@ class PipelineAPI:
         try:
             with self._ket_noi_doc() as cur:
                 has_results = cur.execute(
-                    "SELECT COUNT(*) FROM match_results"
+                    "SELECT COUNT(DISTINCT student_id) FROM match_results"
                 ).fetchone()[0] > 0
                 lock_row = cur.execute(
                     "SELECT is_locked, locked_at FROM stb_lock WHERE id = 1"
@@ -602,7 +612,8 @@ class PipelineAPI:
                 pass
         return backup_path
 
-    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
+    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False,
+                     che_do_boc_tham: str = CHE_DO_BOC_THAM_MAC_DINH):
         """
         Nút 'Chạy pipeline' — chạy trọn 5 bước, trả về log từng bước
         để UI hiển thị lên stepper theo thời gian thực (từng bước một,
@@ -633,6 +644,13 @@ class PipelineAPI:
           - Xuất CSV chỉ thực hiện SAU KHI transaction đã commit thành
             công — CSV là sản phẩm phụ, lỗi ghi file không được phép
             khiến DB rơi vào trạng thái dở dang.
+
+        che_do_boc_tham: 'stb_tuan' (mặc định) | 'stb_ngay' | 'stb_co_bu'.
+        Chỉ có ý nghĩa khi trường khai nhiều buổi sinh hoạt; một buổi thì
+        cả ba cho cùng kết quả. Mặc định để 'stb_tuan' vì đó là thiết kế
+        DUY NHẤT cho kết quả y hệt bản trước khi có tính năng nhiều buổi —
+        nên không con số nào trong tài liệu nghiên cứu phải đo lại.
+        Muốn đổi thì xem bảng đối chiếu ở `so_sanh_boc_tham()` trước.
         """
         steps_log = []
         conn = None
@@ -745,13 +763,28 @@ class PipelineAPI:
             # Chạy xong PHẢI qua hai chốt (sanity + ổn định) rồi mới được
             # ghi. Hỏng một trong hai là rollback toàn bộ giao dịch.
             steps_log.append({"step": "rbda_cascade", "status": "running"})
+            if che_do_boc_tham not in CHE_DO_BOC_THAM:
+                return _fail(err("che_do_boc_tham_khong_hop_le",
+                                 che_do=che_do_boc_tham))
             reserve_fn = default_reserve_eligible_fn(students, clubs)
-            result = run_rbda(
+            # Mot buoi hay nhieu buoi deu di qua DUNG mot duong nay: voi du
+            # lieu mot buoi, run_rbda_nhieu_buoi goi run_rbda dung mot lan
+            # voi dung du lieu do. Co test canh su trung khit ay tren ba bo
+            # du lieu x 20 seed (tests/test_nhieu_buoi.py).
+            result = run_rbda_nhieu_buoi(
                 students, clubs, tested_scores, applicants, preferences,
                 stb_lottery, is_reserve_eligible_fn=reserve_fn,
+                che_do_boc_tham=che_do_boc_tham, seed=seed,
             )
-            sanity_problems = sanity_check_result(result, clubs, preferences)
-            stability_problems = verify_stability(result, clubs, preferences, reserve_fn)
+            sanity_problems = []
+            stability_problems = []
+            for _buoi, _kq in result.per_buoi.items():
+                _clubs_b, _, _, _prefs_b = cat_du_lieu_theo_buoi(
+                    _buoi, nhom_theo_buoi(clubs)[_buoi], clubs,
+                    tested_scores, applicants, preferences)
+                sanity_problems += sanity_check_result(_kq, _clubs_b, _prefs_b)
+                stability_problems += verify_stability(
+                    _kq, _clubs_b, _prefs_b, reserve_fn)
             if sanity_problems or stability_problems:
                 steps_log.append({
                     "step": "rbda_cascade", "status": "error",
@@ -771,36 +804,40 @@ class PipelineAPI:
             steps_log.append({"step": "write_results", "status": "running"})
             cur.execute("DELETE FROM match_results")
             cur.executemany(
-                "INSERT INTO match_results (student_id, club_id, round_num, matched_tier, rank_in_student_pref) "
-                "VALUES (?, ?, ?, ?, ?)",
-                [
-                    (
-                        sid, cid, result.rounds_run,
-                        result.matched_tier.get(sid),
-                        result.rank_in_student_pref.get(sid),
-                    )
-                    for sid, cid in result.assignment.items()
-                ],
+                "INSERT INTO match_results "
+                "(student_id, buoi, club_id, round_num, matched_tier, rank_in_student_pref) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                cac_dong_match_results(result),
             )
             steps_log.append({"step": "write_results", "status": "done"})
 
-            n_matched = sum(1 for v in result.assignment.values() if v)
+            # "Da duoc xep" = co it nhat MOT CLB trong tuan. Mot em co CLB
+            # thu 3 nhung trong thu 5 van la da duoc xep — cho trong buoi
+            # nao thi doc o bang do phu, khong doc o con so nay.
+            so_clb = result.so_clb_moi_em()
+            n_matched = sum(1 for n in so_clb.values() if n > 0)
             run_at = _now()
 
             cur.execute(
-                "INSERT INTO run_meta (id, seed, run_at, rounds_run, n_matched, n_total) "
-                "VALUES (1, ?, ?, ?, ?, ?) "
+                "INSERT INTO run_meta "
+                "(id, seed, run_at, rounds_run, n_matched, n_total, che_do_boc_tham, so_buoi) "
+                "VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET seed=excluded.seed, run_at=excluded.run_at, "
-                "rounds_run=excluded.rounds_run, n_matched=excluded.n_matched, n_total=excluded.n_total",
-                (seed, run_at, result.rounds_run, n_matched, len(result.assignment)),
+                "rounds_run=excluded.rounds_run, n_matched=excluded.n_matched, "
+                "n_total=excluded.n_total, che_do_boc_tham=excluded.che_do_boc_tham, "
+                "so_buoi=excluded.so_buoi",
+                (seed, run_at, result.rounds_run, n_matched, len(so_clb),
+                 che_do_boc_tham, len(result.ds_buoi)),
             )
             # run_history: KHONG BAO GIO ghi de — moi lan chay them 1 dong moi,
             # de nguoi dung luon xem lai duoc lich su chay pipeline (giai quyet #3).
             cur.execute(
-                "INSERT INTO run_history (seed, run_at, rounds_run, n_matched, n_total, stb_redrawn) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (seed, run_at, result.rounds_run, n_matched, len(result.assignment),
-                 1 if stb_redrawn else 0),
+                "INSERT INTO run_history "
+                "(seed, run_at, rounds_run, n_matched, n_total, stb_redrawn, "
+                " che_do_boc_tham, so_buoi) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (seed, run_at, result.rounds_run, n_matched, len(so_clb),
+                 1 if stb_redrawn else 0, che_do_boc_tham, len(result.ds_buoi)),
             )
 
             # Diem commit DUY NHAT cua toan bo pipeline: neu bat ky dong
@@ -1041,6 +1078,12 @@ class PipelineAPI:
                 return ket_luan("clubs", "")
             if any(f.startswith("pref_") for f in fieldnames):
                 return ket_luan("preferences", "wide")
+            # Bo cot nguyen vong theo tung buoi: thu_3_pref_1, thu_5_pref_1...
+            # Phai xet SAU `pref_` o tren de mot tep co ca hai kieu van vao
+            # nhanh cu — nhung phai xet TRUOC nhanh `test_club_`, vi mot ten
+            # buoi co the tinh co bat dau bang "test".
+            if self._cot_nguyen_vong_theo_buoi(fieldnames):
+                return ket_luan("preferences", "wide_theo_buoi")
             if any(f.startswith("test_club_") for f in fieldnames):
                 return ket_luan("test_selection", "wide")
             # rank chi co nghia voi nguyen vong — chon club thi khong xep hang.
@@ -1106,6 +1149,9 @@ class PipelineAPI:
         Cột: club_id, name, capacity — bắt buộc.
              reserve_capacity, reserve_group — tuỳ chọn (trường không
              dùng dự trữ thì bỏ trống cả hai).
+             buoi — tuỳ chọn. Buổi sinh hoạt trong tuần, vd `thu_3`. Hai
+             CLB cùng giá trị `buoi` là trùng giờ. Bỏ trống cả cột thì
+             mọi CLB thuộc một buổi và phần mềm chạy y hệt bản cũ.
         """
         try:
             fieldnames, rows = self._parse_csv_rows(csv_text)
@@ -1120,6 +1166,9 @@ class PipelineAPI:
 
                 n_tao, n_sua, n_bo = 0, 0, 0
                 canh_bao = []
+                # Dem CLB co khai buoi va khong khai, de canh bao bo du lieu
+                # TRON hai kieu — xem cho raise o cuoi vong lap.
+                co_buoi, khong_buoi = [], []
                 for i, row in enumerate(rows, start=2):   # dong 1 la tieu de
                     club_id = (row.get("club_id") or "").strip()
                     if not club_id:
@@ -1143,19 +1192,24 @@ class PipelineAPI:
                         n_bo += 1
                         continue
 
+                    buoi_value = self.chuan_hoa_buoi(row.get("buoi")) or None
+                    (co_buoi if buoi_value else khong_buoi).append(club_id)
+
                     cur.execute(
                         """
-                        INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group, buoi)
+                        VALUES (?, ?, ?, ?, ?, ?)
                         ON CONFLICT(club_id) DO UPDATE SET
                             name=excluded.name,
                             capacity=excluded.capacity,
                             reserve_capacity=excluded.reserve_capacity,
-                            reserve_group=excluded.reserve_group
+                            reserve_group=excluded.reserve_group,
+                            buoi=excluded.buoi
                         """,
                         (club_id, (row.get("name") or "").strip(), capacity,
                          reserve_capacity,
-                         self.chuan_hoa_nhom_du_tru(row.get("reserve_group")) or None),
+                         self.chuan_hoa_nhom_du_tru(row.get("reserve_group")) or None,
+                         buoi_value),
                     )
                     if club_id in da_co:
                         n_sua += 1
@@ -1163,10 +1217,23 @@ class PipelineAPI:
                         n_tao += 1
                         da_co.add(club_id)
 
+                # Tep khai buoi cho MOT SO CLB va bo trong so con lai la
+                # tinh huong nguy hiem nhat cua ca buoc nhap nay: nhung CLB
+                # bo trong roi hết vào cùng một buổi mặc định, tức là chúng
+                # bị coi là TRÙNG GIỜ với nhau — người nhập không hề định
+                # thế và không có gì trên màn hình nói ra. Phải kêu.
+                if co_buoi and khong_buoi:
+                    canh_bao.append(err(
+                        "clb_thieu_buoi",
+                        n=len(khong_buoi),
+                        club_ids=sorted(khong_buoi)[:5],
+                    ))
+
             return _ok({
                 "n_clubs_created": n_tao,
                 "n_clubs_updated": n_sua,
                 "n_rows_skipped": n_bo,
+                "n_clubs_co_buoi": len(co_buoi),
                 "warnings": canh_bao,
             })
         except Exception as e:
@@ -1443,6 +1510,26 @@ class PipelineAPI:
         )
         return nhom
 
+    _MAU_COT_NGUYEN_VONG_THEO_BUOI = re.compile(r"^(?P<buoi>.+)_pref_(?P<k>\d+)$")
+
+    @classmethod
+    def _cot_nguyen_vong_theo_buoi(cls, fieldnames) -> dict:
+        """Tách bộ cột `<buoi>_pref_<k>` thành {buoi: [cột theo thứ tự k]}.
+
+        Rỗng nghĩa là tệp dùng bộ cột cũ (`pref_1`, `pref_2`…) hoặc dạng dài.
+        Cột `pref_1` KHÔNG khớp mẫu này vì mẫu đòi có phần tên buổi đứng
+        trước `_pref_`.
+        """
+        theo_buoi: dict = {}
+        for f in fieldnames or []:
+            m = cls._MAU_COT_NGUYEN_VONG_THEO_BUOI.match(f.strip())
+            if m:
+                theo_buoi.setdefault(m.group("buoi"), []).append((int(m.group("k")), f))
+        return {
+            b: [ten for _k, ten in sorted(cot)]
+            for b, cot in theo_buoi.items()
+        }
+
     def import_preferences_csv(self, csv_text: str, create_missing_students: bool = True):
         """
         Nhập CSV nguyện vọng (Bước 2 — xếp hạng) từ Microsoft Forms.
@@ -1455,11 +1542,50 @@ class PipelineAPI:
             if not rows:
                 return _fail(err("csv_empty"))
 
-            is_wide = any(f.startswith("pref_") for f in fieldnames)
+            cot_theo_buoi = self._cot_nguyen_vong_theo_buoi(fieldnames)
+            is_wide = bool(cot_theo_buoi) or any(
+                f.startswith("pref_") for f in fieldnames)
 
-            # Gom thanh { student_id: (name, [club_id_theo_thu_tu]) }
+            # Gom thanh { student_id: (name, [club_id_theo_thu_tu], nhom) }
             grouped: dict = {}
-            if is_wide:
+            canh_bao_buoi: list = []
+            if cot_theo_buoi:
+                # Bo cot theo buoi: thu_3_pref_1, thu_3_pref_2, thu_5_pref_1...
+                # Moi buoi mot cau Ranking rieng tren Microsoft Forms.
+                #
+                # Cac buoi duoc NOI LIEN NHAU theo thu tu ten buoi, va rank
+                # ghi xuong CSDL van la 1..n chay suot. Nghe nhu mat thong
+                # tin buoi, nhung khong: thuat toan luon LOC danh sach nay
+                # theo buoi truoc khi dung, ma loc mot day da sap thi phan
+                # con lai van dung thu tu. Nho vay du lieu nhap bang bo cot
+                # cu va bo cot moi song chung duoc trong cung mot CSDL.
+                with self._ket_noi_doc() as cur:
+                    buoi_that = {
+                        r[0]: (r[1] or BUOI_MAC_DINH)
+                        for r in cur.execute("SELECT club_id, buoi FROM clubs")
+                    }
+                for i, row in enumerate(rows, start=2):
+                    sid = row.get("student_id")
+                    if not sid:
+                        continue
+                    thu_tu = []
+                    for buoi_cot in sorted(cot_theo_buoi):
+                        for cot in cot_theo_buoi[buoi_cot]:
+                            cid = (row.get(cot) or "").strip()
+                            if not cid:
+                                continue
+                            that = buoi_that.get(cid)
+                            # CLB khong ton tai -> de buoc kiem tra chung phia
+                            # sau bao loi; o day chi soat chuyen LECH BUOI.
+                            if that is not None and that != buoi_cot:
+                                canh_bao_buoi.append(err(
+                                    "nguyen_vong_lech_buoi", line=i, student_id=sid,
+                                    club_id=cid, buoi_cot=buoi_cot, buoi_that=that))
+                                continue
+                            thu_tu.append(cid)
+                    grouped[sid] = (row.get("name", ""), thu_tu,
+                                    row.get("reserve_group", ""))
+            elif is_wide:
                 pref_cols = sorted(
                     [f for f in fieldnames if f.startswith("pref_")],
                     key=lambda f: int(f.split("_")[1]) if f.split("_")[1].isdigit() else 999,
@@ -1561,11 +1687,16 @@ class PipelineAPI:
 
                 row_errors.extend(self._soat_nhom_du_tru_la(cur, nhom_da_ghi))
 
+            # Nguyen vong lech buoi: bao TRUOC cac canh bao khac. Day la loi
+            # nguoi nhap sua duoc ngay va sua xong thi ket qua doi that, nen
+            # no khong duoc lan giua mot danh sach dai.
+            row_errors = canh_bao_buoi + row_errors
 
             return _ok({
                 "n_students_created": n_created,
                 "n_students_with_preferences_written": n_updated,
                 "n_students_skipped": n_skipped,
+                "n_nguyen_vong_lech_buoi": len(canh_bao_buoi),
                 "warnings": row_errors,
             })
         except Exception as e:
@@ -1876,8 +2007,9 @@ class PipelineAPI:
         try:
             with self._ket_noi_doc() as cur:
                 query = """
-                    SELECT m.student_id, s.name, m.club_id, c.name as club_name,
-                           m.matched_tier, m.rank_in_student_pref
+                    SELECT m.student_id, s.name, m.buoi, m.club_id,
+                           c.name as club_name, m.matched_tier,
+                           m.rank_in_student_pref
                     FROM match_results m
                     JOIN students s ON s.student_id = m.student_id
                     LEFT JOIN clubs c ON c.club_id = m.club_id
@@ -1886,7 +2018,7 @@ class PipelineAPI:
                 if search:
                     query += " WHERE m.student_id LIKE ? OR s.name LIKE ?"
                     params = (f"%{search}%", f"%{search}%")
-                query += " ORDER BY m.student_id"
+                query += " ORDER BY m.student_id, m.buoi"
                 rows = cur.execute(query, params).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
@@ -1903,17 +2035,308 @@ class PipelineAPI:
                 # match_results.matched_tier, chỉ là câu lệnh chưa lấy.
                 rows = cur.execute("""
                     SELECT c.club_id, c.name, c.capacity, c.reserve_capacity,
+                           COALESCE(c.buoi, ?) AS buoi,
                            COUNT(m.student_id) as matched,
                            SUM(CASE WHEN m.matched_tier = 'reserve' THEN 1 ELSE 0 END)
                                AS matched_reserve
                     FROM clubs c
                     LEFT JOIN match_results m ON m.club_id = c.club_id
                     GROUP BY c.club_id
-                    ORDER BY c.club_id
-                """).fetchall()
+                    ORDER BY buoi, c.club_id
+                """, (BUOI_MAC_DINH,)).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_club_stats", detail=str(e)))
+
+    # -----------------------------------------------------------------
+    # NHIỀU BUỔI SINH HOẠT
+    # -----------------------------------------------------------------
+
+    def _ds_buoi(self, cur) -> list[str]:
+        """Danh sách buổi đang có CLB, sắp theo tên. Rỗng CLB -> danh sách rỗng."""
+        return [
+            r[0] for r in cur.execute(
+                "SELECT DISTINCT COALESCE(buoi, ?) AS b FROM clubs ORDER BY b",
+                (BUOI_MAC_DINH,),
+            )
+        ]
+
+    def get_danh_sach_buoi(self):
+        """Các buổi sinh hoạt đang dùng, kèm cờ cho biết trường có dùng nhiều buổi không.
+
+        Giao diện đọc `nhieu_buoi` để quyết định hiện hay ẩn toàn bộ phần
+        nhiều buổi. Trường chưa khai buổi nào thì màn hình phải trông y
+        hệt bản cũ — không ai bị bắt học một khái niệm mình chưa dùng.
+        """
+        try:
+            with self._ket_noi_doc() as cur:
+                ds = self._ds_buoi(cur)
+            return _ok({
+                "ds_buoi": ds,
+                "nhieu_buoi": len(ds) > 1,
+                "buoi_mac_dinh": BUOI_MAC_DINH,
+            })
+        except Exception as e:
+            return _fail(err("error_reading_club_list", detail=str(e)))
+
+    def get_tai_theo_buoi(self):
+        """Mỗi buổi có bao nhiêu chỗ, bao nhiêu lượt nguyện vọng, tỉ lệ chọi.
+
+        Đọc TRƯỚC khi chạy phân bổ. Đây là bảng sửa được vấn đề thay vì
+        phải giải thích nó: thấy thứ 3 chọi 3,1 lần trong khi thứ 6 mới
+        0,4 lần thì dời một câu lạc bộ đông sang thứ 6, chứ không phải
+        chạy xong rồi mới đi trả lời vì sao nhiều em trượt.
+        """
+        try:
+            with self._ket_noi_doc() as cur:
+                rows = cur.execute("""
+                    SELECT COALESCE(c.buoi, ?) AS buoi,
+                           COUNT(DISTINCT c.club_id) AS so_clb,
+                           COALESCE(SUM(c.capacity), 0) AS tong_cho,
+                           COALESCE(SUM(c.reserve_capacity), 0) AS tong_du_tru
+                    FROM clubs c
+                    GROUP BY buoi
+                    ORDER BY buoi
+                """, (BUOI_MAC_DINH,)).fetchall()
+
+                nv = dict(cur.execute("""
+                    SELECT COALESCE(c.buoi, ?) AS buoi, COUNT(*) AS n
+                    FROM preferences p
+                    JOIN clubs c ON c.club_id = p.club_id
+                    GROUP BY buoi
+                """, (BUOI_MAC_DINH,)).fetchall())
+
+                em = dict(cur.execute("""
+                    SELECT COALESCE(c.buoi, ?) AS buoi,
+                           COUNT(DISTINCT p.student_id) AS n
+                    FROM preferences p
+                    JOIN clubs c ON c.club_id = p.club_id
+                    GROUP BY buoi
+                """, (BUOI_MAC_DINH,)).fetchall())
+
+            ra = []
+            for r in rows:
+                tong_cho = r["tong_cho"] or 0
+                so_nv = nv.get(r["buoi"], 0)
+                ra.append({
+                    "buoi": r["buoi"],
+                    "so_clb": r["so_clb"],
+                    "tong_cho": tong_cho,
+                    "tong_du_tru": r["tong_du_tru"] or 0,
+                    "so_nguyen_vong": so_nv,
+                    "so_hoc_sinh": em.get(r["buoi"], 0),
+                    # Tỉ lệ chọi = SỐ HỌC SINH muốn buổi này / số chỗ.
+                    #
+                    # Mẫu số là số HỌC SINH chứ không phải số lượt nguyện
+                    # vọng, vì mỗi em chỉ lấy được MỘT chỗ trong một buổi.
+                    # Đếm theo lượt thì một em khai cả ba câu lạc bộ của
+                    # buổi đó bị tính thành ba người đi tranh — con số phồng
+                    # lên và mọi buổi trông như nhau, đúng lúc cần nó phân
+                    # biệt buổi chật với buổi rộng.
+                    #
+                    # Không chỗ nào thì để None chứ không phải 0 — "không có
+                    # chỗ" khác hẳn "thừa chỗ", và 0 ở cột này đọc ra nghĩa
+                    # ngược hẳn.
+                    "ti_le_choi": (
+                        round(em.get(r["buoi"], 0) / tong_cho, 2) if tong_cho else None
+                    ),
+                })
+            return _ok(ra)
+        except Exception as e:
+            return _fail(err("error_reading_club_stats", detail=str(e)))
+
+    def get_thoi_khoa_bieu(self, search: str = ""):
+        """Thời khoá biểu tuần: mỗi em một dòng, mỗi buổi một ô.
+
+        Đây là sản phẩm chính của bản nhiều buổi — thứ nhà trường in ra
+        dán bảng và phát cho học sinh.
+        """
+        try:
+            with self._ket_noi_doc() as cur:
+                ds_buoi = self._ds_buoi(cur)
+                query = """
+                    SELECT m.student_id, s.name, m.buoi, m.club_id,
+                           c.name AS club_name, m.matched_tier,
+                           m.rank_in_student_pref
+                    FROM match_results m
+                    JOIN students s ON s.student_id = m.student_id
+                    LEFT JOIN clubs c ON c.club_id = m.club_id
+                """
+                params = ()
+                if search:
+                    query += " WHERE m.student_id LIKE ? OR s.name LIKE ?"
+                    params = (f"%{search}%", f"%{search}%")
+                rows = cur.execute(query + " ORDER BY m.student_id, m.buoi",
+                                   params).fetchall()
+
+            theo_em: dict = {}
+            for r in rows:
+                em = theo_em.setdefault(r["student_id"], {
+                    "student_id": r["student_id"],
+                    "name": r["name"],
+                    "theo_buoi": {},
+                    "so_clb": 0,
+                    "so_nv1": 0,
+                })
+                em["theo_buoi"][r["buoi"]] = {
+                    "club_id": r["club_id"],
+                    "club_name": r["club_name"],
+                    "matched_tier": r["matched_tier"],
+                    "rank_in_student_pref": r["rank_in_student_pref"],
+                }
+                if r["club_id"]:
+                    em["so_clb"] += 1
+                    if r["rank_in_student_pref"] == 1:
+                        em["so_nv1"] += 1
+
+            return _ok({
+                "ds_buoi": ds_buoi,
+                "hoc_sinh": [theo_em[k] for k in sorted(theo_em)],
+            })
+        except Exception as e:
+            return _fail(err("error_reading_results", detail=str(e)))
+
+    def get_do_phu(self):
+        """Độ phủ: bao nhiêu em được mấy CLB, và em nào trắng tay cả tuần.
+
+        Con số đáng nhìn nhất ở đây là SỐ EM KHÔNG CÓ CLB NÀO CẢ TUẦN.
+        Với một buổi thì nó trùng với "số em chưa được xếp" quen thuộc;
+        với nhiều buổi nó là thứ khác hẳn, và là thứ dễ bị bỏ sót nhất khi
+        chỉ nhìn tỉ lệ lấp đầy từng câu lạc bộ.
+        """
+        try:
+            with self._ket_noi_doc() as cur:
+                ds_buoi = self._ds_buoi(cur)
+                rows = cur.execute("""
+                    SELECT m.student_id, s.name,
+                           SUM(CASE WHEN m.club_id IS NOT NULL THEN 1 ELSE 0 END) AS so_clb
+                    FROM match_results m
+                    JOIN students s ON s.student_id = m.student_id
+                    GROUP BY m.student_id
+                    ORDER BY so_clb, m.student_id
+                """).fetchall()
+
+            phan_bo: dict[int, int] = {}
+            trang_tay = []
+            for r in rows:
+                n = int(r["so_clb"] or 0)
+                phan_bo[n] = phan_bo.get(n, 0) + 1
+                if n == 0:
+                    trang_tay.append({"student_id": r["student_id"], "name": r["name"]})
+
+            tong = len(rows)
+            return _ok({
+                "ds_buoi": ds_buoi,
+                "tong_hoc_sinh": tong,
+                "phan_bo": [
+                    {"so_clb": n, "so_em": phan_bo.get(n, 0)}
+                    for n in range(0, len(ds_buoi) + 1)
+                ],
+                "so_em_trang_tay": len(trang_tay),
+                "em_trang_tay": trang_tay[:200],
+                "trung_binh_clb": (
+                    round(sum(int(r["so_clb"] or 0) for r in rows) / tong, 2)
+                    if tong else 0
+                ),
+            })
+        except Exception as e:
+            return _fail(err("error_reading_results", detail=str(e)))
+
+    def so_sanh_boc_tham(self, seed: int = 42):
+        """Chạy KHAN cả ba cách bốc thăm trên dữ liệu hiện tại rồi so.
+
+        KHÔNG GHI GÌ: không đụng `match_results`, không thêm dòng
+        `run_history`, không chạm `stb_lock`, không vẽ lại số bốc thăm của
+        ai. Toàn bộ diễn ra trong bộ nhớ. Có test canh điều đó
+        (tests/test_nhieu_buoi.py::TestSoSanhKhongGhiGi) — một hàm "xem
+        thử" mà lỡ ghi vào cơ sở dữ liệu thì nó vừa đổi kết quả đã công bố
+        vừa để lại dấu vết trông như một lần chạy thật.
+
+        Dùng để trả lời bằng SỐ ĐO câu "nên dùng cách bốc thăm nào", thay
+        vì chọn theo cảm tính. Ba cách chỉ khác nhau khi trường có nhiều
+        buổi; một buổi thì cả ba cho cùng kết quả, và bảng này sẽ nói thế.
+        """
+        try:
+            students, clubs, tested_scores, applicants, preferences, _ = (
+                load_from_sqlite(self.db_path)
+            )
+            if not students or not clubs:
+                return _fail(err("no_data_to_run"))
+
+            # Dung DUNG bo so da khoa neu co; chua khoa thi ve tam mot bo
+            # TRONG BO NHO de co cai ma so — khong ghi xuong CSDL.
+            stb = {sid: info.get("stb") for sid, info in students.items()}
+            if any(v is None for v in stb.values()):
+                stb = generate_stb_lottery(sorted(students), seed)
+
+            reserve_fn = default_reserve_eligible_fn(students, clubs)
+            ds_buoi = sorted({(c.get("buoi") or BUOI_MAC_DINH) for c in clubs.values()})
+
+            bang = []
+            moc_xep = None          # kết quả của cách đầu tiên, làm mốc so sánh
+            for che_do in CHE_DO_BOC_THAM:
+                kq = run_rbda_nhieu_buoi(
+                    students, clubs, tested_scores, applicants, preferences,
+                    stb, is_reserve_eligible_fn=reserve_fn,
+                    che_do_boc_tham=che_do, seed=seed,
+                )
+                so_clb = kq.so_clb_moi_em()
+                cac_gia_tri = list(so_clb.values())
+                pha_vo = sum(
+                    len(v) for v in verify_stability_tuan(
+                        kq, clubs, preferences, reserve_fn).values()
+                )
+                hang = [
+                    m.rank_in_student_pref[sid]
+                    for m in kq.per_buoi.values()
+                    for sid in m.rank_in_student_pref
+                ]
+                # Số ô (em, buổi) khác so với cách ĐẦU TIÊN trong danh sách.
+                #
+                # Cột này có mặt vì các cột tổng ở trên có thể gần như bằng
+                # nhau mà kết quả vẫn khác hẳn: đo trên bộ mẫu 5 buổi, ba
+                # cách cho số em trắng tay 38/38/37 — nhìn vào tưởng như
+                # nhau — trong khi có 21 ô xếp khác chỗ. Thiếu cột này thì
+                # người đọc kết luận "ba cách như nhau", và đó là kết luận
+                # sai: chúng khác ở CHỖ NÀO xếp ai, chỉ không khác ở TỔNG.
+                if moc_xep is None:
+                    moc_xep = kq.assignment
+                    so_o_khac = 0
+                else:
+                    so_o_khac = sum(
+                        1
+                        for sid in kq.assignment
+                        for b in kq.ds_buoi
+                        if kq.assignment[sid].get(b) != moc_xep.get(sid, {}).get(b)
+                    )
+
+                bang.append({
+                    "che_do": che_do,
+                    "so_o_khac_moc": so_o_khac,
+                    "so_em_trang_tay": sum(1 for n in cac_gia_tri if n == 0),
+                    "trung_binh_clb": round(
+                        sum(cac_gia_tri) / len(cac_gia_tri), 3) if cac_gia_tri else 0,
+                    # Do lech chuan = "may rui deu hay lech". Day moi la cho
+                    # ba cach khac nhau: ky vong bang nhau, phuong sai thi khong.
+                    "do_lech_chuan": (
+                        round(statistics.pstdev(cac_gia_tri), 3)
+                        if len(cac_gia_tri) > 1 else 0
+                    ),
+                    "thu_hang_tb": round(sum(hang) / len(hang), 3) if hang else None,
+                    "cap_pha_vo": pha_vo,
+                    "so_em_du_clb": sum(1 for n in cac_gia_tri if n == len(ds_buoi)),
+                })
+
+            return _ok({
+                "seed": seed,
+                "ds_buoi": ds_buoi,
+                "nhieu_buoi": len(ds_buoi) > 1,
+                "tong_hoc_sinh": len(students),
+                "bang": bang,
+            })
+        except Exception as e:
+            return _fail([err("error_running_pipeline", detail=str(e)),
+                          traceback.format_exc()])
 
     # -----------------------------------------------------------------
     # XUẤT KẾT QUẢ
@@ -1985,14 +2408,16 @@ class PipelineAPI:
 
             with self._ket_noi_doc() as cur:
                 rows = cur.execute("""
-                    SELECT m.student_id, s.name AS ho_ten, m.club_id,
+                    SELECT m.student_id, s.name AS ho_ten, m.buoi, m.club_id,
                            c.name AS ten_club, m.rank_in_student_pref, m.matched_tier,
                            s.reserve_group
                     FROM match_results m
                     LEFT JOIN students s ON s.student_id = m.student_id
                     LEFT JOIN clubs   c ON c.club_id   = m.club_id
-                    ORDER BY m.student_id
+                    ORDER BY m.student_id, m.buoi
                 """).fetchall()
+                ds_buoi = self._ds_buoi(cur)
+            nhieu_buoi = len(ds_buoi) > 1
 
             def an_toan_cho_excel(o):
                 """Chan Excel hieu noi dung o thanh CONG THUC.
@@ -2010,18 +2435,28 @@ class PipelineAPI:
                 # 'reserve'/'general' la ma noi bo — giao vien khong phai doan.
                 return {"reserve": "Dự trữ", "general": "Thường"}.get(tier or "", "")
 
-            COT_TONG = ["Mã học sinh", "Họ tên", "Mã CLB", "Tên CLB",
-                        "Nguyện vọng thứ", "Diện trúng tuyển", "Nhóm dự trữ"]
+            # Cot "Buoi" chi xuat hien khi truong THAT SU dung nhieu buoi.
+            # Mot buoi ma van co cot day gia tri "__mac_dinh__" thi giao vien
+            # phai doan xem no nghia la gi — them mot cot vo nghia vao tep ai
+            # cung phai doc la mot cai gia that.
+            COT_TONG = (["Mã học sinh", "Họ tên"]
+                        + (["Buổi"] if nhieu_buoi else [])
+                        + ["Mã CLB", "Tên CLB", "Nguyện vọng thứ",
+                           "Diện trúng tuyển", "Nhóm dự trữ"])
             COT_CLB = ["Mã học sinh", "Họ tên", "Nguyện vọng thứ",
                        "Diện trúng tuyển", "Nhóm dự trữ"]
 
             def dong_tong(r):
-                return [
-                    r["student_id"], r["ho_ten"] or "", r["club_id"] or "",
-                    r["ten_club"] or ("" if r["club_id"] else "(chưa được xếp)"),
-                    r["rank_in_student_pref"] if r["rank_in_student_pref"] else "",
-                    dien(r["matched_tier"]), r["reserve_group"] or "",
-                ]
+                return (
+                    [r["student_id"], r["ho_ten"] or ""]
+                    + ([r["buoi"]] if nhieu_buoi else [])
+                    + [
+                        r["club_id"] or "",
+                        r["ten_club"] or ("" if r["club_id"] else "(chưa được xếp)"),
+                        r["rank_in_student_pref"] if r["rank_in_student_pref"] else "",
+                        dien(r["matched_tier"]), r["reserve_group"] or "",
+                    ]
+                )
 
             # encoding="utf-8-sig" = UTF-8 CÓ BOM. Không có BOM thì Excel
             # đọc tên tiếng Việt thành "Nguyá»…n VÄƒn An". Đây đúng là lỗi
@@ -2078,11 +2513,65 @@ class PipelineAPI:
                 )
                 n_file += 1
 
+            # ---- Thoi khoa bieu tuan: SAN PHAM CHINH cua ban nhieu buoi ----
+            # Moi em MOT dong, moi buoi MOT cot — dan bang duoc, phat cho hoc
+            # sinh duoc. Bang tong o tren van giu nguyen hinh dang cu (moi
+            # dong la mot cap em-buoi) vi do la thu de doi chieu va loc, con
+            # day la thu de doc.
+            duong_tkb = None
+            n_tkb = 0
+            if nhieu_buoi:
+                theo_em: dict = {}
+                for r in rows:
+                    em = theo_em.setdefault(
+                        r["student_id"], {"ho_ten": r["ho_ten"] or "", "o": {}})
+                    em["o"][r["buoi"]] = (
+                        r["ten_club"] or r["club_id"] or "") if r["club_id"] else ""
+                duong_tkb = goc + "_thoi_khoa_bieu.csv"
+                ghi(
+                    duong_tkb,
+                    ["Mã học sinh", "Họ tên"] + list(ds_buoi) + ["Số CLB"],
+                    [
+                        [sid, em["ho_ten"]]
+                        + [em["o"].get(b, "") for b in ds_buoi]
+                        + [sum(1 for b in ds_buoi if em["o"].get(b))]
+                        for sid, em in sorted(theo_em.items())
+                    ],
+                )
+                n_tkb = len(theo_em)
+
+                # ---- Mot tep moi buoi, cho giao vien truc ngay do ----
+                per_buoi_dir = goc + "_theo_buoi"
+                os.makedirs(per_buoi_dir, exist_ok=True)
+                for cu_ten in os.listdir(per_buoi_dir):
+                    if cu_ten.lower().endswith(".csv"):
+                        try:
+                            os.remove(os.path.join(per_buoi_dir, cu_ten))
+                        except OSError:
+                            pass
+                for b in ds_buoi:
+                    ghi(
+                        os.path.join(per_buoi_dir, self._ten_file_an_toan(b, "buoi") + ".csv"),
+                        ["Mã học sinh", "Họ tên", "Mã CLB", "Tên CLB",
+                         "Nguyện vọng thứ", "Diện trúng tuyển"],
+                        [
+                            [r["student_id"], r["ho_ten"] or "", r["club_id"] or "",
+                             r["ten_club"] or "",
+                             r["rank_in_student_pref"] if r["rank_in_student_pref"] else "",
+                             dien(r["matched_tier"])]
+                            for r in rows
+                            if r["buoi"] == b and r["club_id"]
+                        ],
+                    )
+
             return _ok({
                 "path": output_path,
                 "n_rows": len(rows),
                 "per_club_dir": per_club_dir,
                 "n_club_files": n_file,
+                "nhieu_buoi": nhieu_buoi,
+                "thoi_khoa_bieu_path": duong_tkb,
+                "n_thoi_khoa_bieu_rows": n_tkb,
             })
         except Exception as e:
             return _fail(err("error_exporting_csv", detail=str(e)))
@@ -2103,21 +2592,36 @@ class PipelineAPI:
         try:
             with self._ket_noi_doc() as cur:
                 rows = cur.execute(
-                    "SELECT club_id, name, capacity, reserve_capacity, reserve_group "
-                    "FROM clubs ORDER BY club_id"
+                    "SELECT club_id, name, capacity, reserve_capacity, "
+                    "reserve_group, buoi FROM clubs ORDER BY COALESCE(buoi, ''), club_id"
                 ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:
             return _fail(err("error_reading_club_list", detail=str(e)))
 
+    @staticmethod
+    def chuan_hoa_buoi(raw) -> str:
+        """Chuẩn hoá nhãn buổi sinh hoạt. Rỗng -> "" (nghĩa là buổi mặc định).
+
+        Cùng cách chuẩn hoá với nhãn dự trữ: bỏ khoảng trắng thừa, hạ chữ
+        thường, đổi khoảng trắng thành gạch dưới. "Thứ 3" và "thu 3" và
+        "thu_3" phải ra cùng một buổi — không thì hai CLB cùng giờ lại được
+        coi là hai buổi khác nhau, và học sinh trúng cả hai.
+        """
+        ten = " ".join(str(raw or "").split()).strip().lower()
+        return ten.replace(" ", "_")
+
     def create_or_update_club(
         self, club_id: str, name: str, capacity: int,
-        reserve_capacity: int = 0, reserve_group: str = "",
+        reserve_capacity: int = 0, reserve_group: str = "", buoi: str = "",
     ):
         """
         Tạo mới hoặc cập nhật 1 club (UPSERT theo club_id).
         reserve_group: chuỗi tự do do trường tự đặt (vd 'chinh_sach',
         'khoi10', hoặc để trống '' nếu club không có dự trữ).
+        buoi: buổi sinh hoạt (vd 'thu_3'). Để trống nếu trường chỉ tổ
+        chức một buổi — khi đó mọi CLB thuộc cùng một buổi mặc định và
+        phần mềm chạy y hệt bản không có tính năng nhiều buổi.
         """
         try:
             capacity = int(capacity)
@@ -2130,19 +2634,22 @@ class PipelineAPI:
                 return _fail(err("club_id_required"))
 
             reserve_group_value = self.chuan_hoa_nhom_du_tru(reserve_group) or None
+            buoi_value = self.chuan_hoa_buoi(buoi) or None
 
             with self._ket_noi_ghi() as cur:
                 cur.execute(
                     """
-                    INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO clubs (club_id, name, capacity, reserve_capacity, reserve_group, buoi)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(club_id) DO UPDATE SET
                         name=excluded.name,
                         capacity=excluded.capacity,
                         reserve_capacity=excluded.reserve_capacity,
-                        reserve_group=excluded.reserve_group
+                        reserve_group=excluded.reserve_group,
+                        buoi=excluded.buoi
                     """,
-                    (club_id.strip(), name.strip(), capacity, reserve_capacity, reserve_group_value),
+                    (club_id.strip(), name.strip(), capacity, reserve_capacity,
+                     reserve_group_value, buoi_value),
                 )
             return _ok({"club_id": club_id, "action": "upserted"})
         except Exception as e:
@@ -2298,8 +2805,13 @@ class PipelineAPI:
     def list_clubs(self):
         try:
             with self._ket_noi_doc() as cur:
+                # Sắp theo BUỔI trước rồi mới tới mã: màn hình nhập tại chỗ
+                # dựng danh sách theo thứ tự này, và xếp các CLB cùng buổi
+                # cạnh nhau giúp học sinh thấy ngay mình đang chọn trùng giờ.
                 rows = cur.execute(
-                    "SELECT club_id, name, capacity, reserve_capacity FROM clubs ORDER BY club_id"
+                    "SELECT club_id, name, capacity, reserve_capacity, "
+                    "COALESCE(buoi, ?) AS buoi FROM clubs "
+                    "ORDER BY buoi, club_id", (BUOI_MAC_DINH,)
                 ).fetchall()
             return _ok([dict(r) for r in rows])
         except Exception as e:

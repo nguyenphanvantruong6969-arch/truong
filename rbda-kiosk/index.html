@@ -107,6 +107,39 @@
         <div id="healthList" class="health-list"></div>
       </div>
 
+      <div class="panel" id="bocThamPanel" hidden>
+        <div class="panel-head">
+          <h2 data-i18n="boc_tham_title">Cách bốc thăm qua các buổi</h2>
+          <div class="panel-actions">
+            <button class="btn btn-secondary" id="btnSoSanhBocTham" data-i18n="btn_so_sanh_boc_tham">So sánh ba cách trên dữ liệu này</button>
+          </div>
+        </div>
+        <p class="hint-text" data-i18n="boc_tham_desc">Chỉ có ý nghĩa khi trường tổ chức nhiều buổi.</p>
+
+        <div class="boc-tham-list" id="bocThamList"></div>
+        <div class="canh-bao-do" id="bocThamCanhBao" hidden data-i18n="boc_tham_canh_bao_co_bu"></div>
+
+        <div id="soSanhBox" hidden>
+          <h3 class="sub-head" data-i18n="so_sanh_title">Ba cách bốc thăm cho kết quả gì</h3>
+          <p class="hint-text" data-i18n="so_sanh_desc">Chạy thử cả ba cách ngay trên dữ liệu đang có.</p>
+          <div class="scroll-x">
+            <table class="data-table">
+              <thead><tr>
+                <th data-i18n="th_cach_boc_tham">Cách bốc thăm</th>
+                <th class="num" data-i18n="th_trang_tay">Trắng tay cả tuần</th>
+                <th class="num" data-i18n="th_tb_clb">CLB trung bình mỗi em</th>
+                <th class="num" data-i18n="th_do_lech">Độ lệch</th>
+                <th class="num" data-i18n="th_hang_tb">Hạng nguyện vọng TB</th>
+                <th class="num" data-i18n="th_pha_vo">Cặp phá vỡ</th>
+                <th class="num" data-i18n="th_o_khac">Ô xếp khác</th>
+              </tr></thead>
+              <tbody id="soSanhBody"></tbody>
+            </table>
+          </div>
+          <p class="hint-text" id="soSanhCachDoc" data-i18n="so_sanh_cach_doc"></p>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h2 data-i18n="steps_panel_title">Các bước xử lý</h2>
@@ -206,6 +239,32 @@
         </div>
       </div>
 
+      <div class="panel" id="doPhuPanel" hidden>
+        <div class="panel-head"><h2 data-i18n="do_phu_title">Độ phủ theo học sinh</h2></div>
+        <p class="hint-text" data-i18n="do_phu_desc">Con số đáng nhìn nhất là số em không có CLB nào cả tuần.</p>
+        <div class="do-phu-so">
+          <div class="so-lon"><span class="so-lon-v" id="doPhuTb">—</span><span class="so-lon-k" data-i18n="do_phu_tb">CLB trung bình mỗi em</span></div>
+          <div class="so-lon is-canh-bao"><span class="so-lon-v" id="doPhuTrangTay">—</span><span class="so-lon-k" data-i18n="do_phu_trang_tay">Em không có CLB nào cả tuần</span></div>
+        </div>
+        <div class="do-phu-cot" id="doPhuCot"></div>
+      </div>
+
+      <div class="panel" id="tkbPanel" hidden>
+        <div class="panel-head">
+          <h2 data-i18n="tkb_title">Thời khoá biểu tuần</h2>
+          <div class="panel-actions">
+            <input type="text" id="tkbSearch" class="text-input" data-i18n-placeholder="placeholder_results_search" placeholder="Tìm theo mã hoặc tên học sinh…">
+          </div>
+        </div>
+        <p class="hint-text" data-i18n="tkb_desc">Mỗi em một dòng, mỗi buổi một ô.</p>
+        <div class="scroll-x">
+          <table class="data-table" id="tkbTable">
+            <thead><tr id="tkbHead"></tr></thead>
+            <tbody id="tkbBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h2 data-i18n="results_list_title">Danh sách xếp CLB</h2>
@@ -220,6 +279,7 @@
             <tr>
               <th data-i18n="th_student_id">Mã học sinh</th>
               <th data-i18n="th_name">Họ tên</th>
+              <th class="cot-buoi" data-i18n="th_buoi">Buổi</th>
               <th data-i18n="th_club">Câu lạc bộ</th>
               <th data-i18n="th_tier">Loại chỗ</th>
               <th data-i18n="th_pref_rank">Hạng nguyện vọng</th>
@@ -278,6 +338,8 @@
           <div class="fallback-step">
             <h3 data-i18n="fallback_step2_title">Bước 2 — Xếp hạng nguyện vọng (độc lập, tối đa 10 CLB)</h3>
             <p class="hint-text" data-i18n="fallback_step2_hint">Bấm chọn CLB theo thứ tự ưu tiên giảm dần. Có thể xếp hạng CLB không nằm trong danh sách đã đánh dấu ở Bước 1.</p>
+            <p class="hint-text" id="fallbackBuoiHint" hidden data-i18n="fallback_buoi_hint">Mỗi buổi em chỉ nhận được nhiều nhất một CLB.</p>
+            <div class="phu-buoi" id="fallbackPhuBuoi" hidden></div>
             <div id="rankingSourceGrid" class="option-list"></div>
             <div class="ranking-result">
               <div class="ranking-result-label" data-i18n="ranking_current_label">Thứ tự nguyện vọng hiện tại:</div>
@@ -307,6 +369,8 @@
           <input type="number" id="clubFormReserveCapacity" class="text-input text-input-sm" data-i18n-placeholder="placeholder_reserve_capacity" placeholder="Suất dự trữ" min="0" value="0">
           <input type="text" id="clubFormReserveGroup" class="text-input text-input-sm" data-i18n-placeholder="placeholder_reserve_group" placeholder="Nhãn dự trữ (bỏ trống nếu không có)" list="reserveGroupOptions">
           <datalist id="reserveGroupOptions"></datalist>
+          <input type="text" id="clubFormBuoi" class="text-input" data-i18n-placeholder="placeholder_buoi" placeholder="Buổi sinh hoạt (vd: thu_3)" list="buoiOptions">
+          <datalist id="buoiOptions"></datalist>
           <button class="btn btn-primary" id="btnSaveClub" data-i18n="btn_save_club">Lưu CLB</button>
         </div>
         <span class="save-feedback" id="clubFormFeedback"></span>
@@ -318,11 +382,38 @@
             <th data-i18n="th_capacity">Tổng chỗ</th>
             <th data-i18n="th_reserve_capacity">Suất dự trữ</th>
             <th data-i18n="th_reserve_group">Nhãn dự trữ</th>
+            <th class="cot-buoi" data-i18n="th_buoi">Buổi</th>
             <th></th>
           </tr></thead>
           <tbody id="adminClubTableBody"></tbody>
         </table>
         <div id="adminClubEmptyState" class="empty-state" hidden data-i18n="admin_club_empty">Chưa có CLB nào — thêm CLB đầu tiên bằng biểu mẫu ở trên.</div>
+        <p class="hint-text" data-i18n="buoi_hint_form">Hai CLB cùng một buổi là trùng giờ.</p>
+      </div>
+
+      <div class="panel" id="taiBuoiPanel" hidden>
+        <div class="panel-head"><h2 data-i18n="admin_tai_buoi_title">Tải theo buổi</h2></div>
+        <p class="hint-text" data-i18n="admin_tai_buoi_desc">Xem trước khi chưa chạy phân bổ.</p>
+        <div class="scroll-x">
+          <table class="data-table">
+            <thead><tr>
+              <th data-i18n="th_buoi">Buổi</th>
+              <th class="num" data-i18n="th_so_clb">Số CLB</th>
+              <th class="num" data-i18n="th_tong_cho">Tổng chỗ</th>
+              <th class="num" data-i18n="th_em_muon_buoi">Em muốn buổi này</th>
+              <th class="num" data-i18n="th_ti_le_choi">Tỉ lệ chọi</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="taiBuoiBody"></tbody>
+          </table>
+        </div>
+        <p class="hint-text" data-i18n="ti_le_choi_giai_thich">Tỉ lệ chọi đếm theo số học sinh.</p>
+      </div>
+
+      <div class="panel" id="lichTuanPanel" hidden>
+        <div class="panel-head"><h2 data-i18n="admin_lich_tuan_title">Lịch tuần</h2></div>
+        <p class="hint-text" data-i18n="admin_lich_tuan_desc">Mỗi cột là một buổi sinh hoạt.</p>
+        <div class="lich-tuan" id="lichTuan"></div>
       </div>
 
       <div class="panel">

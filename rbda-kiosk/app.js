@@ -241,6 +241,7 @@
     refreshStbLockLine();
     refreshSidebarStatus();
     loadHealthReport();
+    loadBocTham();
   }
 
   /* ---- Cảnh báo sức khoẻ dữ liệu (pre-flight) ---- */
@@ -460,7 +461,7 @@
     el("btnRun").disabled = true;
     el("btnValidate").disabled = true;
 
-    callApi("run_pipeline", seed, forceRedraw).then((res) => {
+    callApi("run_pipeline", seed, forceRedraw, cachBocThamDangChon).then((res) => {
       el("btnRun").disabled = false;
       el("btnValidate").disabled = false;
       const steps = (res.data && res.data.steps) || (res.errors && res.errors.steps) || [];
@@ -801,6 +802,8 @@
   function loadResultsTab() {
     loadClubFillStats();
     loadMatchResults(el("resultsSearch") ? el("resultsSearch").value : "");
+    loadDoPhu();
+    loadThoiKhoaBieu(el("tkbSearch") ? el("tkbSearch").value : "");
   }
 
   function loadClubFillStats() {
@@ -861,8 +864,28 @@
       }
       empty.hidden = true;
 
+      /* NHIỀU BUỔI: một em có MỘT dòng cho MỖI buổi, kể cả buổi em không
+         có suất. Giữ nguyên cách hiện thì bảng này phồng lên gấp số buổi
+         (160 em × 5 buổi = 800 dòng, phần lớn là ô trống) và huy hiệu
+         "chưa được xếp" đếm số Ô TRỐNG chứ không phải số EM trắng tay —
+         593 thay vì 38, một con số vừa sai vừa đáng sợ.
+
+         Nên ở chế độ nhiều buổi, bảng này chỉ liệt kê chỗ đã xếp THẬT, còn
+         "em nào chưa có gì" đọc ở bảng Độ phủ ngay phía trên — chỗ con số
+         đó có đúng nghĩa. */
+      const dsBuoi = new Set(res.data.map((r) => r.buoi));
+      const nhieuBuoi = dsBuoi.size > 1;
+      const dong = nhieuBuoi ? res.data.filter((r) => r.club_id) : res.data;
+
+      /* Cột "Buổi" chỉ có nghĩa khi trường dùng nhiều buổi. Một buổi mà
+         vẫn hiện một cột toàn "Chưa chia buổi" là thêm việc đọc cho người
+         dùng mà không thêm thông tin nào. */
+      document.querySelectorAll("#view-results .cot-buoi").forEach((o) => {
+        o.hidden = !nhieuBuoi;
+      });
+
       let nUnmatched = 0;
-      res.data.forEach((r) => {
+      dong.forEach((r) => {
         const tr = document.createElement("tr");
         const clubCell = r.club_id
           ? `<span class="club-tag">${esc(r.club_name || r.club_id)}</span>`
@@ -871,12 +894,21 @@
         const tierLabel =
           r.matched_tier === "reserve" ? t("tier_reserve") : r.matched_tier === "general" ? t("tier_general") : "—";
         tr.innerHTML =
-          `<td>${esc(r.student_id)}</td><td>${esc(r.name)}</td><td>${clubCell}</td>` +
+          `<td>${esc(r.student_id)}</td><td>${esc(r.name)}</td>` +
+          `<td class="cot-buoi">${esc(nhanBuoi(r.buoi))}</td><td>${clubCell}</td>` +
           `<td>${esc(tierLabel)}</td><td>${esc(r.rank_in_student_pref ?? "—")}</td>`;
         body.appendChild(tr);
       });
 
-      if (nUnmatched > 0) {
+      if (nhieuBuoi) {
+        /* Huy hiệu phải nói SỐ EM không có CLB nào cả tuần. Lấy từ đúng
+           nguồn đã tính điều đó thay vì suy ra từ bảng này. */
+        callApi("get_do_phu").then((dp) => {
+          const n = dp.ok ? dp.data.so_em_trang_tay : 0;
+          badge.hidden = n <= 0;
+          if (n > 0) badge.textContent = t("unmatched_badge", { n: n });
+        });
+      } else if (nUnmatched > 0) {
         badge.hidden = false;
         badge.textContent = t("unmatched_badge", { n: nUnmatched });
       } else {
@@ -890,6 +922,15 @@
       "input",
       debounce((ev) => loadMatchResults(ev.target.value), 250)
     );
+    if (el("tkbSearch")) {
+      el("tkbSearch").addEventListener(
+        "input",
+        debounce((ev) => loadThoiKhoaBieu(ev.target.value), 250)
+      );
+    }
+    if (el("btnSoSanhBocTham")) {
+      el("btnSoSanhBocTham").addEventListener("click", soSanhBocTham);
+    }
     el("btnExport").addEventListener("click", () => {
       /* Khong truyen ten file -> backend tu dat vao THU MUC TAI XUONG
          cua nguoi dung va tra ve duong dan DAY DU, de nguoi dung biet
@@ -1059,6 +1100,8 @@
       }
       currentFallbackStudent = studentId;
       currentClubs = clubsRes.ok ? clubsRes.data : [];
+      buoiCuaClb = {};
+      currentClubs.forEach((c) => { buoiCuaClb[c.club_id] = c.buoi; });
       currentRanking = stateRes.data.ranked_clubs.slice();
 
       el("fallbackWorkArea").hidden = false;
@@ -1090,7 +1133,11 @@
       const row = document.createElement("div");
       row.className = "option-row";
       row.dataset.clubId = c.club_id;
-      row.innerHTML = `<span>${esc(c.name)}</span><span class="cb-club-id">${esc(c.club_id)}</span>`;
+      /* Hien BUOI thay vi ma CLB khi truong dung nhieu buoi: o buoc nay
+         hoc sinh dang quyet dinh "tuan minh kin chua", va buoi la thong
+         tin giup quyet dinh — ma CLB thi khong. */
+      const phu = c.buoi && c.buoi !== "__mac_dinh__" ? nhanBuoi(c.buoi) : c.club_id;
+      row.innerHTML = `<span>${esc(c.name)}</span><span class="cb-club-id">${esc(phu)}</span>`;
       row.addEventListener("click", () => {
         if (currentRanking.includes(c.club_id)) {
           showToast(trErr({ code: "duplicate_preference_in_list", params: {} }), "error");
@@ -1110,6 +1157,7 @@
   function renderRankingList() {
     const list = el("rankingList");
     clear(list);
+    veChiBaoPhuBuoi(currentRanking);
     currentRanking.forEach((cid, idx) => {
       const club = currentClubs.find((c) => c.club_id === cid);
       const li = document.createElement("li");
@@ -1139,9 +1187,337 @@
      vi armTwoStepConfirm goi nhan dong bo, khong cho duoc promise. */
   let adminCoKetQua = false;
 
+  /* ------------------------------------------------------------------ *
+   * 8b. NHIỀU BUỔI SINH HOẠT TRONG TUẦN
+   * ------------------------------------------------------------------ *
+   * Toàn bộ phần này TỰ ẨN khi trường chưa khai buổi nào. Một trường chỉ
+   * tổ chức một buổi phải thấy đúng màn hình như trước — không ai bị bắt
+   * học một khái niệm mình chưa dùng tới.
+   * ------------------------------------------------------------------ */
+
+  /* Buổi mặc định là mã nội bộ, không phải chữ để đọc. Hiện nguyên
+     "__mac_dinh__" lên màn hình thì người dùng phải đoán nó là gì. */
+  function nhanBuoi(buoi) {
+    if (!buoi || buoi === "__mac_dinh__") return t("buoi_chua_chia");
+    return buoi;
+  }
+
+  /* Ba mức tải, cùng ngưỡng dùng cho cả bảng lẫn lịch tuần.
+     Mốc nằm ở 1,0 vì tỉ lệ chọi là SỐ EM trên SỐ CHỖ: trên 1 là chắc chắn
+     có em trượt, dưới 1 là chắc chắn có chỗ bỏ không. Dải 0,95–1,05 gọi là
+     "vừa đủ" để một buổi cân bằng không bị tô cảnh báo chỉ vì lệch vài em.
+
+     Ngưỡng đầu tiên viết là 0,8 — sai: một buổi 0,88× (12% số chỗ bỏ
+     trống) bị gán nhãn "Vừa đủ", đúng lúc nó là buổi nên dời CLB sang. */
+  function mucTai(tiLe) {
+    if (tiLe === null || tiLe === undefined) return null;
+    if (tiLe > 1.05) return { lop: "is-qua-tai", nhan: t("tai_buoi_qua_tai") };
+    if (tiLe >= 0.95) return { lop: "is-vua-du", nhan: t("tai_buoi_vua_du") };
+    return { lop: "is-con-trong", nhan: t("tai_buoi_con_trong") };
+  }
+
+  function loadBuoiOptions() {
+    callApi("get_danh_sach_buoi").then((res) => {
+      const list = el("buoiOptions");
+      if (!list) return;
+      clear(list);
+      if (!res.ok) return;
+      res.data.ds_buoi
+        .filter((b) => b !== res.data.buoi_mac_dinh)
+        .forEach((b) => {
+          const opt = document.createElement("option");
+          opt.value = b;
+          list.appendChild(opt);
+        });
+    });
+  }
+
+  function loadTaiTheoBuoi() {
+    const panel = el("taiBuoiPanel");
+    if (!panel) return;
+    callApi("get_tai_theo_buoi").then((res) => {
+      const body = el("taiBuoiBody");
+      clear(body);
+      /* Một buổi thì bảng này không nói được gì: cả trường chỉ có một
+         dòng, và "dời CLB sang buổi vắng" không còn là lời khuyên nào. */
+      if (!res.ok || res.data.length < 2) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+      res.data.forEach((r) => {
+        const muc = mucTai(r.ti_le_choi);
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          `<td>${esc(nhanBuoi(r.buoi))}</td>` +
+          `<td class="num">${esc(r.so_clb)}</td>` +
+          `<td class="num">${esc(r.tong_cho)}</td>` +
+          `<td class="num">${esc(r.so_hoc_sinh)}</td>` +
+          `<td class="num">${r.ti_le_choi === null ? "—" : esc(r.ti_le_choi) + "×"}</td>` +
+          `<td>${muc ? `<span class="chip-tai ${muc.lop}">${esc(muc.nhan)}</span>` : ""}</td>`;
+        body.appendChild(tr);
+      });
+    });
+  }
+
+  function loadLichTuan() {
+    const panel = el("lichTuanPanel");
+    if (!panel) return;
+    Promise.all([
+      callApi("get_tai_theo_buoi"),
+      callApi("get_club_fill_stats"),
+    ]).then(([tai, fill]) => {
+      const box = el("lichTuan");
+      clear(box);
+      if (!tai.ok || tai.data.length < 2 || !fill.ok) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+
+      const theoBuoi = {};
+      fill.data.forEach((c) => {
+        (theoBuoi[c.buoi] = theoBuoi[c.buoi] || []).push(c);
+      });
+
+      tai.data.forEach((b) => {
+        const muc = mucTai(b.ti_le_choi);
+        const cot = document.createElement("div");
+        cot.className = "lich-cot";
+        cot.innerHTML =
+          `<div class="lich-dau ${muc && muc.lop === "is-qua-tai" ? "is-qua-tai" : ""}">` +
+          `<span class="lich-buoi">${esc(nhanBuoi(b.buoi))}</span>` +
+          `<span class="lich-phu">${esc(b.tong_cho)} · ${b.ti_le_choi === null ? "—" : esc(b.ti_le_choi) + "×"}</span>` +
+          `</div>`;
+        (theoBuoi[b.buoi] || []).forEach((c) => {
+          const phanTram = c.capacity > 0
+            ? Math.min(100, (c.matched / c.capacity) * 100)
+            : 0;
+          const o = document.createElement("div");
+          o.className = "lich-o";
+          o.innerHTML =
+            `<span class="lich-ten">${esc(c.name || c.club_id)}</span>` +
+            `<span class="lich-thanh"><span style="width:${phanTram}%"></span></span>`;
+          o.title = `${c.matched}/${c.capacity}`;
+          cot.appendChild(o);
+        });
+        box.appendChild(cot);
+      });
+    });
+  }
+
+  /* ---- Chọn cách bốc thăm (thẻ Vận hành) ---- */
+
+  const CACH_BOC_THAM = [
+    { ma: "stb_tuan",  khoa: "boc_tham_stb_tuan" },
+    { ma: "stb_ngay",  khoa: "boc_tham_stb_ngay" },
+    { ma: "stb_co_bu", khoa: "boc_tham_stb_co_bu", canhBao: true },
+  ];
+  let cachBocThamDangChon = "stb_tuan";
+
+  function loadBocTham() {
+    const panel = el("bocThamPanel");
+    if (!panel) return;
+    callApi("get_danh_sach_buoi").then((res) => {
+      /* Một buổi thì ba cách cho cùng kết quả — bộ chọn chỉ làm người
+         dùng phân vân về một lựa chọn không đổi được gì. */
+      if (!res.ok || !res.data.nhieu_buoi) {
+        panel.hidden = true;
+        cachBocThamDangChon = "stb_tuan";
+        return;
+      }
+      panel.hidden = false;
+      veBocTham();
+    });
+  }
+
+  function veBocTham() {
+    const box = el("bocThamList");
+    if (!box) return;
+    clear(box);
+    CACH_BOC_THAM.forEach((c) => {
+      const chon = c.ma === cachBocThamDangChon;
+      const item = document.createElement("label");
+      item.className =
+        "boc-tham-item" + (chon ? " is-chon" : "") + (c.canhBao ? " is-canh-bao" : "");
+      item.innerHTML =
+        `<input type="radio" name="cachBocTham" value="${esc(c.ma)}"${chon ? " checked" : ""}>` +
+        `<span><span class="boc-tham-ten">${esc(t(c.khoa))}</span>` +
+        `<span class="boc-tham-mo-ta">${esc(t(c.khoa + "_hint"))}</span></span>`;
+      item.querySelector("input").addEventListener("change", () => {
+        cachBocThamDangChon = c.ma;
+        veBocTham();
+      });
+      box.appendChild(item);
+    });
+    const canhBao = el("bocThamCanhBao");
+    if (canhBao) canhBao.hidden = cachBocThamDangChon !== "stb_co_bu";
+  }
+
+  function soSanhBocTham() {
+    const btn = el("btnSoSanhBocTham");
+    const box = el("soSanhBox");
+    if (!box) return;
+    if (btn) btn.disabled = true;
+    showToast(t("so_sanh_dang_chay"), "info");
+
+    const seed = parseInt(el("seedInput").value, 10) || 42;
+    callApi("so_sanh_boc_tham", seed).then((res) => {
+      if (btn) btn.disabled = false;
+      if (!res.ok) {
+        showToast(trErrs(res.errors).join("; "), "error");
+        return;
+      }
+      box.hidden = false;
+      const body = el("soSanhBody");
+      clear(body);
+
+      const ten = {
+        stb_tuan: t("boc_tham_stb_tuan"),
+        stb_ngay: t("boc_tham_stb_ngay"),
+        stb_co_bu: t("boc_tham_stb_co_bu"),
+      };
+      res.data.bang.forEach((r, i) => {
+        const tr = document.createElement("tr");
+        if (i === 0) tr.className = "la-moc";
+        const oKhac = i === 0
+          ? `<span class="hint-text">${esc(t("so_sanh_moc_label"))}</span>`
+          : esc(r.so_o_khac_moc);
+        tr.innerHTML =
+          `<td>${esc(ten[r.che_do] || r.che_do)}</td>` +
+          `<td class="num">${esc(r.so_em_trang_tay)}</td>` +
+          `<td class="num">${esc(r.trung_binh_clb)}</td>` +
+          `<td class="num">${esc(r.do_lech_chuan)}</td>` +
+          `<td class="num">${esc(r.thu_hang_tb === null ? "—" : r.thu_hang_tb)}</td>` +
+          `<td class="num">${esc(r.cap_pha_vo)}</td>` +
+          `<td class="num">${oKhac}</td>`;
+        body.appendChild(tr);
+      });
+      el("soSanhCachDoc").textContent = res.data.nhieu_buoi
+        ? t("so_sanh_cach_doc")
+        : t("so_sanh_mot_buoi");
+    });
+  }
+
+  /* ---- Thời khoá biểu + độ phủ (thẻ Kết quả) ---- */
+
+  function loadThoiKhoaBieu(search) {
+    const panel = el("tkbPanel");
+    if (!panel) return;
+    callApi("get_thoi_khoa_bieu", search || "").then((res) => {
+      if (!res.ok || res.data.ds_buoi.length < 2 || !res.data.hoc_sinh.length) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+      const dsBuoi = res.data.ds_buoi;
+
+      const head = el("tkbHead");
+      clear(head);
+      head.innerHTML =
+        `<th>${esc(t("th_student_id"))}</th><th>${esc(t("th_name"))}</th>` +
+        dsBuoi.map((b) => `<th>${esc(nhanBuoi(b))}</th>`).join("") +
+        `<th class="num">${esc(t("tkb_so_clb"))}</th>`;
+
+      const body = el("tkbBody");
+      clear(body);
+      res.data.hoc_sinh.forEach((em) => {
+        const o = dsBuoi.map((b) => {
+          const c = em.theo_buoi[b];
+          if (!c || !c.club_id) {
+            return `<td><span class="tkb-trong">—</span></td>`;
+          }
+          const lop = c.matched_tier === "reserve" ? " is-du-tru" : "";
+          return `<td><span class="tkb-o${lop}">${esc(c.club_name || c.club_id)}</span></td>`;
+        }).join("");
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          `<td>${esc(em.student_id)}</td><td>${esc(em.name)}</td>` + o +
+          `<td class="num">${esc(em.so_clb)}</td>`;
+        body.appendChild(tr);
+      });
+    });
+  }
+
+  function loadDoPhu() {
+    const panel = el("doPhuPanel");
+    if (!panel) return;
+    callApi("get_do_phu").then((res) => {
+      if (!res.ok || res.data.ds_buoi.length < 2 || !res.data.tong_hoc_sinh) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+      const d = res.data;
+      el("doPhuTb").textContent = d.trung_binh_clb;
+      el("doPhuTrangTay").textContent = d.so_em_trang_tay;
+
+      const box = el("doPhuCot");
+      clear(box);
+      const lonNhat = Math.max(1, ...d.phan_bo.map((p) => p.so_em));
+      d.phan_bo.forEach((p) => {
+        const nhan =
+          p.so_clb === 0 ? t("do_phu_0_clb")
+          : p.so_clb === 1 ? t("do_phu_1_clb")
+          : t("do_phu_x_clb", { n: p.so_clb });
+        const dong = document.createElement("div");
+        dong.className = "do-phu-dong" + (p.so_clb === 0 ? " is-trang-tay" : "");
+        dong.innerHTML =
+          `<span class="do-phu-nhan">${esc(nhan)}</span>` +
+          `<span class="do-phu-track"><span class="do-phu-bar" ` +
+          `style="width:${(p.so_em / lonNhat) * 100}%"></span></span>` +
+          `<span class="do-phu-so-em">${esc(p.so_em)}</span>`;
+        box.appendChild(dong);
+      });
+    });
+  }
+
+  /* ---- Chỉ báo phủ buổi ở màn nhập tại chỗ ---- */
+
+  function veChiBaoPhuBuoi(dsClbDaXep) {
+    const box = el("fallbackPhuBuoi");
+    const hint = el("fallbackBuoiHint");
+    if (!box) return;
+    callApi("get_danh_sach_buoi").then((res) => {
+      if (!res.ok || !res.data.nhieu_buoi) {
+        box.hidden = true;
+        if (hint) hint.hidden = true;
+        return;
+      }
+      box.hidden = false;
+      if (hint) hint.hidden = false;
+
+      const dsBuoi = res.data.ds_buoi;
+      const daCo = new Set(
+        (dsClbDaXep || [])
+          .map((cid) => buoiCuaClb[cid])
+          .filter((b) => b !== undefined)
+      );
+      clear(box);
+      dsBuoi.forEach((b) => {
+        const chip = document.createElement("span");
+        chip.className = "phu-buoi-chip" + (daCo.has(b) ? " is-co" : "");
+        chip.textContent = nhanBuoi(b);
+        box.appendChild(chip);
+      });
+      const tom = document.createElement("span");
+      tom.className = "phu-buoi-tom";
+      tom.textContent = t("fallback_phu_buoi", { n: daCo.size, tong: dsBuoi.length });
+      box.appendChild(tom);
+    });
+  }
+
+  /* Bảng tra club_id -> buổi, nạp cùng danh sách CLB ở màn nhập tại chỗ.
+     Giữ riêng thay vì hỏi lại backend mỗi lần bấm, vì chỉ báo phủ buổi
+     phải cập nhật ngay theo từng cú bấm xếp hạng. */
+  let buoiCuaClb = {};
+
   function loadAdminTab() {
     loadAdminClubs();
     loadReserveGroupOptions();
+    loadBuoiOptions();
+    loadTaiTheoBuoi();
+    loadLichTuan();
     adminStudentPage = 1;
     loadAdminStudents();
     callApi("get_last_run_info").then((res) => {
@@ -1159,11 +1535,16 @@
         return;
       }
       emptyState.hidden = true;
+      const nhieuBuoi = new Set(res.data.map((c) => c.buoi || "__mac_dinh__")).size > 1;
+      document.querySelectorAll("#view-admin .cot-buoi").forEach((o) => {
+        o.hidden = !nhieuBuoi;
+      });
       res.data.forEach((c) => {
         const tr = document.createElement("tr");
         tr.innerHTML =
           `<td>${esc(c.club_id)}</td><td>${esc(c.name)}</td><td>${esc(c.capacity)}</td>` +
-          `<td>${esc(c.reserve_capacity)}</td><td>${esc(c.reserve_group || "—")}</td><td></td>`;
+          `<td>${esc(c.reserve_capacity)}</td><td>${esc(c.reserve_group || "—")}</td>` +
+          `<td class="cot-buoi">${esc(nhanBuoi(c.buoi))}</td><td></td>`;
         const delBtn = document.createElement("button");
         delBtn.className = "btn-icon-danger";
         delBtn.dataset.originalLabel = t("btn_delete");
@@ -1246,14 +1627,16 @@
       const capacity = el("clubFormCapacity").value;
       const reserveCapacity = el("clubFormReserveCapacity").value || 0;
       const reserveGroup = el("clubFormReserveGroup").value.trim();
+      const buoi = el("clubFormBuoi") ? el("clubFormBuoi").value.trim() : "";
       if (!id || !name || !capacity) {
         feedback(el("clubFormFeedback"), t("feedback_club_form_required"), true);
         return;
       }
-      callApi("create_or_update_club", id, name, capacity, reserveCapacity, reserveGroup).then((res) => {
+      callApi("create_or_update_club", id, name, capacity, reserveCapacity, reserveGroup, buoi).then((res) => {
         if (res.ok) {
           feedback(el("clubFormFeedback"), t("feedback_club_saved", { club_id: id }), false);
           el("clubFormId").value = "";
+          if (el("clubFormBuoi")) el("clubFormBuoi").value = "";
           el("clubFormName").value = "";
           el("clubFormCapacity").value = "";
           el("clubFormReserveCapacity").value = "0";

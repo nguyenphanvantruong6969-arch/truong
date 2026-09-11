@@ -9,6 +9,13 @@ app.db
 match_results.csv
 ket_qua*.csv
 ket_qua*_theo_club/
+# Ban nhieu buoi xuat them HAI thu muc nua. Luat `ket_qua*.csv` o tren
+# KHONG chan duoc chung: gitignore khop theo TEN TEP, ma ten tep ben trong
+# la `thu_2.csv` / `clb_bongda.csv` — khong bat dau bang "ket_qua". Da thu
+# bang git check-ignore. Thieu hai dong nay la ho ten hoc sinh that di
+# thang vao git.
+ket_qua*_theo_buoi/
+ket_qua*_danh_sach_cho/
 
 # NGOAI LE: ket_qua_thu_tai.csv la SO DO THU TAI, khong phai du lieu hoc
 # sinh. Ca 18 cot deu la so dem va thoi gian (so hoc sinh, so CLB, giay,

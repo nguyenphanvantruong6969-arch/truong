@@ -47,7 +47,8 @@ def test_create_or_update_club_validates_and_upserts(api):
     assert ok["ok"] is True
 
     clubs = api.list_clubs()["data"]
-    assert clubs == [{"club_id": "A", "name": "Club A", "capacity": 10, "reserve_capacity": 2}]
+    assert clubs == [{"club_id": "A", "name": "Club A", "capacity": 10,
+                      "reserve_capacity": 2, "buoi": "__mac_dinh__"}]
 
     # upsert: same club_id updates in place, not a duplicate row
     api.create_or_update_club("A", "Club A renamed", 12, 2, "policy")
@@ -73,7 +74,8 @@ def test_delete_club_blocked_when_referenced_by_preferences(api):
     api.submit_preferences("s1", ["B"])
     res = api.delete_club("A")
     assert res["ok"] is True
-    assert api.list_clubs()["data"] == [{"club_id": "B", "name": "Club B", "capacity": 10, "reserve_capacity": 0}]
+    assert api.list_clubs()["data"] == [{"club_id": "B", "name": "Club B", "capacity": 10,
+                                        "reserve_capacity": 0, "buoi": "__mac_dinh__"}]
 
 
 def test_create_student_if_missing_is_idempotent(api):

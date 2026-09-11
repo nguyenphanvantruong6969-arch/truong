@@ -42,6 +42,25 @@ from typing import Callable, Optional
 
 
 # ---------------------------------------------------------------------------
+# BUỔI SINH HOẠT
+# ---------------------------------------------------------------------------
+#
+# Một CLB sinh hoạt đúng MỘT buổi trong tuần. Hai CLB cùng giá trị `buoi`
+# là trùng giờ, nên một em chỉ vào được một trong hai.
+#
+# `buoi` cố ý là NHÃN TỰ DO chứ không phải danh sách cố định thứ-2..thứ-7.
+# Trường hiện chỉ tổ chức vào tiết 9 nên nhãn bằng ngày là đủ; nếu sau này
+# có thêm tiết thì "thu_3_tiet_9" và "thu_3_tiet_10" chạy được ngay mà
+# không đổi một dòng thuật toán nào — vì thuật toán chỉ hỏi "hai nhãn này
+# có bằng nhau không", không bao giờ diễn giải nội dung nhãn.
+#
+# CLB chưa khai buổi (NULL/rỗng) thuộc buổi mặc định. Trường chỉ tổ chức
+# một buổi thì MỌI CLB nằm ở đây, và toàn bộ phần nhiều buổi thu về đúng
+# một lần gọi run_rbda — tức đúng phần mềm cũ.
+BUOI_MAC_DINH = "__mac_dinh__"
+
+
+# ---------------------------------------------------------------------------
 # BƯỚC A — HÀM ƯU TIÊN HAI TẦNG (compute_club_priority)
 # ---------------------------------------------------------------------------
 
@@ -411,6 +430,307 @@ def verify_stability(
 
 
 # ---------------------------------------------------------------------------
+# BƯỚC C2 — ĐIỀU PHỐI NHIỀU BUỔI
+# ---------------------------------------------------------------------------
+#
+# VÌ SAO PHẦN NÀY CHỈ LÀ CẮT — GỌI — GHÉP
+#
+# Mỗi CLB đúng một buổi; mỗi em tối đa một CLB mỗi buổi; không có trần số
+# CLB mỗi tuần. Ba điều đó nghĩa là tập CLB khả thi của một em chỉ là
+# "chọn tuỳ ý, độc lập, tối đa một CLB trong mỗi buổi" — một ràng buộc
+# PHÂN HOẠCH thuần tuý, các buổi KHÔNG ràng buộc lẫn nhau.
+#
+# Nên bài toán tuần không phải một bài toán lớn hơn: nó là N bản sao ĐỘC
+# LẬP của bài toán đã giải. Không hàm nào dưới đây đụng vào logic ưu tiên
+# hay logic dự trữ; chúng chỉ cắt dữ liệu theo buổi, gọi ĐÚNG run_rbda
+# hiện có, rồi ghép kết quả.
+#
+# Hệ quả quan trọng: mọi tính chất đã đo cho một buổi (ổn định, tối ưu cho
+# học sinh, khai thật có lợi nhất, bền trước nhiễu — xem NGHIEN_CUU_TOI_UU.md)
+# tự động đúng cho cả tuần. Riêng tính KHAI THẬT CÓ LỢI NHẤT đúng vì lý do
+# rất cụ thể: khai của một em ở buổi d chỉ ảnh hưởng buổi d, nên không có
+# kênh nào để hi sinh ngày này lấy ngày kia.
+#
+# Bỏ BẤT KỲ điều kiện nào ở trên là mất hệ quả đó — xem KE_HOACH_NHIEU_BUOI.md.
+
+CHE_DO_BOC_THAM = ("stb_tuan", "stb_ngay", "stb_co_bu")
+CHE_DO_BOC_THAM_MAC_DINH = "stb_tuan"
+
+
+def buoi_cua_club(clubs: dict[str, dict]) -> dict[str, str]:
+    """{club_id: buoi}. NULL/rỗng -> BUOI_MAC_DINH."""
+    return {
+        cid: (info.get("buoi") or BUOI_MAC_DINH)
+        for cid, info in clubs.items()
+    }
+
+
+def nhom_theo_buoi(clubs: dict[str, dict]) -> dict[str, list[str]]:
+    """{buoi: [club_id]} — buổi sắp theo tên, club sắp theo mã.
+
+    Sắp xếp không phải để cho đẹp: thứ tự xét buổi QUYẾT ĐỊNH kết quả ở chế
+    độ `stb_co_bu` (buổi xét trước sinh ra "số CLB đã có" cho buổi xét sau).
+    Thứ tự đến từ dict của Python là thứ tự chèn, mà thứ tự chèn phụ thuộc
+    thứ tự đọc từ CSDL — không tái lập được. Sắp ở đây là chốt nó lại.
+    """
+    theo_buoi: dict[str, list[str]] = {}
+    cua = buoi_cua_club(clubs)
+    for cid in sorted(clubs):
+        theo_buoi.setdefault(cua[cid], []).append(cid)
+    return {b: theo_buoi[b] for b in sorted(theo_buoi)}
+
+
+def cat_du_lieu_theo_buoi(
+    buoi: str,
+    ds_club_cua_buoi: list[str],
+    clubs: dict[str, dict],
+    tested_scores: dict[str, dict[str, float]],
+    applicants: dict[str, list[str]],
+    preferences: dict[str, list[str]],
+):
+    """Cắt toàn bộ dữ liệu xuống đúng một buổi.
+
+    CHỖ TINH TẾ NHẤT CỦA CẢ TỆP — nguyện vọng.
+
+    Nguyện vọng của một em được LỌC chứ không đánh số lại:
+
+        prefs_buoi[sid] = [c for c in prefs[sid] if c thuộc buổi này]
+
+    Lọc một dãy đã sắp thì phần còn lại vẫn đúng thứ tự. Nên cách này cho
+    đúng thứ tự nguyện vọng TRONG BUỔI, bất kể cột `rank` trong CSDL đang
+    là thứ hạng toàn cục (dữ liệu nhập bằng bản cũ) hay thứ hạng trong buổi
+    (dữ liệu nhập bằng bộ cột mới). Không cần di trú dữ liệu nguyện vọng,
+    và hai kiểu dữ liệu sống chung được trong cùng một CSDL.
+    """
+    tap = set(ds_club_cua_buoi)
+    clubs_b = {cid: clubs[cid] for cid in ds_club_cua_buoi}
+    scores_b = {cid: tested_scores.get(cid, {}) for cid in ds_club_cua_buoi}
+    app_b = {cid: list(applicants.get(cid, [])) for cid in ds_club_cua_buoi}
+    prefs_b = {
+        sid: [cid for cid in ds if cid in tap]
+        for sid, ds in preferences.items()
+    }
+    return clubs_b, scores_b, app_b, prefs_b
+
+
+def _seed_cua_buoi(seed: int, buoi: str) -> int:
+    """Seed dẫn xuất cho một buổi — phải TÁI LẬP được giữa hai lần mở máy.
+
+    KHÔNG dùng hash() của Python: từ Python 3.3, hash() của chuỗi được ngẫu
+    nhiên hoá theo từng tiến trình (PYTHONHASHSEED), nên cùng dữ liệu cùng
+    seed sẽ cho hai kết quả khác nhau ở hai lần chạy. Với một phần mềm mà
+    cả tính minh bạch dựa trên "chạy lại ra đúng số cũ" thì đó là lỗi chí
+    mạng, và là loại lỗi im lặng — không ai nhận ra cho tới khi có người
+    đối chiếu hai lần chạy.
+
+    crc32 cho cùng một số trên mọi máy, mọi phiên bản Python.
+    """
+    import zlib
+
+    return (int(seed) + zlib.crc32(buoi.encode("utf-8"))) % (2 ** 31)
+
+
+def sinh_stb_theo_buoi(
+    stb_goc: dict[str, int], ds_buoi: list[str], seed: int, che_do: str,
+) -> dict[str, dict[str, int]]:
+    """Bộ số bốc thăm cho từng buổi, theo một trong ba thiết kế.
+
+    Cả ba thiết kế đều là HÀM CỦA `stb_goc` — bộ số đã bốc và đã KHOÁ. Đó
+    là điều kiện để cơ chế khoá bốc thăm còn nguyên ý nghĩa ở mọi chế độ:
+    không chế độ nào tự bốc một bộ số mới ngoài tầm kiểm soát của `stb_lock`.
+
+      stb_tuan  — dùng thẳng `stb_goc` cho MỌI buổi. Em số xấu đứng cuối
+                  Tầng 2 ở mọi buổi, nên may rủi CỘNG DỒN.
+      stb_ngay  — hoán vị VỊ TRÍ trong dàn số, mỗi buổi một hoán vị dẫn
+                  xuất từ (seed, tên buổi). May rủi SAN ĐỀU qua các ngày.
+
+    `stb_co_bu` không sinh được ở đây vì nó cần biết kết cục của buổi
+    trước — nó được dựng dần trong run_rbda_nhieu_buoi, cũng từ `stb_goc`.
+
+    Vì sao stb_ngay hoán vị VỊ TRÍ chứ không bốc lại từ đầu: hoán vị một
+    dàn số đã có cho đúng một hoán vị ngẫu nhiên đều (hợp của hai hoán vị
+    vẫn là hoán vị đều), nhưng nó KHÔNG đưa thêm một nguồn ngẫu nhiên nào
+    ngoài `stb_goc` và `seed`. Tính "không phụ thuộc thứ tự nhập liệu" mà
+    generate_stb_lottery đã bảo đảm cho `stb_goc` được thừa kế nguyên vẹn.
+    """
+    if che_do not in CHE_DO_BOC_THAM:
+        raise ValueError(
+            "che_do phai la mot trong %r, nhan duoc %r" % (list(CHE_DO_BOC_THAM), che_do))
+
+    # MỘT buổi thì cả ba cách phải cho CÙNG kết quả, và phải là kết quả của
+    # bộ số đã khoá.
+    #
+    # "Bốc thăm lại mỗi buổi" chỉ có nghĩa khi có nhiều buổi để san may rủi
+    # qua. Với một buổi, xáo lại chỉ là một phép hoán vị tuỳ tiện: nó đổi ai
+    # đỗ ai trượt mà không làm gì công bằng hơn, và nó phá mất lời hứa
+    # "một buổi thì kết quả y hệt bản cũ" — một trường chỉ tổ chức một buổi
+    # mà lỡ chọn cách này sẽ nhận kết quả khác đi, không vì lý do nào cả.
+    #
+    # Test canh: TestTrungKhit::test_mot_buoi_thi_ba_cach_boc_tham_cho_cung_ket_qua.
+    if len(ds_buoi) <= 1 or che_do != "stb_ngay":
+        # stb_tuan dung thang; stb_co_bu dung ban nay lam khoa pha hoa.
+        return {b: dict(stb_goc) for b in ds_buoi}
+
+    import random
+
+    # Sap theo (so boc tham, ma hoc sinh): so boc tham co the co lo hong
+    # neu mot hoc sinh da bi xoa, va ma hoc sinh pha hoa not phan con lai.
+    # Ca hai khoa deu khong phu thuoc thu tu doc tu CSDL.
+    thu_tu = sorted(stb_goc, key=lambda sid: (stb_goc[sid], sid))
+    ra: dict[str, dict[str, int]] = {}
+    for buoi in ds_buoi:
+        vi_tri = list(range(len(thu_tu)))
+        random.Random(_seed_cua_buoi(seed, buoi)).shuffle(vi_tri)
+        ra[buoi] = {sid: vi_tri[i] for i, sid in enumerate(thu_tu)}
+    return ra
+
+
+def _stb_co_bu(stb_goc: dict[str, int], so_clb_da_co: dict[str, int]) -> dict[str, int]:
+    """Đánh lại bộ số cho một buổi: em đang có ÍT CLB hơn được lên trước.
+
+    Đây là cách cài `stb_co_bu`, và cách cài này CÓ CHỦ ĐÍCH: nó chỉ đánh
+    lại BỘ SỐ BỐC THĂM rồi truyền vào như thường. compute_club_priority
+    không hề biết chuyện gì đang xảy ra, và ràng buộc chống nội sinh ghi ở
+    docstring của hàm đó còn nguyên chữ.
+
+    ĐỪNG NHẦM ĐÂY LÀ MỘT CẢI TIẾN. Nó làm ưu tiên buổi sau phụ thuộc KẾT CỤC
+    buổi trước, mà kết cục lại phụ thuộc nguyện vọng đã khai — tức là mở đúng
+    cái kênh khai gian mà cả dự án được dựng lên để bịt: một em có thể cố ý
+    bỏ trống buổi đầu để giành ưu tiên buổi sau. Chế độ này có mặt để ĐO,
+    không phải để khuyến nghị. Xem KE_HOACH_NHIEU_BUOI.md mục 5.3.
+    """
+    thu_tu = sorted(stb_goc, key=lambda sid: (so_clb_da_co.get(sid, 0), stb_goc[sid]))
+    return {sid: i for i, sid in enumerate(thu_tu)}
+
+
+@dataclass
+class KetQuaTuan:
+    """Kết quả phân bổ cho cả tuần."""
+
+    assignment: dict[str, dict[str, Optional[str]]] = field(default_factory=dict)
+    # student_id -> {buoi: club_id | None}. Có khoá cho MỌI buổi, kể cả buổi
+    # em không có suất — người đọc phân biệt được "trống buổi này" với
+    # "buổi này không tồn tại".
+    per_buoi: dict[str, MatchResult] = field(default_factory=dict)
+    ds_buoi: list[str] = field(default_factory=list)
+    che_do_boc_tham: str = CHE_DO_BOC_THAM_MAC_DINH
+    stb_theo_buoi: dict[str, dict[str, int]] = field(default_factory=dict)
+
+    @property
+    def rounds_run(self) -> int:
+        """Số vòng của buổi chạy lâu nhất — để so với MatchResult.rounds_run."""
+        return max((kq.rounds_run for kq in self.per_buoi.values()), default=0)
+
+    def so_clb_moi_em(self) -> dict[str, int]:
+        return {
+            sid: sum(1 for cid in theo_buoi.values() if cid is not None)
+            for sid, theo_buoi in self.assignment.items()
+        }
+
+    def cac_dong_ket_qua(self):
+        """Sinh (student_id, buoi, club_id, round_num, tier, rank) cho CSDL."""
+        for buoi in self.ds_buoi:
+            kq = self.per_buoi[buoi]
+            for sid, cid in kq.assignment.items():
+                yield (
+                    sid, buoi, cid, kq.rounds_run,
+                    kq.matched_tier.get(sid),
+                    kq.rank_in_student_pref.get(sid),
+                )
+
+
+def run_rbda_nhieu_buoi(
+    students: dict[str, dict],
+    clubs: dict[str, dict],
+    tested_scores: dict[str, dict[str, float]],
+    applicants: dict[str, list[str]],
+    preferences: dict[str, list[str]],
+    stb_lottery: dict[str, int],
+    is_reserve_eligible_fn: Callable[[str, str], bool],
+    che_do_boc_tham: str = CHE_DO_BOC_THAM_MAC_DINH,
+    seed: int = 0,
+    max_rounds: int = 1000,
+) -> KetQuaTuan:
+    """Xếp CLB cho cả tuần: cắt theo buổi, gọi run_rbda từng buổi, ghép lại.
+
+    Dữ liệu chỉ có MỘT buổi (không CLB nào khai `buoi`) thì hàm này gọi
+    run_rbda đúng một lần với đúng dữ liệu đó — kết quả TRÙNG KHÍT phần mềm
+    trước khi có tính năng nhiều buổi, miễn là che_do_boc_tham='stb_tuan'.
+    Có test canh điều đó trên ba bộ dữ liệu × 20 seed
+    (tests/test_nhieu_buoi.py::TestTrungKhit).
+
+    Args:
+        stb_lottery: bộ số bốc thăm ĐÃ KHOÁ, giống hệt tham số cùng tên của
+            run_rbda. Cả ba thiết kế đều dẫn xuất từ bộ số này.
+        che_do_boc_tham: 'stb_tuan' | 'stb_ngay' | 'stb_co_bu'.
+        seed: chỉ dùng để dẫn xuất hoán vị cho 'stb_ngay'. Hai chế độ kia
+            bỏ qua nó hoàn toàn.
+    """
+    if che_do_boc_tham not in CHE_DO_BOC_THAM:
+        raise ValueError(
+            "che_do_boc_tham phai la mot trong %r, nhan duoc %r"
+            % (list(CHE_DO_BOC_THAM), che_do_boc_tham))
+
+    theo_buoi = nhom_theo_buoi(clubs)
+    ds_buoi = list(theo_buoi)
+    stb_tinh = sinh_stb_theo_buoi(stb_lottery, ds_buoi, seed, che_do_boc_tham)
+
+    ket = KetQuaTuan(
+        assignment={sid: {} for sid in students},
+        ds_buoi=ds_buoi,
+        che_do_boc_tham=che_do_boc_tham,
+    )
+    so_clb_da_co: dict[str, int] = {sid: 0 for sid in students}
+
+    for buoi in ds_buoi:
+        clubs_b, scores_b, app_b, prefs_b = cat_du_lieu_theo_buoi(
+            buoi, theo_buoi[buoi], clubs, tested_scores, applicants, preferences)
+
+        if che_do_boc_tham == "stb_co_bu":
+            stb_b = _stb_co_bu(stb_tinh[buoi], so_clb_da_co)
+        else:
+            stb_b = stb_tinh[buoi]
+
+        kq = run_rbda(
+            students, clubs_b, scores_b, app_b, prefs_b, stb_b,
+            is_reserve_eligible_fn, max_rounds=max_rounds,
+        )
+
+        ket.per_buoi[buoi] = kq
+        ket.stb_theo_buoi[buoi] = stb_b
+        for sid, cid in kq.assignment.items():
+            ket.assignment.setdefault(sid, {})[buoi] = cid
+            if cid is not None:
+                so_clb_da_co[sid] = so_clb_da_co.get(sid, 0) + 1
+
+    return ket
+
+
+def verify_stability_tuan(
+    ket_qua: KetQuaTuan,
+    clubs: dict[str, dict],
+    preferences: dict[str, list[str]],
+    is_reserve_eligible_fn: Callable[[str, str], bool],
+) -> dict[str, list[dict]]:
+    """Kiểm cặp phá vỡ cho từng buổi. {buoi: [vấn đề]} — rỗng hết = ổn định.
+
+    Không cần định nghĩa ổn định mới cho cả tuần: không ràng buộc nào nối
+    hai buổi, nên không cặp (học sinh, CLB) nào bắc cầu được giữa chúng.
+    Kết quả tuần ổn định khi và chỉ khi kết quả mỗi buổi ổn định.
+    """
+    theo_buoi = nhom_theo_buoi(clubs)
+    ra: dict[str, list[dict]] = {}
+    for buoi, ds_club in theo_buoi.items():
+        kq = ket_qua.per_buoi.get(buoi)
+        if kq is None:
+            continue
+        clubs_b, _sc, _ap, prefs_b = cat_du_lieu_theo_buoi(
+            buoi, ds_club, clubs, {}, {}, preferences)
+        ra[buoi] = verify_stability(kq, clubs_b, prefs_b, is_reserve_eligible_fn)
+    return ra
+
+
+# ---------------------------------------------------------------------------
 # BƯỚC D — PIPELINE 5 BƯỚC (khung — cần khớp schema thật)
 # ---------------------------------------------------------------------------
 
@@ -555,25 +875,43 @@ def chen_stb_cho_hoc_sinh_moi(
     return ra
 
 
-def export_match_results(match_result: MatchResult, output_path: str) -> None:
+def cac_dong_match_results(ket_qua) -> list[tuple]:
+    """Đổi MatchResult (một buổi) hoặc KetQuaTuan (cả tuần) thành dòng CSDL.
+
+    Nhận cả hai kiểu để đường ghi chỉ có MỘT chỗ: dù gọi run_rbda hay
+    run_rbda_nhieu_buoi thì bảng match_results vẫn được ghi bằng cùng một
+    hàm, với cùng một hình dạng dòng.
     """
-    Xuất kết quả ra CSV: student_id, club_id, matched_tier,
-    rank_in_student_pref (club_id rỗng = unmatched). Cùng bộ cột với
-    write_results_csv() trong 03_reference_rbda.py (trừ priority_score_used
-    và run_seed, có thể thêm sau nếu cần đối chiếu trực tiếp).
+    if isinstance(ket_qua, KetQuaTuan):
+        return list(ket_qua.cac_dong_ket_qua())
+    return [
+        (
+            sid, BUOI_MAC_DINH, cid, ket_qua.rounds_run,
+            ket_qua.matched_tier.get(sid),
+            ket_qua.rank_in_student_pref.get(sid),
+        )
+        for sid, cid in ket_qua.assignment.items()
+    ]
+
+
+def export_match_results(match_result, output_path: str) -> None:
+    """
+    Xuất kết quả ra CSV: student_id, buoi, club_id, matched_tier,
+    rank_in_student_pref (club_id rỗng = không có suất buổi đó).
+
+    Nhận MatchResult (một buổi) hoặc KetQuaTuan (cả tuần) — cùng đi qua
+    cac_dong_match_results nên hai đường cho ra đúng một hình dạng tệp.
     """
     import csv
 
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["student_id", "club_id", "matched_tier", "rank_in_student_pref"])
-        for sid, cid in sorted(match_result.assignment.items()):
-            writer.writerow([
-                sid,
-                cid or "",
-                match_result.matched_tier.get(sid, ""),
-                match_result.rank_in_student_pref.get(sid, ""),
-            ])
+        writer.writerow(["student_id", "buoi", "club_id", "matched_tier",
+                         "rank_in_student_pref"])
+        for sid, buoi, cid, _vong, tier, hang in sorted(
+            cac_dong_match_results(match_result)
+        ):
+            writer.writerow([sid, buoi, cid or "", tier or "", hang or ""])
 
 
 DEFAULT_SCHEMA = """
@@ -589,7 +927,8 @@ CREATE TABLE IF NOT EXISTS clubs (
     name TEXT,
     capacity INTEGER NOT NULL,
     reserve_capacity INTEGER NOT NULL DEFAULT 0,
-    reserve_group TEXT          -- nhóm được ưu tiên dự trữ cho club này, NULL = không có dự trữ
+    reserve_group TEXT,         -- nhóm được ưu tiên dự trữ cho club này, NULL = không có dự trữ
+    buoi TEXT                   -- buổi sinh hoạt. NULL = BUOI_MAC_DINH (trường chỉ có một buổi)
 );
 
 CREATE TABLE IF NOT EXISTS club_test_selection (
@@ -612,12 +951,18 @@ CREATE TABLE IF NOT EXISTS preferences (
     PRIMARY KEY (student_id, club_id)
 );
 
+-- Khoa chinh (student_id, buoi) TU NO canh rang buoc "moi em toi da MOT
+-- CLB moi buoi" o tang CSDL. Ma co loi cung khong tao noi mot thoi khoa
+-- bieu trung gio — day la cho dat rang buoc dung nhat, khong phai trong
+-- vong lap Python.
 CREATE TABLE IF NOT EXISTS match_results (
-    student_id TEXT PRIMARY KEY,
-    club_id TEXT,               -- NULL = unmatched
+    student_id TEXT NOT NULL,
+    buoi TEXT NOT NULL,         -- BUOI_MAC_DINH neu truong khong dung nhieu buoi
+    club_id TEXT,               -- NULL = khong co suat o buoi nay
     round_num INTEGER,
     matched_tier TEXT,          -- 'reserve' | 'general' | NULL
-    rank_in_student_pref INTEGER  -- thu hang nguyen vong da duoc xep (1-indexed), NULL neu unmatched
+    rank_in_student_pref INTEGER, -- thu hang nguyen vong TRONG BUOI (1-indexed), NULL neu khong co suat
+    PRIMARY KEY (student_id, buoi)
 );
 
 CREATE TABLE IF NOT EXISTS run_meta (
@@ -626,7 +971,9 @@ CREATE TABLE IF NOT EXISTS run_meta (
     run_at TEXT,
     rounds_run INTEGER,
     n_matched INTEGER,
-    n_total INTEGER
+    n_total INTEGER,
+    che_do_boc_tham TEXT,       -- 'stb_tuan' | 'stb_ngay' | 'stb_co_bu'
+    so_buoi INTEGER
 );
 
 -- Nhat ky TOAN BO cac lan chay pipeline (khong bao gio xoa/ghi de) —
@@ -641,7 +988,12 @@ CREATE TABLE IF NOT EXISTS run_history (
     rounds_run INTEGER,
     n_matched INTEGER,
     n_total INTEGER,
-    stb_redrawn INTEGER NOT NULL DEFAULT 0  -- 1 neu lan nay ve lai so bac tham, 0 neu tai su dung STB da khoa
+    stb_redrawn INTEGER NOT NULL DEFAULT 0, -- 1 neu lan nay ve lai so bac tham, 0 neu tai su dung STB da khoa
+    -- Khong co hai cot duoi thi sau nay khong truy duoc ket qua cu da
+    -- chay bang thiet ke boc tham nao — ma ba thiet ke cho ket qua khac
+    -- nhau, nen thieu no la mat kha nang kiem toan.
+    che_do_boc_tham TEXT,
+    so_buoi INTEGER
 );
 
 -- Khoa so bac tham (STB). Chi 1 dong duy nhat. Khi da_khoa = 1, nut
@@ -683,8 +1035,83 @@ def connect_db(db_path: str):
     return conn
 
 
+def _co_cot(cur, bang: str, cot: str) -> bool:
+    """Bảng `bang` đã có cột `cot` chưa? Dùng để di trú idempotent."""
+    return any(r[1] == cot for r in cur.execute("PRAGMA table_info(%s)" % bang))
+
+
+def di_tru_schema(db_path: str) -> list[str]:
+    """Nâng CSDL cũ lên schema có buổi sinh hoạt. Chạy lại bao nhiêu lần cũng được.
+
+    Ba việc, đều có đường lùi:
+
+      1. `clubs` thêm cột `buoi` — ALTER TABLE ADD COLUMN, giá trị cũ thành
+         NULL, mà NULL nghĩa là BUOI_MAC_DINH. Không mất gì.
+      2. `run_meta` / `run_history` thêm `che_do_boc_tham`, `so_buoi`.
+      3. `match_results` đổi khoá chính `student_id` -> `(student_id, buoi)`.
+         SQLite không đổi được khoá chính tại chỗ, nên phải dựng bảng mới rồi
+         chép sang. Dòng cũ nhận `buoi = BUOI_MAC_DINH`.
+
+    CHỖ PHẢI CẨN THẬN: `run_history` là dấu vết kiểm toán — `reset_data` cũng
+    không xoá nó. Hàm này chỉ THÊM cột vào đó, tuyệt đối không dựng lại bảng.
+
+    Returns:
+        list[str]: mô tả những việc đã làm (rỗng = CSDL vốn đã đúng schema).
+    """
+    conn = connect_db(db_path)
+    cur = conn.cursor()
+    da_lam: list[str] = []
+    try:
+        co_bang = {
+            r[0] for r in cur.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'")
+        }
+
+        if "clubs" in co_bang and not _co_cot(cur, "clubs", "buoi"):
+            cur.execute("ALTER TABLE clubs ADD COLUMN buoi TEXT")
+            da_lam.append("clubs.buoi")
+
+        for bang in ("run_meta", "run_history"):
+            if bang not in co_bang:
+                continue
+            for cot, kieu in (("che_do_boc_tham", "TEXT"), ("so_buoi", "INTEGER")):
+                if not _co_cot(cur, bang, cot):
+                    cur.execute("ALTER TABLE %s ADD COLUMN %s %s" % (bang, cot, kieu))
+                    da_lam.append("%s.%s" % (bang, cot))
+
+        if "match_results" in co_bang and not _co_cot(cur, "match_results", "buoi"):
+            cur.executescript("""
+                CREATE TABLE match_results_moi (
+                    student_id TEXT NOT NULL,
+                    buoi TEXT NOT NULL,
+                    club_id TEXT,
+                    round_num INTEGER,
+                    matched_tier TEXT,
+                    rank_in_student_pref INTEGER,
+                    PRIMARY KEY (student_id, buoi)
+                );
+            """)
+            cur.execute(
+                "INSERT INTO match_results_moi "
+                "(student_id, buoi, club_id, round_num, matched_tier, rank_in_student_pref) "
+                "SELECT student_id, ?, club_id, round_num, matched_tier, rank_in_student_pref "
+                "FROM match_results",
+                (BUOI_MAC_DINH,),
+            )
+            cur.executescript("""
+                DROP TABLE match_results;
+                ALTER TABLE match_results_moi RENAME TO match_results;
+            """)
+            da_lam.append("match_results.buoi")
+
+        conn.commit()
+    finally:
+        conn.close()
+    return da_lam
+
+
 def init_db(db_path: str) -> None:
-    """Tạo app.db với schema mặc định nếu chưa tồn tại (idempotent)."""
+    """Tạo app.db với schema mặc định nếu chưa tồn tại, rồi di trú (idempotent)."""
     conn = connect_db(db_path)
     conn.executescript(DEFAULT_SCHEMA)
     conn.execute(
@@ -693,6 +1120,11 @@ def init_db(db_path: str) -> None:
     )
     conn.commit()
     conn.close()
+    # CREATE TABLE IF NOT EXISTS không đụng tới bảng đã tồn tại, nên một
+    # app.db dựng bằng bản cũ vẫn giữ nguyên schema cũ sau executescript ở
+    # trên. Di trú phải chạy SAU, và phải chạy cả ở CSDL mới (khi đó nó
+    # không làm gì) để chỉ có một đường đi duy nhất.
+    di_tru_schema(db_path)
 
 
 def default_reserve_eligible_fn(students: dict[str, dict], clubs: dict[str, dict]):
@@ -732,12 +1164,13 @@ def load_from_sqlite(db_path: str):
 
     clubs = {}
     for row in cur.execute(
-        "SELECT club_id, capacity, reserve_capacity, reserve_group FROM clubs"
+        "SELECT club_id, capacity, reserve_capacity, reserve_group, buoi FROM clubs"
     ):
         clubs[row["club_id"]] = {
             "capacity": row["capacity"],
             "reserve_capacity": row["reserve_capacity"],
             "reserve_group": row["reserve_group"],
+            "buoi": row["buoi"] or BUOI_MAC_DINH,
         }
 
     tested_scores: dict[str, dict[str, float]] = {cid: {} for cid in clubs}
@@ -773,24 +1206,19 @@ def load_from_sqlite(db_path: str):
     return students, clubs, tested_scores, applicants, preferences, stb_lottery
 
 
-def write_match_results_to_sqlite(
-    db_path: str, match_result: MatchResult
-) -> None:
-    """Ghi kết quả vào bảng match_results (ghi đè toàn bộ), kèm tier và thứ hạng nguyện vọng."""
+def write_match_results_to_sqlite(db_path: str, match_result) -> None:
+    """Ghi kết quả vào bảng match_results (ghi đè toàn bộ).
+
+    `match_result` nhận MatchResult (một buổi) hoặc KetQuaTuan (cả tuần).
+    """
     conn = connect_db(db_path)
     cur = conn.cursor()
     cur.execute("DELETE FROM match_results")
     cur.executemany(
-        "INSERT INTO match_results (student_id, club_id, round_num, matched_tier, rank_in_student_pref) "
-        "VALUES (?, ?, ?, ?, ?)",
-        [
-            (
-                sid, cid, match_result.rounds_run,
-                match_result.matched_tier.get(sid),
-                match_result.rank_in_student_pref.get(sid),
-            )
-            for sid, cid in match_result.assignment.items()
-        ],
+        "INSERT INTO match_results "
+        "(student_id, buoi, club_id, round_num, matched_tier, rank_in_student_pref) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        cac_dong_match_results(match_result),
     )
     conn.commit()
     conn.close()

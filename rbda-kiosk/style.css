@@ -1306,3 +1306,291 @@ button, input {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ==========================================================================
+   NHIỀU BUỔI SINH HOẠT TRONG TUẦN
+   ==========================================================================
+   Không màu nào ở dưới là màu mới: tất cả lấy từ bộ biến ở đầu tệp. Buổi
+   quá tải dùng --rust vì đó đúng là thứ cần sửa; buổi còn trống dùng
+   --moss vì đó là chỗ dời CLB sang.
+   ========================================================================== */
+
+.sub-head {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 26px 0 4px;
+  color: var(--ink);
+}
+
+/* Bảng rộng phải cuộn TRONG khung của nó, không đẩy cả trang trượt ngang. */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.data-table th.num, .data-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Chọn cách bốc thăm ---------- */
+
+.boc-tham-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.boc-tham-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+}
+
+.boc-tham-item:hover { border-color: var(--slate); }
+
+.boc-tham-item.is-chon {
+  border-color: var(--moss);
+  background: var(--moss-soft);
+}
+
+.boc-tham-item.is-chon.is-canh-bao {
+  border-color: var(--rust);
+  background: var(--rust-soft);
+}
+
+.boc-tham-item input { margin-top: 3px; }
+
+.boc-tham-ten {
+  display: block;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.boc-tham-mo-ta {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.canh-bao-do {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--rust);
+  background: var(--rust-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+tr.la-moc td { background: var(--moss-soft); }
+
+/* ---------- Tải theo buổi ---------- */
+
+.chip-tai {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip-tai.is-qua-tai   { background: var(--rust-soft); color: var(--rust); }
+.chip-tai.is-vua-du    { background: var(--gold-soft); color: var(--gold); }
+.chip-tai.is-con-trong { background: var(--moss-soft); color: var(--moss); }
+
+/* ---------- Lịch tuần ---------- */
+
+.lich-tuan {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lich-cot { min-width: 0; }
+
+.lich-dau {
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  margin-bottom: 8px;
+}
+.lich-dau.is-qua-tai { border-color: var(--rust); background: var(--rust-soft); }
+
+.lich-buoi {
+  display: block;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.lich-phu {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--slate);
+  margin-top: 2px;
+}
+
+.lich-o {
+  padding: 9px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  margin-bottom: 7px;
+}
+
+.lich-ten {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink);
+  margin-bottom: 6px;
+  /* Tên CLB dài phải xuống dòng, không được cắt cụt — giáo viên đọc để
+     tìm CLB của mình, cắt mất đuôi là tìm nhầm. */
+  overflow-wrap: anywhere;
+}
+
+.lich-thanh {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.lich-thanh > span {
+  display: block;
+  height: 100%;
+  background: var(--moss);
+  border-radius: 999px;
+}
+
+/* ---------- Thời khoá biểu ---------- */
+
+.tkb-o {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--moss-soft);
+  color: var(--moss);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.tkb-o.is-du-tru { background: var(--gold-soft); color: var(--gold); }
+.tkb-trong { color: var(--slate); }
+
+/* ---------- Độ phủ ---------- */
+
+.do-phu-so {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.so-lon {
+  flex: 1 1 200px;
+  padding: 14px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+}
+.so-lon.is-canh-bao { border-left: 3px solid var(--rust); }
+
+.so-lon-v {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.so-lon.is-canh-bao .so-lon-v { color: var(--rust); }
+
+.so-lon-k {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--slate);
+}
+
+.do-phu-cot { display: grid; gap: 7px; }
+
+.do-phu-dong {
+  display: grid;
+  grid-template-columns: 110px 1fr 56px;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.do-phu-nhan { color: var(--ink-soft); }
+
+.do-phu-track {
+  height: 16px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.do-phu-bar {
+  display: block;
+  height: 100%;
+  background: var(--moss);
+}
+.do-phu-dong.is-trang-tay .do-phu-bar { background: var(--rust); }
+
+.do-phu-so-em {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ---------- Chỉ báo phủ buổi ở màn nhập tại chỗ ---------- */
+
+.phu-buoi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+
+.phu-buoi-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  font-size: 12px;
+  color: var(--slate);
+  background: var(--paper);
+}
+.phu-buoi-chip.is-co {
+  border-color: var(--moss);
+  background: var(--moss-soft);
+  color: var(--moss);
+  font-weight: 600;
+}
+
+.phu-buoi-tom {
+  font-size: 12.5px;
+  color: var(--slate);
+  margin-left: 4px;
+}
