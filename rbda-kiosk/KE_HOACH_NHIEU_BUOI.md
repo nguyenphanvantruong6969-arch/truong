@@ -1,0 +1,337 @@
+# Kế hoạch mở rộng: phân bổ CLB cho NHIỀU BUỔI trong tuần
+
+> **Đây là tài liệu THIẾT KẾ, chưa phải phần mềm.** Không dòng mã nào trong kế
+> hoạch này đã được viết. Mục đích của nó là hình dung cho hết trước khi lập
+> trình — chỗ nào giữ nguyên được, chỗ nào phải sửa, và chỗ nào là bẫy.
+>
+> Bản trình bày có sơ đồ: `KE_HOACH_NHIEU_BUOI.html`. Bản trực tuyến:
+> https://claude.ai/code/artifact/64494a54-773d-4a8d-ad4a-1e19d15c036a
+
+---
+
+## 1. Bài toán đang mở rộng
+
+Phần mềm hiện tại giải: **mỗi học sinh ↔ đúng một CLB**.
+
+Thực tế ở trường: một tuần có nhiều CLB sinh hoạt vào nhiều ngày khác nhau, và
+một em có thể tham gia nhiều CLB miễn không trùng buổi. Cần xếp ra một **thời
+khoá biểu tuần** cho mỗi em.
+
+Yêu cầu ràng buộc: **giữ nguyên thuật toán đã có** (`run_rbda`), không viết
+lại, và không được làm mất bốn tính chất đã đo ở `NGHIEN_CUU_TOI_UU.md`.
+
+### Bốn điều kiện đã chốt
+
+| Câu hỏi | Chốt |
+|---|---|
+| Một CLB sinh hoạt mấy buổi/tuần? | **Đúng một buổi** |
+| Trần số CLB mỗi tuần? | **Không có trần** — chỉ ràng buộc ≤ 1 CLB mỗi ngày |
+| Trùng giờ trong ngày? | **Không** — trường chỉ tổ chức vào **tiết 9** |
+| Học sinh khai nguyện vọng? | **Mỗi ngày một danh sách xếp hạng riêng** |
+| Bốc thăm qua các ngày? | **Làm cả ba thiết kế, đo rồi quyết** |
+
+---
+
+## 2. Vì sao bốn điều kiện trên là trường hợp ĐẸP NHẤT
+
+Vì mỗi CLB thuộc **đúng một** buổi, học sinh lấy tối đa một CLB mỗi buổi, và
+**không có trần tuần**, nên tập CLB khả thi của một em là: *chọn tuỳ ý, độc
+lập, tối đa một CLB trong mỗi buổi*.
+
+Đây là ràng buộc **phân hoạch** thuần tuý — các buổi **không ràng buộc lẫn
+nhau**. Hệ quả:
+
+> ### Bài toán tuần = số buổi × bài toán ngày, HOÀN TOÀN ĐỘC LẬP.
+>
+> Chạy đúng `run_rbda` hiện tại, mỗi buổi một lần. Không sửa một dòng thuật
+> toán nào.
+
+Và vì các thị trường độc lập, mọi tính chất chứng minh cho một ngày **tự động**
+đúng cho cả tuần:
+
+| Tính chất | Một buổi (đã đo) | Cả tuần | Vì sao |
+|---|---|---|---|
+| Ổn định (0 cặp phá vỡ) | ✅ | ✅ | không cặp nào bắc cầu được giữa hai buổi |
+| Tối ưu cho học sinh | ✅ | ✅ | tối ưu trong từng thị trường độc lập |
+| **Khai thật có lợi nhất** | ✅ | ✅ | **khai ở buổi *d* chỉ ảnh hưởng buổi *d*** — không có kênh nào để hi sinh ngày này lấy ngày kia |
+| Bền trước nhiễu | ✅ | ✅ | nhiễu buổi *d* không lan sang buổi khác |
+
+**Ba điều kiện phải nói rõ trong báo cáo, vì bỏ bất kỳ điều nào là mất bảng
+trên:** một CLB một buổi · không có trần tuần · ưu tiên buổi này không phụ
+thuộc kết cục buổi khác.
+
+| Nếu vi phạm | Hỏng cái gì |
+|---|---|
+| CLB sinh hoạt 2 buổi, vào là phải đi cả hai | Sinh **tính bổ trợ** giữa các ngày → ma trận ổn định **có thể không tồn tại** |
+| Có trần K CLB/tuần | Vẫn tồn tại và vẫn tối ưu cho học sinh (ràng buộc là một **matroid cắt ngọn**), nhưng **khai thật có lợi nhất không còn được bảo đảm** |
+| CLB có nhiều lớp khác ngày, em chỉ vào một lớp | "≤1 mỗi buổi" giao "≤1 mỗi CLB" là **giao hai matroid — không còn là matroid** → mất bảo đảm |
+
+---
+
+## 3. Một hệ quả không hiển nhiên, phải nêu TRƯỚC khi đo
+
+Vì các buổi độc lập, **STB tuần** (một số bốc thăm dùng chung cả tuần) và **STB
+ngày** (mỗi buổi bốc lại) cho **cùng một phân phối kết quả ở mỗi buổi**. Chúng
+chỉ khác nhau ở chỗ *may rủi có tương quan giữa các ngày hay không*:
+
+- **STB tuần**: em số xấu đứng cuối Tầng 2 ở **mọi** buổi → may rủi **cộng
+  dồn** → có em trắng tay cả tuần.
+- **STB ngày**: may rủi **san đều** → xác suất trắng tay cả tuần giảm theo
+  luỹ thừa số ngày.
+
+> ### Dự đoán phải kiểm
+>
+> Số CLB **trung bình** mỗi em ở STB tuần và STB ngày **bằng nhau**; chỉ
+> **phương sai** và **số em trắng tay** khác nhau, và STB ngày thấp hơn hẳn.
+
+Nêu dự đoán trước để phép đo có thể **bác bỏ** nó. Nếu đo ra STB ngày làm giảm
+cả số trung bình thì hoặc mô hình độc lập sai, hoặc bộ đo sai — cả hai đều phải
+truy ra chứ không được bỏ qua.
+
+---
+
+## 4. Dữ liệu vào
+
+### 4.1. Nguyên tắc: thêm buổi mà KHÔNG phá bộ dữ liệu cũ
+
+`buoi` là **cột tuỳ chọn**. Không có cột đó ⇒ mọi CLB thuộc một buổi ngầm định
+`__mac_dinh__` ⇒ **chạy y hệt phần mềm hiện tại**. Đây là ràng buộc cứng, có
+test canh.
+
+### 4.2. Tệp 01 — danh sách CLB: thêm một cột
+
+```csv
+club_id,name,capacity,reserve_capacity,reserve_group,buoi
+clb_bongda,CLB Bóng đá,22,5,chinh_sach,thu_3
+clb_tinhoc,CLB Tin học,14,4,chinh_sach,thu_5
+```
+
+`buoi` là **nhãn tự do**, không phải danh sách cố định thứ-2…thứ-7. Quy tắc duy
+nhất: **hai CLB cùng giá trị `buoi` là trùng giờ.** Trường hiện chỉ dùng tiết 9
+nên nhãn bằng ngày là đủ; nếu sau này có thêm tiết thì `thu_3_tiet_9` và
+`thu_3_tiet_10` chạy được ngay, **không đổi một dòng thuật toán nào**.
+
+**Cảnh báo bắt buộc:** một số CLB có `buoi` còn số khác trống → gom nhóm trống
+vào `__chua_xep_buoi__` và kêu **cảnh báo nghiêm trọng**, không im lặng.
+
+### 4.3. Tệp 03 — nguyện vọng: mỗi buổi một danh sách
+
+Microsoft Forms: **một câu Ranking cho mỗi buổi** — *"Thứ 3 (tiết 9) em muốn
+CLB nào?"*
+
+```csv
+student_id,name,reserve_group,thu_3_pref_1,thu_3_pref_2,thu_5_pref_1,thu_5_pref_2
+HS001,Nguyễn Văn A,,clb_bongda,clb_covua,clb_tinhoc,
+```
+
+Em không muốn sinh hoạt buổi nào thì **để trống** cột buổi đó. Đó cũng là cách
+khai *"thứ 5 em bận"* — **không cần thêm cột `ngay_ban`**: danh sách rỗng đã
+nói đúng điều đó. Không thêm trường nào mà nguyện vọng đã diễn đạt được.
+
+**Soát chéo bắt buộc:** CLB ghi ở cột `thu_3_pref_*` mà lại có `buoi = thu_5`
+→ cảnh báo, nêu đích danh dòng. Đây là lỗi gõ tay dễ xảy ra nhất, và im lặng
+thì hỏng kết quả.
+
+### 4.4. Tệp 02 — chọn CLB muốn thi: **không đổi**
+
+Điểm là của cặp (học sinh, CLB), không phụ thuộc buổi. Giữ nguyên hoàn toàn,
+kể cả quy trình chấm mù.
+
+### 4.5. Bảng `preferences`: `rank` đổi nghĩa
+
+`rank` giờ là thứ hạng **trong buổi đó** (mỗi buổi đánh lại từ 1). Không đổi
+schema. Với dữ liệu một buổi, *"trong buổi"* ≡ *"toàn cục"* → **tương thích
+ngược tuyệt đối**. Luật soát trùng rank đổi từ *"trùng trong một học sinh"*
+thành *"trùng trong một (học sinh, buổi)"*.
+
+---
+
+## 5. Thuật toán
+
+### 5.1. Lõi: KHÔNG sửa gì
+
+`compute_club_priority`, `club_choice_function`, `run_rbda`,
+`verify_stability`, `generate_stb_lottery` — **giữ nguyên từng dòng**. 29 test
+ở `tests/test_toi_uu_on_dinh.py` và toàn bộ `NGHIEN_CUU_TOI_UU.md` vẫn nói về
+đúng đoạn mã đang chạy.
+
+### 5.2. Thêm một hàm điều phối
+
+```python
+def run_rbda_nhieu_buoi(students, clubs, tested_scores, applicants,
+                        preferences, stb_theo_buoi, is_reserve_eligible_fn):
+    """Cắt dữ liệu theo buổi, gọi run_rbda cho TỪNG buổi, ghép kết quả.
+
+    stb_theo_buoi: {buoi: {student_id: so_boc_tham}} — cho phép ba thiết kế
+    bốc thăm ở mục 5.3 mà KHÔNG đụng chữ ký compute_club_priority.
+    """
+```
+
+Trả về `assignment: {student_id: {buoi: club_id | None}}`, cộng
+`per_buoi: {buoi: MatchResult}` để mọi số liệu cũ vẫn tra được. Khoảng
+**60–80 dòng**, thuần cắt–gọi–ghép, không có logic ưu tiên mới.
+
+### 5.3. Ba thiết kế bốc thăm — đều chỉ là cách sinh `stb_theo_buoi`
+
+| Mã | Tên | Cách sinh | Giữ được tính độc lập? |
+|---|---|---|---|
+| **A1** | STB tuần | `generate_stb_lottery(sorted(hs), seed)` một lần, dùng cho mọi buổi | ✅ |
+| **A2** | STB ngày | mỗi buổi gọi lại với `seed + hash(buoi)` | ✅ |
+| **A3** | **STB có bù** | xử lý buổi theo thứ tự; buổi sau xếp lại theo `(số CLB đã có, STB)` — em chưa có gì lên đầu | ❌ **PHÁ** |
+
+**Ràng buộc cài đặt tuyệt đối:** A3 được cài bằng cách **đánh lại bộ số STB
+trước khi chạy buổi đó** — tuyệt đối **không** thêm tham số nào vào
+`compute_club_priority`. Ràng buộc chống nội sinh ghi ở dòng 63–72 của hàm đó
+phải còn nguyên chữ.
+
+> **A3 là cái bẫy, và phải ghi rõ là bẫy.** Nó làm ưu tiên buổi sau phụ thuộc
+> **kết cục** buổi trước, mà kết cục lại phụ thuộc nguyện vọng đã khai. Một em
+> có thể **cố tình bỏ trống Thứ 3** để giữ ưu tiên cao cho Thứ 5 — đúng kiểu
+> khai gian mà cả dự án được dựng lên để loại bỏ. A3 có mặt ở đây để **bị đo**,
+> không phải để được khuyến nghị trước khi đo.
+
+### 5.4. Ổn định cho cả tuần
+
+Kết quả tuần **ổn định** ⟺ kết quả **mỗi buổi** ổn định. Không cần định nghĩa
+mới: gọi `verify_stability` từng buổi rồi cộng lại. Không có cặp phá vỡ nào bắc
+cầu được giữa hai buổi, vì không ràng buộc nào nối hai buổi.
+
+---
+
+## 6. Dữ liệu ra
+
+| Tệp | Nội dung |
+|---|---|
+| **`ket_qua_thoi_khoa_bieu.csv`** | **Sản phẩm chính** — mỗi em một dòng: `student_id, name, thu_2, …, thu_7, so_clb, so_nv1` |
+| `ket_qua_phan_bo_theo_club/<clb>.csv` | giữ nguyên, **thêm cột `buoi`** |
+| `ket_qua_theo_buoi/<buoi>.csv` | danh sách theo từng buổi, cho giáo viên trực ngày đó |
+| `ket_qua_do_phu.csv` | em trắng tay cả tuần · em trống buổi nào · số CLB mỗi em |
+| `ket_qua_danh_sach_cho/<buoi>_<clb>.csv` | hàng chờ theo thứ tự ưu tiên, lấy từ `rejection_log` — dùng khi có em rút |
+
+> ### Lỗ rò dữ liệu phải bịt TRƯỚC khi có tệp đầu tiên
+>
+> `.gitignore` hiện chặn `ket_qua*.csv` và `ket_qua*_theo_club/`. Tệp
+> `ket_qua_theo_buoi/thu_2.csv` có **basename là `thu_2.csv`** nên **không khớp
+> luật nào** — nó sẽ lọt vào git. Phải thêm `ket_qua_theo_buoi/` và
+> `ket_qua_danh_sach_cho/` vào `.gitignore` ngay ở **giai đoạn 1**.
+
+`run_history` ghi thêm `che_do_boc_tham` và `so_buoi` — không có hai cột này thì
+không truy được kết quả cũ chạy bằng thiết kế nào.
+
+---
+
+## 7. Giao diện
+
+Một thành phần mới, dùng lại ở ba chỗ: **lưới tuần** (cột = buổi, ô = CLB kèm
+thanh lấp đầy).
+
+| Tab | Thêm gì |
+|---|---|
+| **04 Quản lý CLB** | Trường `Buổi` trong form · **lưới tuần** toàn trường · **Bảng tải theo buổi**: mỗi buổi bao nhiêu chỗ, bao nhiêu lượt nguyện vọng, tỉ lệ chọi |
+| **01 Vận hành** | Chọn thiết kế bốc thăm (A1/A2/A3, A3 kèm cảnh báo đỏ) · kết quả tách **theo từng buổi**: số vòng, số em xếp được, cặp phá vỡ |
+| **02 Kết quả** | **Thời khoá biểu**: tra một em → hiện cả tuần · **Theo buổi**: chọn buổi → CLB + danh sách · **Độ phủ**: biểu đồ số em có 0/1/2/…/5 CLB, nêu đích danh em trắng tay |
+| **03 Nhập tại chỗ** | Nhập nguyện vọng theo từng buổi, kèm chỉ báo sống *"em mới khai 2 buổi → tối đa 2 CLB"* |
+| **05 Nhập điểm** | Nhóm CLB theo buổi cho dễ tìm. Việc chấm **không đổi** — điểm vẫn mù và không phụ thuộc buổi |
+
+**Ưu tiên cao nhất trong nhóm này là Bảng tải theo buổi.** Nó rẻ để làm, và nó
+sửa được vấn đề *trước* khi chạy (dời một CLB sang buổi vắng) thay vì phải giải
+thích *sau* khi chạy.
+
+---
+
+## 8. Thí nghiệm mới — dùng lại nguyên bộ đo đã có
+
+Thêm `du_lieu_test/do_boc_tham_nhieu_buoi.py`, dùng lại `co_che_doi_chung.py`
+và `do_khai_that.py`.
+
+**TN7 — Ba thiết kế bốc thăm** (đóng góp nghiên cứu chính). Mỗi arm đo: phân bố
+số CLB/em · **số em trắng tay cả tuần** · Gini · thứ hạng NV trung bình · cặp
+phá vỡ từng buổi · **số em khai gian được**.
+
+Dự đoán: A1 và A2 **bằng nhau về trung bình**, A2 thấp hơn hẳn về phương sai và
+số em trắng tay; A1 và A2 cho **0 em khai gian**, **A3 khác 0**.
+
+**TN8 — Phân rã có đúng không** (bắt buộc, không phải nghiên cứu):
+một buổi ⇒ kết quả **trùng khít** phần mềm cũ, 3 bộ dữ liệu × 20 seed · không
+em nào có 2 CLB cùng buổi · cặp phá vỡ mỗi buổi = 0.
+
+**TN9 — Quy mô**: 5 buổi × 12 CLB × 500 em — thời gian chạy, số vòng mỗi buổi.
+
+**TN10 (tuỳ chọn)** — A3 có phụ thuộc **thứ tự xét buổi** không (Thứ 2 trước vs
+Thứ 6 trước)? Nếu có, đó là một điểm trừ nữa của A3.
+
+---
+
+## 9. Lộ trình — năm giai đoạn, mỗi giai đoạn dùng được ngay
+
+| GĐ | Việc | Xong là có gì |
+|---|---|---|
+| **1** | `clubs.buoi` + migration · nhập CSV có `buoi` · Admin UI + lưới tuần + bảng tải · **vá `.gitignore`** | Khai báo được buổi; chạy vẫn y hệt cũ |
+| **2** | `run_rbda_nhieu_buoi` · `match_results` khoá chính `(student_id, buoi)` · ba thiết kế bốc thăm · xuất thời khoá biểu | Xếp được cả tuần |
+| **3** | Tab Kết quả: thời khoá biểu, theo buổi, độ phủ · Nhập tại chỗ theo buổi | Dùng được thật ở trường |
+| **4** | TN7–TN9, mở rộng trang nghiên cứu, **chốt thiết kế bốc thăm bằng số đo** | Trả lời được "dùng cách bốc thăm nào" |
+| **5** | Bộ câu hỏi Forms mới · mẫu CSV · `HUONG_DAN_SU_DUNG` | Bàn giao được |
+
+### Hai tệp đụng nhiều nhất
+
+- `rbda_priority_pipeline.py` — **chỉ thêm**, không sửa 5 hàm lõi.
+- `api.py` — `run_pipeline`, `import_clubs_csv`, `import_preferences_csv`,
+  `export_csv`, `get_match_results`, `get_club_fill_stats` đều đọc
+  `match_results` nên phải cập nhật theo khoá chính mới.
+
+### Chỗ rủi ro nhất: migration `match_results`
+
+Khoá chính đổi từ `student_id` sang `(student_id, buoi)` — khoá này **tự nó
+canh ràng buộc "≤1 CLB mỗi buổi" ở tầng cơ sở dữ liệu**, không chỉ ở tầng mã.
+
+Quy trình: sao lưu bằng `_backup_db()` có sẵn → tạo bảng mới → chép dòng cũ với
+`buoi = '__mac_dinh__'` → đổi tên. **`run_history` không được đụng tới** — đó
+là dấu vết kiểm toán, `reset_data` cũng không xoá nó.
+
+---
+
+## 10. Những bẫy đã biết — ghi ra để không vấp
+
+| Bẫy | Xử lý ở v1 |
+|---|---|
+| **CLB có hai lớp khác ngày, em chỉ vào một** | v1 **cấm**. Nếu cần thì tách thành hai CLB riêng và chấp nhận em có thể trúng cả hai |
+| **Sàn sĩ số** (CLB dưới N em thì không mở) | Ràng buộc sàn **phá tính ổn định**. v1 **chỉ báo cáo** *"3 CLB dưới sàn"*; người phụ trách quyết định huỷ rồi chạy lại — và phải ghi rõ chạy lại **không** còn là kết quả ổn định của bài toán gốc |
+| **Số phòng mỗi buổi có hạn** | v1 chỉ hiện trong Bảng tải theo buổi, không đưa vào ràng buộc |
+| **Em khai lệch buổi** | Soát khi nhập, nêu đích danh dòng |
+| **Danh sách 10 NV chia cho 5 buổi** | Không còn là vấn đề: mỗi buổi có danh sách riêng, mỗi buổi tới 10 lựa chọn |
+
+Tuỳ chọn để sau, không thuộc v1: xuất lịch `.ics`; công cụ *"nếu dời CLB X sang
+buổi khác thì sao"*.
+
+---
+
+## 11. Kiểm chứng
+
+```bash
+# 1. Không hồi quy — điều kiện tiên quyết của cả kế hoạch
+python3 -m pytest tests/ -q                 # 482 test phải xanh như trước
+
+# 2. Test TRÙNG KHÍT: một buổi ⇒ y hệt phần mềm cũ (test quan trọng nhất)
+python3 -m pytest tests/test_nhieu_buoi.py -q
+
+# 3. Bộ đo cũ không đổi số — chứng tỏ thuật toán lõi không bị đụng
+python3 du_lieu_test/do_toi_uu_on_dinh.py
+python3 du_lieu_test/do_khai_that.py
+
+# 4. Thí nghiệm mới
+python3 du_lieu_test/do_boc_tham_nhieu_buoi.py
+
+# 5. Đối chứng ngược — bộ đo mới phải BẮT được lỗi thật
+#    bỏ lọc theo buổi -> test "≤1 CLB mỗi buổi" phải đỏ
+#    cài A3 thành A1   -> TN7 phải mất hết chênh lệch giữa các arm
+```
+
+**Định nghĩa "xong" của giai đoạn 2:** test trùng khít xanh trên cả ba bộ dữ
+liệu × 20 seed. Chừng nào nó chưa xanh thì mọi số trong `NGHIEN_CUU_TOI_UU.md`
+chưa chắc còn nói về đoạn mã đang chạy.
+
+---
+
+*Tài liệu này mô tả **thiết kế và hệ quả kỹ thuật**. Phần nhận định về việc
+trường nên chọn thiết kế bốc thăm nào, cái giá nào chấp nhận được, và ý nghĩa
+khoa học của kết quả — người thực hiện đề tài tự viết (Phụ lục 1).*
