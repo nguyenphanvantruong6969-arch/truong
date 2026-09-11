@@ -338,13 +338,55 @@ test canh dựng một ví dụ nơi hai bản **khác nhau**.
 python3 du_lieu_test/do_toi_uu_on_dinh.py
 python3 du_lieu_test/do_khai_that.py
 python3 du_lieu_test/do_ben_vung.py
+python3 du_lieu_test/do_boc_tham.py
 ```
 
 Số liệu thô: `du_lieu_test/so_lieu_toi_uu.json`, `so_lieu_khai_that.json`,
-`so_lieu_ben_vung.json` — ba tệp này là **nguồn sự thật duy nhất**, mọi bảng
-đọc từ đó. Có **29 test canh**: `tests/test_toi_uu_on_dinh.py`, trong đó một
-nhóm **đối chứng ngược** đỏ ngay nếu bộ đếm cặp phá vỡ hoặc bộ dò khai gian
-hỏng thành "lúc nào cũng báo 0".
+`so_lieu_ben_vung.json`, `so_lieu_boc_tham.json` — bốn tệp này là **nguồn sự
+thật duy nhất**, mọi bảng đọc từ đó. Có **52 test canh**:
+`tests/test_toi_uu_on_dinh.py` và `tests/test_boc_tham.py`, trong đó một nhóm
+**đối chứng ngược** đỏ ngay nếu bộ đếm cặp phá vỡ hoặc bộ dò khai gian hỏng
+thành "lúc nào cũng báo 0".
+
+## 3f. Ba thiết kế bốc thăm cho thời khoá biểu tuần
+
+Khi phần mềm xếp CLB cho cả tuần, bộ số bốc thăm dùng cho các buổi có ba cách
+dựng: **A1** bốc một lần cho cả tuần · **A2** bốc lại mỗi buổi · **A3** bốc
+thăm có bù (em đang ít CLB được lên trước). Đầy đủ ở **TN7** trong
+`NGHIEN_CUU_TOI_UU.md`.
+
+**Trên bộ dữ liệu 5 buổi (156 em có khai, 200 seed, ghép cặp theo seed):**
+
+| Thiết kế | Em trắng tay cả tuần | CLB TB mỗi em | Cặp phá vỡ |
+|---|---|---|---|
+| A1 một lần cả tuần | **34,39** | 1,329 | **0** |
+| A2 bốc lại mỗi buổi | **34,09** | 1,328 | **0** |
+| A3 có bù | **33,70** | 1,325 | **0** |
+
+Hiệu A1 − A2 = **+0,30 em**, khoảng tin cậy 95% **[+0,05 ; +0,54]**. Không chứa
+0 nên chênh lệch là thật, nhưng **0,30 trên 156 em là 0,19%** — phân biệt được
+về thống kê, gần như không phân biệt được trên thực tế.
+
+**Bốn con số đáng chú ý:**
+
+1. **Không thiết kế nào tạo thêm chỗ.** Tổng số suất: 207,27 · 207,22 · 206,76.
+   Chúng chỉ đổi *ai* được chỗ, không đổi *bao nhiêu* chỗ.
+2. **Khi bỏ hẳn điểm thì chênh lệch rất lớn.** 200 em / 5 buổi / mọi em Tầng 2:
+   A2 cứu được từ **1,2** tới **79,0** em, tuỳ tỉ lệ chọi. Ở chọi 0,5× thì cả ba
+   ra 0 — thừa chỗ thì bốc thăm không có việc gì để làm.
+3. **Nguyên nhân của khoảng cách đó là ĐIỂM, không phải thiếu ghế.** Vặn tỉ lệ
+   em có điểm từ 0% lên 100%, lợi thế của A2 đi từ **92%** số em mà A1 bỏ lại
+   xuống tới *không phân biệt được*. Vặn độ mịn thang điểm cho kết quả y hệt:
+   **91%** ở thang 1 mức (hoà hết) xuống **0%** ở thang 61 mức. Thiếu ghế thì
+   không xoá được lợi thế của A2 — ở chọi 4,0× nó vẫn cứu 79 em.
+4. **A3 mở kênh khai gian.** Giấu bớt buổi có lợi cho **113/300** em dưới A3,
+   và **0/300** dưới A1 lẫn A2. Kênh đó là kênh *đánh đổi* (phải bỏ một suất
+   buổi trước để lên trước ở buổi sau), nhưng vẫn đủ để dữ liệu nguyện vọng
+   thu về không còn là nguyện vọng thật.
+
+Mặc định của phần mềm hiện là **A1**, và tab **01 Vận hành** có sẵn bảng đối
+chiếu chạy cả ba thiết kế trên dữ liệu thật của trường mà không ghi gì vào cơ
+sở dữ liệu.
 
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 

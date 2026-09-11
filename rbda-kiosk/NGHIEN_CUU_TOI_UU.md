@@ -4,15 +4,16 @@
 > biểu đồ, mở bằng trình duyệt bất kỳ. Bản trực tuyến:
 > https://claude.ai/code/artifact/a4988038-e0e3-4a7d-b212-ef1459da09c9
 
-> **Mọi con số trong tệp này đều do đo mà có.** Nguồn sự thật là ba tệp
-> `du_lieu_test/so_lieu_*.json`, sinh ra bởi ba bộ đo dưới đây. Không con số
+> **Mọi con số trong tệp này đều do đo mà có.** Nguồn sự thật là bốn tệp
+> `du_lieu_test/so_lieu_*.json`, sinh ra bởi bốn bộ đo dưới đây. Không con số
 > nào trong tệp này được gõ tay.
 >
 > ```bash
 > python3 du_lieu_test/do_toi_uu_on_dinh.py     # TN1, TN2, TN4, TN5
 > python3 du_lieu_test/do_khai_that.py          # TN3
 > python3 du_lieu_test/do_ben_vung.py           # TN6
-> python3 -m pytest tests/test_toi_uu_on_dinh.py -v   # 29 test canh
+> python3 du_lieu_test/do_boc_tham.py           # TN7
+> python3 -m pytest tests/test_toi_uu_on_dinh.py tests/test_boc_tham.py -v
 > ```
 
 ---
@@ -51,6 +52,10 @@ buộc, không phải lỗi.**
 | Đổi bên đề xuất (CLB thay vì học sinh) có đổi kết quả không? | **Không** | **0/20** seed, cả ba bộ |
 | Nhiễu dữ liệu có làm mất ổn định không? | **Không** | **0** cặp phá vỡ trên **392** phép thử |
 | Em đang trượt có được cứu bởi cơ chế ổn định khác không? | **Không** | tập em có suất **bất biến** ở mọi ma trận ổn định |
+| Bốc lại thăm mỗi buổi có làm ít em trắng tay hơn không? | **Có, nhưng rất ít** | **0,30** em trên **156** (0,19%) · KTC 95% [+0,05; +0,54] |
+| Còn khi bốc thăm quyết định tất (không có điểm)? | **Có, rất nhiều** | cứu **1,2 → 79,0** em trên **200**, tuỳ tỉ lệ chọi |
+| Vì sao hai con số trên cách xa nhau? | **Vì điểm** | lợi thế A2 đi từ **92%** xuống *không phân biệt được* khi tỉ lệ em có điểm chạy từ 0% lên 100% |
+| Bốc thăm "có bù" có mở kênh khai gian không? | **Có** | **113/300** em giấu bớt buổi thì có lợi (A1 và A2: **0/300**) |
 
 ---
 
@@ -332,6 +337,169 @@ có cặp phá vỡ — đúng/sai) và **bền** (rung dữ liệu thì kết q
 
 ---
 
+---
+
+## TN7 — Trong ba thiết kế bốc thăm cho cả tuần, thiết kế nào tốt nhất?
+
+Sáu thí nghiệm trên đều nói về việc xếp CLB cho **một** buổi. Khi phần mềm xếp
+cho cả **tuần**, mỗi buổi vẫn là một lần chạy RB-DA độc lập, nhưng bộ số bốc
+thăm dùng cho các buổi thì có ba cách dựng:
+
+| Mã | Thiết kế | Cách dựng |
+|---|---|---|
+| **A1** `stb_tuan` | Bốc một lần cho cả tuần | Dùng thẳng bộ số đã khoá cho mọi buổi. Em bốc phải số xấu thì xấu ở **mọi** buổi — may rủi **cộng dồn**. |
+| **A2** `stb_ngay` | Bốc lại mỗi buổi | Mỗi buổi một hoán vị dẫn xuất từ (seed, tên buổi). May rủi **độc lập** giữa các buổi. |
+| **A3** `stb_co_bu` | Bốc thăm có bù | Trước mỗi buổi đánh lại số theo `(số CLB đã có, số gốc)` — em đang ít CLB được lên trước. |
+
+Cả ba đều là **hàm của bộ số đã khoá**, nên cơ chế khoá bốc thăm còn nguyên ý
+nghĩa ở cả ba. Dữ liệu chỉ có một buổi thì cả ba cho **cùng một kết quả**.
+
+### TN7a — Trên bộ dữ liệu 5 buổi, 200 seed, ghép cặp
+
+Mỗi seed: bốc **một** bộ số, chạy cả ba thiết kế trên đúng bộ số đó. Nên chênh
+lệch giữa ba dòng là chênh lệch của **thiết kế**, không phải của dữ liệu hay
+của may rủi.
+
+| Thiết kế | Em trắng tay cả tuần (TB) | ít nhất | nhiều nhất | CLB TB mỗi em | Độ lệch chuẩn | **Cặp phá vỡ** |
+|---|---|---|---|---|---|---|
+| A1 một lần cả tuần | **34,39** | 31 | 37 | 1,329 | 0,941 | **0** |
+| A2 bốc lại mỗi buổi | **34,09** | 31 | 37 | 1,328 | 0,938 | **0** |
+| A3 có bù | **33,70** | 31 | 36 | 1,325 | 0,926 | **0** |
+
+*Mẫu số là **156 em có khai ít nhất một nguyện vọng** (trong 160 em). Bốn em
+không khai gì thì không thiết kế nào cứu được.*
+
+| Cặp so | Hiệu TB | Khoảng tin cậy 95% | Số seed thắng–thua–hoà | Kết luận |
+|---|---|---|---|---|
+| A1 − A2 | **+0,30 em** | [+0,05 ; +0,54] | 58 – 83 – 59 | A2 tốt hơn |
+| A1 − A3 | **+0,69 em** | [+0,60 ; +0,77] | 0 – 125 – 75 | A3 tốt hơn |
+
+> **Đọc cho đúng chiều.** Hiệu được tính `A1 − A2` trên **số em trắng tay**, mà
+> ít em trắng tay là tốt — nên **dương** nghĩa là A1 nhiều em trắng tay hơn, tức
+> **A2 tốt hơn**. Nhãn này do `mo_ta_chieu()` sinh ra từ chính các biến đã dùng
+> để tính hiệu, không gõ tay; `tests/test_boc_tham.py` có bốn test canh chiều dấu.
+
+Hai điều đọc được từ bảng:
+
+1. **Khoảng tin cậy không chứa 0**, nên chênh lệch là thật. Nhưng độ lớn là
+   **0,30 em trên 156**, tức **0,19%**. Phân biệt được về thống kê, gần như
+   không phân biệt được trên thực tế.
+2. **Tổng số suất gần như không đổi**: 207,27 · 207,22 · 206,76. Không thiết kế
+   nào **tạo thêm chỗ** — chúng chỉ đổi **ai** được chỗ.
+
+### TN7b — Bỏ hẳn điểm: bốc thăm quyết định tất
+
+200 em · 5 buổi · mọi em Tầng 2 · không CLB nào có suất dự trữ · 30 seed mỗi ô.
+Số chỗ mỗi buổi tính ngược từ số em đã khai, nên tỉ lệ chọi ra **đúng** bằng
+cột đầu.
+
+| Tỉ lệ chọi | Em khai mấy buổi | A1 | A2 | A3 | **A2 cứu được** | KTC 95% của hiệu |
+|---|---|---|---|---|---|---|
+| 0,5× | 5 | 0,00 | 0,00 | 0,00 | 0,00 | [0,00 ; 0,00] |
+| 0,5× | 3 | 0,00 | 0,00 | 0,00 | 0,00 | [0,00 ; 0,00] |
+| 1,0× | 5 | 1,20 | 0,00 | 0,00 | **+1,20** | [+0,80 ; +1,63] |
+| 1,0× | 3 | 5,37 | 0,70 | 0,00 | **+4,67** | [+3,83 ; +5,53] |
+| 1,5× | 5 | 14,17 | 0,80 | 0,00 | **+13,37** | [+12,40 ; +14,27] |
+| 1,5× | 3 | 27,77 | 6,93 | 0,00 | **+20,83** | [+19,50 ; +22,23] |
+| 2,0× | 5 | 54,73 | 5,73 | 0,00 | **+49,00** | [+46,57 ; +51,40] |
+| 2,0× | 3 | 66,93 | 24,57 | 1,17 | **+42,37** | [+40,50 ; +44,23] |
+| 4,0× | 5 | 126,70 | 47,67 | 0,00 | **+79,03** | [+77,03 ; +81,20] |
+| 4,0× | 3 | 132,20 | 85,50 | 50,03 | **+46,70** | [+44,67 ; +48,73] |
+
+**300 lần chạy, 0 cặp phá vỡ ở cả ba thiết kế.**
+
+Hai ô **0,5×** ra 0 ở cả ba cột: thừa chỗ thì không em nào trắng tay, bốc thăm
+thế nào cũng vậy. Hai ô đó là chốt soát chính bộ đo — một bộ đo bịa ra chênh
+lệch thì đã không cho 0 ở đây.
+
+Từ **1,0×** trở lên, A2 hơn A1 ở **mọi** ô, và khoảng tin cậy không ô nào chứa
+0. Số CLB trung bình mỗi em thì **trùng nhau tới chữ số thứ ba** ở cả ba cột
+(ví dụ ô 1,5×/5 buổi: 3,294 · 3,297 · 3,296).
+
+### TN7c — Vì sao bộ dữ liệu của trường lại gần như không phân biệt được?
+
+TN7a và TN7b lệch nhau quá xa để bỏ qua: cùng một thiết kế, cùng một phần mềm,
+mà chênh lệch là 0,30 em ở bảng trước và 79 em ở bảng sau. Khác biệt giữa hai
+bộ dữ liệu là **điểm**: bộ mẫu của trường có điểm, dữ liệu TN7b thì không.
+
+TN7c vặn đúng núm đó. Chọi giữ cố định 1,5×, 5 buổi, 30 seed mỗi ô.
+
+**c1 — Vặn tỉ lệ em CÓ ĐIỂM:**
+
+| Tỉ lệ em Tầng 1 | A1 | A2 | A3 | Lợi thế A2 | = mấy phần số em A1 bỏ lại |
+|---|---|---|---|---|---|
+| 0% | 13,77 | 1,03 | 0,00 | **+12,73** | **92%** |
+| 10% | 12,90 | 1,17 | 0,00 | +11,73 | 91% |
+| 25% | 12,97 | 3,23 | 0,00 | +9,73 | 75% |
+| 50% | 13,60 | 8,13 | 1,37 | +5,47 | 40% |
+| 75% | 10,33 | 8,37 | 6,13 | +1,97 | 19% |
+| 90% | 5,57 | 5,37 | 3,97 | +0,20 | 4% · *không phân biệt được* |
+| 100% | 0,87 | 0,70 | 0,03 | +0,17 | *không phân biệt được* |
+
+*Cột cuối ở mốc 100% đọc ra 19% nếu tính máy móc, nhưng ở mốc đó A1 chỉ còn bỏ
+lại **0,87** em — tỉ lệ bị chia cho một mẫu số quá nhỏ nên không có nghĩa. Lợi
+thế tuyệt đối ở đó là **+0,17** em và khoảng tin cậy chứa 0.*
+
+**c2 — Vặn độ mịn của thang điểm** (mọi em đều có điểm):
+
+| Thang điểm | A1 | A2 | A3 | Lợi thế A2 | = mấy phần số em A1 bỏ lại |
+|---|---|---|---|---|---|
+| 1 mức (hoà hết) | 13,10 | 1,17 | 0,00 | **+11,93** | **91%** |
+| 2 mức | 1,97 | 0,87 | 0,20 | +1,10 | 56% |
+| 4 mức | 1,23 | 0,87 | 0,33 | +0,37 | 30% |
+| 11 mức | 0,70 | 0,53 | 0,40 | +0,17 | *không phân biệt được* |
+| 61 mức | 1,03 | 1,03 | 1,00 | **0,00** | *không phân biệt được* |
+
+Cột cuối là cột phải đọc. Cột tuyệt đối có một chỗ dễ đọc nhầm: khi tỉ lệ Tầng 1
+tăng thì số em trắng tay của **cả hai** thiết kế cùng giảm, nên lợi thế tuyệt
+đối giảm theo mà chưa chắc vì bốc thăm hết việc. Cột tỉ lệ hỏi đúng câu cần
+hỏi: **trong số em mà A1 bỏ lại, A2 cứu được bao nhiêu phần?** — và nó đi từ
+92% xuống tới không phân biệt được, trên cả hai núm.
+
+### TN7d — A3 có mở kênh khai gian không?
+
+`stb_co_bu` làm ưu tiên buổi sau phụ thuộc **kết cục** buổi trước, mà kết cục
+lại phụ thuộc nguyện vọng đã khai. Bảng này dò xem điều đó có thành một cách
+khai gian dùng được không: với mỗi em, thử **giấu bớt** — giấu hẳn một tập con
+các buổi, hoặc cắt ngắn danh sách trong một buổi — rồi chấm lại bằng nguyện
+vọng **thật**.
+
+60 em · 4 buổi · mọi em Tầng 2 · 12 thể hiện × 25 em = **300 lượt**.
+
+| Thiết kế | Em đã thử | **Em giấu bớt có lợi** | Tỉ lệ |
+|---|---|---|---|
+| A1 một lần cả tuần | 300 | **0** | 0% |
+| A2 bốc lại mỗi buổi | 300 | **0** | 0% |
+| A3 có bù | 300 | **113** | **37,7%** |
+
+**Đối chứng ngược nằm ở chính cột đó:** A3 phải khác 0. Nếu A3 cũng ra 0 thì bộ
+dò hỏng, và hai số 0 của A1/A2 không nói lên điều gì.
+
+Một ví dụ tìm được (em `E0001`, dưới A3):
+
+```
+khai thật   buổi 1: [clb2, clb1]   buổi 2: [clb3]   buổi 3: [clb1, clb2, clb3]   buổi 4: [clb2]
+            -> điểm từng buổi  0 · 1 · 2 · 0   = 3
+giấu buổi 2 buổi 1: [clb2, clb1]                    buổi 3: [clb1, clb2, clb3]   buổi 4: [clb2]
+            -> điểm từng buổi  0 · 0 · 3 · 1   = 4
+```
+
+Em bỏ suất ở buổi 2, đổi lấy nguyện vọng 1 ở buổi 3 (thay vì nguyện vọng 2) và
+một suất ở buổi 4 (thay vì trắng).
+
+> **Phạm vi của bảng này.** Kênh được dò là kênh *giấu bớt*; hoán vị thứ tự
+> nguyện vọng **trong** một buổi không thử ở đây vì TN3 đã vét cạn nó (0/1 400).
+> Với A3, tìm **thấy** một cách là đủ kết luận, nên việc giới hạn không gian
+> không làm yếu kết luận về A3.
+>
+> Kênh của A3 là kênh **đánh đổi**, không phải kênh lợi không mất gì: muốn giữ
+> "số CLB đã có" bằng 0 để lên trước ở buổi sau thì phải **bỏ** một suất ở buổi
+> trước. Phép dò không tìm được cách nào không kém ở buổi nào mà hơn ở ít nhất
+> một buổi — và con số 0 đó **không** phải bằng chứng A3 an toàn, nó là hệ quả
+> của chính cách khai gian.
+
+---
+
 ## Tổng hợp: bốn nghĩa của "tốt nhất"
 
 | Nghĩa | Đạt? | Bằng chứng |
@@ -364,6 +532,14 @@ cột và thua ở vài cột khác.** Không có dòng nào tốt nhất mọi 
    **bịa đặt dữ liệu**.
 4. **Tất cả đo ở một cấu hình dự trữ.** Đổi `reserve_group` hay chính sách xét
    dự trữ thì phải đo lại.
+5. **TN7b, TN7c, TN7d chạy trên dữ liệu do máy dựng theo tham số**, không phải
+   trên một trường có thật. Ba bảng đó trả lời câu *"cơ chế hành xử thế nào khi
+   vặn núm này"*, **không** trả lời câu *"trường X nên chọn thiết kế nào"* — câu
+   sau phải đo trên dữ liệu của chính trường X, và phần mềm có sẵn bảng đối
+   chiếu ba thiết kế cho việc đó (`so_sanh_boc_tham`, tab **01 Vận hành**).
+6. **TN7d chỉ dò một kênh khai gian** (giấu bớt buổi). "Không tìm thấy" ở A1 và
+   A2 vì thế yếu hơn "không tồn tại"; kết luận về A3 thì không bị ảnh hưởng, vì
+   tìm thấy được một cách là đủ.
 
 ---
 
@@ -375,8 +551,11 @@ cột và thua ở vài cột khác.** Không có dòng nào tốt nhất mọi 
 | `du_lieu_test/do_toi_uu_on_dinh.py` | TN1, TN2, TN4, TN5 |
 | `du_lieu_test/do_khai_that.py` | TN3 |
 | `du_lieu_test/do_ben_vung.py` | TN6 |
+| `du_lieu_test/do_boc_tham.py` | TN7 |
 | `du_lieu_test/so_lieu_*.json` | Số liệu thô — nguồn sự thật duy nhất |
 | `tests/test_toi_uu_on_dinh.py` | 29 test canh, gồm nhóm đối chứng ngược |
+| `tests/test_boc_tham.py` | 23 test canh cho TN7, gồm nhóm canh **chiều dấu** |
+| `KE_HOACH_NHIEU_BUOI.md` | Thiết kế phần nhiều buổi và ba thiết kế bốc thăm |
 | `CO_CHE_THUAT_TOAN.md` | Năm lớp cơ chế của phần mềm |
 | `GIAI_DAP_BOC_THAM.md` | Bốc thăm STB — công bằng và tái lập |
 | `du_lieu_test/SO_LIEU_DA_KIEM_CHUNG.md` mục 3d | Cặp đôi cùng có lợi (bản đếm cũ, độ dài 2) |

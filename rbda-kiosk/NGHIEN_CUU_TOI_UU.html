@@ -256,6 +256,7 @@ footer {
     <li><a href="#tn4"><span class="tn">TN4</span><span>So năm cơ chế</span></a></li>
     <li><a href="#tn5"><span class="tn">TN5</span><span>Cái giá của ổn định</span></a></li>
     <li><a href="#tn6"><span class="tn">TN6</span><span>Độ bền trước nhiễu</span></a></li>
+    <li><a href="#tn7"><span class="tn">TN7</span><span>Ba thiết kế bốc thăm</span></a></li>
     <li><a href="#ket"><span class="tn">→</span><span>Tổng hợp &amp; giới hạn</span></a></li>
   </ol>
 </nav>
@@ -696,10 +697,275 @@ python3 -m pytest tests/test_toi_uu_on_dinh.py -v</code></pre>
   </div>
 </section>
 
+
+<section id="tn7">
+  <h2 class="q"><span class="num">THÍ NGHIỆM 7</span>Trong ba thiết kế bốc thăm cho cả tuần, thiết kế nào tốt nhất?</h2>
+
+  <p>Sáu thí nghiệm trên đều nói về việc xếp câu lạc bộ cho <strong>một</strong>
+  buổi. Khi phần mềm xếp cho cả <strong>tuần</strong>, mỗi buổi vẫn là một lần
+  chạy RB-DA độc lập, nhưng bộ số bốc thăm dùng cho các buổi thì có ba cách dựng.</p>
+
+  <div class="scroll">
+  <table>
+    <caption>Ba thiết kế bốc thăm — cả ba đều là hàm của bộ số <em>đã khoá</em></caption>
+    <thead><tr><th>Mã</th><th>Thiết kế</th><th>Cách dựng</th></tr></thead>
+    <tbody>
+      <tr><td><b>A1</b> <code>stb_tuan</code></td><td>Bốc một lần cho cả tuần</td>
+        <td>Dùng thẳng bộ số đã khoá cho mọi buổi. Em bốc phải số xấu thì xấu ở
+        <em>mọi</em> buổi — may rủi <strong>cộng dồn</strong>.</td></tr>
+      <tr><td><b>A2</b> <code>stb_ngay</code></td><td>Bốc lại mỗi buổi</td>
+        <td>Mỗi buổi một hoán vị dẫn xuất từ (seed, tên buổi). May rủi
+        <strong>độc lập</strong> giữa các buổi.</td></tr>
+      <tr><td><b>A3</b> <code>stb_co_bu</code></td><td>Bốc thăm có bù</td>
+        <td>Trước mỗi buổi đánh lại số theo <em>(số CLB đã có, số gốc)</em> — em
+        đang ít câu lạc bộ được lên trước.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Dữ liệu chỉ có một buổi thì cả ba cho <strong>cùng một kết quả</strong>.</p>
+
+  <h3>TN7a — Trên bộ dữ liệu 5 buổi của trường, 200 seed, ghép cặp</h3>
+
+  <p>Mỗi seed: bốc <strong>một</strong> bộ số, chạy cả ba thiết kế trên đúng bộ
+  số đó. Nên chênh lệch giữa ba cột là chênh lệch của <em>thiết kế</em>, không
+  phải của dữ liệu hay của may rủi.</p>
+
+  <figure>
+    <div class="legend">
+      <span><i style="background:var(--c-ok)"></i>Trung bình 200 seed</span>
+      <span><i style="background:var(--d0)"></i>Khoảng ít nhất – nhiều nhất</span>
+    </div>
+    <div class="chart-shell">
+      <svg id="ch-tn7a" viewBox="0 0 760 276" role="img"
+           aria-label="Số em trắng tay cả tuần trên bộ mẫu 156 em có khai: A1 trung bình 34,39 (từ 31 đến 37), A2 trung bình 34,09 (từ 31 đến 37), A3 trung bình 33,70 (từ 31 đến 36). Ba cột gần như bằng nhau, và khoảng dao động theo seed rộng hơn khoảng cách giữa ba cột."></svg>
+      <div class="tip" id="tip-tn7a" role="status"></div>
+    </div>
+    <figcaption>Khoảng dao động theo seed (6 em) <strong>rộng hơn</strong> khoảng
+    cách giữa ba thiết kế (0,7 em). Đó là lý do phải ghép cặp theo seed và phải
+    có khoảng tin cậy — so một seed với một seed thì kết luận ra chiều nào cũng
+    được.</figcaption>
+  </figure>
+
+  <div class="scroll">
+  <table>
+    <caption>Bộ mẫu 5 buổi · 156 em có khai nguyện vọng (trong 160) · 200 seed</caption>
+    <thead><tr><th>Thiết kế</th><th class="n">Em trắng tay (TB)</th><th class="n">ít nhất</th>
+      <th class="n">nhiều nhất</th><th class="n">CLB TB mỗi em</th><th class="n">Độ lệch chuẩn</th>
+      <th class="n">Cặp phá vỡ</th></tr></thead>
+    <tbody>
+      <tr><td>A1 một lần cả tuần</td><td class="n"><b>34,39</b></td><td class="n">31</td>
+        <td class="n">37</td><td class="n">1,329</td><td class="n">0,941</td><td class="n ok">0</td></tr>
+      <tr><td>A2 bốc lại mỗi buổi</td><td class="n"><b>34,09</b></td><td class="n">31</td>
+        <td class="n">37</td><td class="n">1,328</td><td class="n">0,938</td><td class="n ok">0</td></tr>
+      <tr><td>A3 có bù</td><td class="n"><b>33,70</b></td><td class="n">31</td>
+        <td class="n">36</td><td class="n">1,325</td><td class="n">0,926</td><td class="n ok">0</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <caption>Hiệu theo cặp seed — dấu <b>dương</b> nghĩa là A1 nhiều em trắng tay hơn</caption>
+    <thead><tr><th>Cặp so</th><th class="n">Hiệu TB</th><th class="n">Khoảng tin cậy 95%</th>
+      <th class="n">Thắng – thua – hoà</th><th>Kết luận</th></tr></thead>
+    <tbody>
+      <tr><td>A1 − A2</td><td class="n"><b>+0,30 em</b></td><td class="n">[+0,05 ; +0,54]</td>
+        <td class="n">58 – 83 – 59</td><td>A2 tốt hơn</td></tr>
+      <tr><td>A1 − A3</td><td class="n"><b>+0,69 em</b></td><td class="n">[+0,60 ; +0,77]</td>
+        <td class="n">0 – 125 – 75</td><td>A3 tốt hơn</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note warn">
+    <h4>Đọc cho đúng chiều</h4>
+    <p>Hiệu được tính <code>A1 − A2</code> trên <strong>số em trắng tay</strong>,
+    mà ít em trắng tay là tốt — nên <strong>dương</strong> nghĩa là A1 nhiều em
+    trắng tay hơn, tức <strong>A2 tốt hơn</strong>. Nhãn chiều dấu do
+    <code>mo_ta_chieu()</code> sinh ra từ chính các biến đã dùng để tính hiệu,
+    không gõ tay; <code>tests/test_boc_tham.py</code> có bốn test canh riêng chỗ
+    này, sau một lần in ngược chiều trong bản đo trước.</p>
+  </div>
+
+  <ol class="steps">
+    <li><strong>Khoảng tin cậy không chứa 0</strong>, nên chênh lệch là thật.
+    Nhưng độ lớn là <strong>0,30 em trên 156</strong>, tức <strong>0,19%</strong>
+    — phân biệt được về thống kê, gần như không phân biệt được trên thực tế.</li>
+    <li><strong>Tổng số suất gần như không đổi</strong>: 207,27 · 207,22 ·
+    206,76. Không thiết kế nào <em>tạo thêm chỗ</em> — chúng chỉ đổi
+    <em>ai</em> được chỗ.</li>
+  </ol>
+
+  <h3>TN7b — Bỏ hẳn điểm: bốc thăm quyết định tất</h3>
+
+  <p>200 em · 5 buổi · mọi em Tầng 2 · không câu lạc bộ nào có suất dự trữ ·
+  30 seed mỗi ô. Số chỗ mỗi buổi tính ngược từ số em đã khai, nên tỉ lệ chọi ra
+  <em>đúng</em> bằng cột đầu.</p>
+
+  <figure>
+    <div class="legend">
+      <span><i style="background:var(--c-no)"></i>A1 một lần cả tuần</span>
+      <span><i style="background:var(--c-ok)"></i>A2 bốc lại mỗi buổi</span>
+      <span><i style="background:var(--d3)"></i>A3 có bù</span>
+    </div>
+    <div class="chart-shell">
+      <svg id="ch-tn7b" viewBox="0 0 760 320" role="img"
+           aria-label="Số em trắng tay trên 200 em khi mọi em đều khai 5 buổi, theo tỉ lệ chọi. A1 đi từ 0 ở chọi 0,5 lần lên 126,7 ở chọi 4 lần. A2 đi từ 0 lên 47,7. A3 giữ ở 0 tại mọi mức."></svg>
+      <div class="tip" id="tip-tn7b" role="status"></div>
+    </div>
+    <figcaption>Em khai đủ 5 buổi. Trục ngang chia đều theo mốc đã đo, không
+    theo tỉ lệ. Hai mốc 0,5× ra 0 ở cả ba thiết kế: thừa chỗ thì không em nào
+    trắng tay, bốc thăm thế nào cũng vậy — đó là chốt soát chính bộ đo.</figcaption>
+  </figure>
+
+  <div class="scroll">
+  <table>
+    <caption>200 em · 5 buổi · 30 seed mỗi ô · <b>300 lần chạy, 0 cặp phá vỡ</b></caption>
+    <thead><tr><th class="n">Tỉ lệ chọi</th><th class="n">Khai mấy buổi</th>
+      <th class="n">A1</th><th class="n">A2</th><th class="n">A3</th>
+      <th class="n">A2 cứu được</th><th class="n">KTC 95% của hiệu</th></tr></thead>
+    <tbody>
+      <tr><td class="n">0,5×</td><td class="n">5</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">[0,00 ; 0,00]</td></tr>
+      <tr><td class="n">0,5×</td><td class="n">3</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">0,00</td><td class="n">[0,00 ; 0,00]</td></tr>
+      <tr><td class="n">1,0×</td><td class="n">5</td><td class="n">1,20</td><td class="n">0,00</td><td class="n">0,00</td><td class="n ok"><b>+1,20</b></td><td class="n">[+0,80 ; +1,63]</td></tr>
+      <tr><td class="n">1,0×</td><td class="n">3</td><td class="n">5,37</td><td class="n">0,70</td><td class="n">0,00</td><td class="n ok"><b>+4,67</b></td><td class="n">[+3,83 ; +5,53]</td></tr>
+      <tr><td class="n">1,5×</td><td class="n">5</td><td class="n">14,17</td><td class="n">0,80</td><td class="n">0,00</td><td class="n ok"><b>+13,37</b></td><td class="n">[+12,40 ; +14,27]</td></tr>
+      <tr><td class="n">1,5×</td><td class="n">3</td><td class="n">27,77</td><td class="n">6,93</td><td class="n">0,00</td><td class="n ok"><b>+20,83</b></td><td class="n">[+19,50 ; +22,23]</td></tr>
+      <tr><td class="n">2,0×</td><td class="n">5</td><td class="n">54,73</td><td class="n">5,73</td><td class="n">0,00</td><td class="n ok"><b>+49,00</b></td><td class="n">[+46,57 ; +51,40]</td></tr>
+      <tr><td class="n">2,0×</td><td class="n">3</td><td class="n">66,93</td><td class="n">24,57</td><td class="n">1,17</td><td class="n ok"><b>+42,37</b></td><td class="n">[+40,50 ; +44,23]</td></tr>
+      <tr><td class="n">4,0×</td><td class="n">5</td><td class="n">126,70</td><td class="n">47,67</td><td class="n">0,00</td><td class="n ok"><b>+79,03</b></td><td class="n">[+77,03 ; +81,20]</td></tr>
+      <tr><td class="n">4,0×</td><td class="n">3</td><td class="n">132,20</td><td class="n">85,50</td><td class="n">50,03</td><td class="n ok"><b>+46,70</b></td><td class="n">[+44,67 ; +48,73]</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Từ <b>1,0×</b> trở lên, A2 hơn A1 ở <strong>mọi</strong> ô và không khoảng
+  tin cậy nào chứa 0. Số câu lạc bộ trung bình mỗi em thì <strong>trùng nhau tới
+  chữ số thứ ba</strong> ở cả ba cột — ví dụ ô 1,5× / 5 buổi: 3,294 · 3,297 ·
+  3,296.</p>
+
+  <h3>TN7c — Vì sao bộ dữ liệu của trường lại gần như không phân biệt được?</h3>
+
+  <p>TN7a và TN7b lệch nhau quá xa để bỏ qua: cùng một thiết kế, cùng một phần
+  mềm, mà chênh lệch là 0,30 em ở bảng trước và 79 em ở bảng sau. Khác biệt giữa
+  hai bộ dữ liệu là <strong>điểm</strong> — bộ mẫu của trường có điểm, dữ liệu
+  TN7b thì không. TN7c vặn đúng núm đó, chọi giữ cố định 1,5×, 5 buổi, 30 seed
+  mỗi ô.</p>
+
+  <figure>
+    <div class="legend">
+      <span><i style="background:var(--c-ok)"></i>Vặn tỉ lệ em có điểm (nét liền)</span>
+      <span><i style="background:var(--c-no)"></i>Vặn độ mịn của thang điểm (nét đứt)</span>
+    </div>
+    <div class="chart-shell">
+      <svg id="ch-tn7c" viewBox="0 0 760 336" role="img"
+           aria-label="Lợi thế của A2, tính theo phần trăm số em mà A1 bỏ lại. Khi tỉ lệ em có điểm tăng từ 0 lên 100 phần trăm, lợi thế đi từ 92 phần trăm xuống 4 phần trăm. Khi thang điểm mịn dần từ 1 mức lên 61 mức, lợi thế đi từ 91 phần trăm xuống 0."></svg>
+      <div class="tip" id="tip-tn7c" role="status"></div>
+    </div>
+    <figcaption>Hai núm khác nhau, cùng một câu hỏi: <em>còn bao nhiêu chỗ cho
+    bốc thăm quyết định?</em> Trục ngang là thứ hạng của bảy (và năm) mốc đã đo,
+    chia đều — hai đường không dùng chung đơn vị trục ngang, chỉ dùng chung
+    trục dọc. <b>Mốc cuối của nét liền đi ngược lên</b> vì ở 100% Tầng 1, A1 chỉ
+    còn bỏ lại <b>0,87</b> em, nên tỉ lệ được chia cho một mẫu số quá nhỏ; lợi
+    thế tuyệt đối ở mốc đó là <b>+0,17</b> em và khoảng tin cậy chứa 0.</figcaption>
+  </figure>
+
+  <div class="scroll">
+  <table>
+    <caption>c1 — vặn tỉ lệ em <b>có điểm</b> (chọi 1,5× · 5 buổi · 30 seed mỗi ô)</caption>
+    <thead><tr><th class="n">Tỉ lệ em Tầng 1</th><th class="n">A1</th><th class="n">A2</th>
+      <th class="n">A3</th><th class="n">Lợi thế A2</th><th class="n">= mấy phần số em A1 bỏ lại</th></tr></thead>
+    <tbody>
+      <tr><td class="n">0%</td><td class="n">13,77</td><td class="n">1,03</td><td class="n">0,00</td><td class="n"><b>+12,73</b></td><td class="n ok"><b>92%</b></td></tr>
+      <tr><td class="n">10%</td><td class="n">12,90</td><td class="n">1,17</td><td class="n">0,00</td><td class="n">+11,73</td><td class="n">91%</td></tr>
+      <tr><td class="n">25%</td><td class="n">12,97</td><td class="n">3,23</td><td class="n">0,00</td><td class="n">+9,73</td><td class="n">75%</td></tr>
+      <tr><td class="n">50%</td><td class="n">13,60</td><td class="n">8,13</td><td class="n">1,37</td><td class="n">+5,47</td><td class="n">40%</td></tr>
+      <tr><td class="n">75%</td><td class="n">10,33</td><td class="n">8,37</td><td class="n">6,13</td><td class="n">+1,97</td><td class="n">19%</td></tr>
+      <tr><td class="n">90%</td><td class="n">5,57</td><td class="n">5,37</td><td class="n">3,97</td><td class="n">+0,20</td><td class="n">4% · <em>không phân biệt được</em></td></tr>
+      <tr><td class="n">100%</td><td class="n">0,87</td><td class="n">0,70</td><td class="n">0,03</td><td class="n">+0,17</td><td class="n"><em>không phân biệt được</em></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <caption>c2 — vặn <b>độ mịn của thang điểm</b>, khi mọi em đều có điểm</caption>
+    <thead><tr><th class="n">Thang điểm</th><th class="n">A1</th><th class="n">A2</th>
+      <th class="n">A3</th><th class="n">Lợi thế A2</th><th class="n">= mấy phần số em A1 bỏ lại</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1 mức (hoà hết)</td><td class="n">13,10</td><td class="n">1,17</td><td class="n">0,00</td><td class="n"><b>+11,93</b></td><td class="n ok"><b>91%</b></td></tr>
+      <tr><td class="n">2 mức</td><td class="n">1,97</td><td class="n">0,87</td><td class="n">0,20</td><td class="n">+1,10</td><td class="n">56%</td></tr>
+      <tr><td class="n">4 mức</td><td class="n">1,23</td><td class="n">0,87</td><td class="n">0,33</td><td class="n">+0,37</td><td class="n">30%</td></tr>
+      <tr><td class="n">11 mức</td><td class="n">0,70</td><td class="n">0,53</td><td class="n">0,40</td><td class="n">+0,17</td><td class="n"><em>không phân biệt được</em></td></tr>
+      <tr><td class="n">61 mức</td><td class="n">1,03</td><td class="n">1,03</td><td class="n">1,00</td><td class="n"><b>0,00</b></td><td class="n"><em>không phân biệt được</em></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note">
+    <h4>Vì sao phải đọc cột cuối chứ không phải cột “Lợi thế A2”</h4>
+    <p>Cột tuyệt đối có một chỗ dễ đọc nhầm: khi tỉ lệ Tầng 1 tăng thì số em
+    trắng tay của <em>cả hai</em> thiết kế cùng giảm, nên lợi thế tuyệt đối giảm
+    theo mà chưa chắc vì bốc thăm hết việc. Cột tỉ lệ hỏi đúng câu cần hỏi:
+    <strong>trong số em mà A1 bỏ lại, A2 cứu được bao nhiêu phần?</strong> — và
+    nó đi từ 92% xuống tới không phân biệt được, trên cả hai núm.</p>
+  </div>
+
+  <h3>TN7d — A3 có mở kênh khai gian không?</h3>
+
+  <p><code>stb_co_bu</code> làm ưu tiên buổi sau phụ thuộc <em>kết cục</em> buổi
+  trước, mà kết cục lại phụ thuộc nguyện vọng đã khai. Bảng này dò xem điều đó
+  có thành một cách khai gian dùng được không: với mỗi em, thử <strong>giấu
+  bớt</strong> — giấu hẳn một tập con các buổi, hoặc cắt ngắn danh sách trong
+  một buổi — rồi chấm lại bằng nguyện vọng <em>thật</em>.</p>
+
+  <div class="stats">
+    <div class="stat"><span class="v">0 / 300</span><span class="k">A1 — em giấu bớt có lợi</span></div>
+    <div class="stat"><span class="v">0 / 300</span><span class="k">A2 — em giấu bớt có lợi</span></div>
+    <div class="stat hi"><span class="v">113 / 300</span><span class="k">A3 — em giấu bớt có lợi (37,7%)</span></div>
+    <div class="stat"><span class="v">60 em · 4 buổi</span><span class="k">12 thể hiện × 25 em, mọi em Tầng 2</span></div>
+  </div>
+
+  <p><strong>Đối chứng ngược nằm ở chính cột đó:</strong> A3 phải khác 0. Nếu A3
+  cũng ra 0 thì bộ dò hỏng, và hai số 0 của A1 và A2 không nói lên điều gì.</p>
+
+  <div class="scroll">
+  <table>
+    <caption>Một ví dụ tìm được — em <code>E0001</code>, dưới thiết kế A3</caption>
+    <thead><tr><th>Cách khai</th><th>Buổi 1</th><th>Buổi 2</th><th>Buổi 3</th><th>Buổi 4</th><th class="n">Tổng</th></tr></thead>
+    <tbody>
+      <tr><td>Khai thật</td><td><code>clb2, clb1</code></td><td><code>clb3</code></td>
+        <td><code>clb1, clb2, clb3</code></td><td><code>clb2</code></td><td class="n">—</td></tr>
+      <tr><td>→ được gì</td><td class="n">0</td><td class="n">1</td><td class="n">2</td><td class="n">0</td><td class="n"><b>3</b></td></tr>
+      <tr><td><b>Giấu buổi 2</b></td><td><code>clb2, clb1</code></td><td><em>bỏ trống</em></td>
+        <td><code>clb1, clb2, clb3</code></td><td><code>clb2</code></td><td class="n">—</td></tr>
+      <tr><td>→ được gì</td><td class="n">0</td><td class="n">0</td><td class="n ok">3</td><td class="n ok">1</td><td class="n ok"><b>4</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Em bỏ suất ở buổi 2, đổi lấy nguyện vọng 1 ở buổi 3 (thay vì nguyện vọng 2)
+  và một suất ở buổi 4 (thay vì trắng).</p>
+
+  <div class="note warn">
+    <h4>Phạm vi của bảng này</h4>
+    <p>Kênh được dò là kênh <em>giấu bớt</em>; hoán vị thứ tự nguyện vọng
+    <strong>trong</strong> một buổi không thử ở đây vì TN3 đã vét cạn nó
+    (0 / 1 400). Với A3, tìm <em>thấy</em> một cách là đủ kết luận, nên việc giới
+    hạn không gian không làm yếu kết luận về A3.</p>
+    <p>Kênh của A3 là kênh <strong>đánh đổi</strong>, không phải kênh lợi không
+    mất gì: muốn giữ “số câu lạc bộ đã có” bằng 0 để lên trước ở buổi sau thì
+    phải <em>bỏ</em> một suất ở buổi trước. Phép dò không tìm được cách nào không
+    kém ở buổi nào mà hơn ở ít nhất một buổi — và con số 0 đó <strong>không</strong>
+    phải bằng chứng A3 an toàn, nó là hệ quả của chính cách khai gian.</p>
+  </div>
+</section>
+
 <section id="ket">
   <h2 class="q"><span class="num">TỔNG HỢP</span>Giới hạn của nghiên cứu này</h2>
 
-  <p>Đọc bốn điều dưới đây trước khi trích bất kỳ con số nào ở trên.</p>
+  <p>Đọc sáu điều dưới đây trước khi trích bất kỳ con số nào ở trên.</p>
 
   <ol class="steps">
     <li><strong>Vét cạn chỉ chạy được ở quy mô nhỏ</strong> (7 em / 4 CLB). Kết
@@ -713,16 +979,27 @@ python3 -m pytest tests/test_toi_uu_on_dinh.py -v</code></pre>
     con số này như số liệu khảo sát thật là <strong>bịa đặt dữ liệu</strong>.</li>
     <li><strong>Tất cả đo ở một cấu hình dự trữ.</strong> Đổi nhóm dự trữ hay
     chính sách xét dự trữ thì phải đo lại.</li>
+    <li><strong>TN7b, TN7c và TN7d chạy trên dữ liệu do máy dựng theo tham
+    số</strong>, không phải trên một trường có thật. Ba bảng đó trả lời câu
+    <em>“cơ chế hành xử thế nào khi vặn núm này”</em>, <strong>không</strong>
+    trả lời câu <em>“trường X nên chọn thiết kế nào”</em> — câu sau phải đo trên
+    dữ liệu của chính trường X, và phần mềm có sẵn bảng đối chiếu ba thiết kế
+    cho việc đó ở tab <b>01 Vận hành</b>.</li>
+    <li><strong>TN7d chỉ dò một kênh khai gian</strong> (giấu bớt buổi). “Không
+    tìm thấy” ở A1 và A2 vì thế yếu hơn “không tồn tại”; kết luận về A3 thì không
+    bị ảnh hưởng, vì tìm thấy được một cách là đủ.</li>
   </ol>
 
   <div class="note">
     <h4>Số liệu này chống được việc sửa tay</h4>
-    <p>Ba tệp <code>du_lieu_test/so_lieu_*.json</code> là nguồn sự thật duy nhất;
+    <p>Bốn tệp <code>du_lieu_test/so_lieu_*.json</code> là nguồn sự thật duy nhất;
     trang này và bản Markdown đều đọc từ đó. <code>tests/test_toi_uu_on_dinh.py</code>
-    chạy lại một phần phép đo rồi đối chiếu từng con số — sửa tay một ô là test
-    đỏ. Trong 29 test có một nhóm <strong>đối chứng ngược</strong>: nếu bộ đếm
-    cặp phá vỡ hay bộ dò khai gian hỏng thành “lúc nào cũng báo 0” thì nhóm đó
-    đỏ ngay.</p>
+    và <code>tests/test_boc_tham.py</code> chạy lại một phần phép đo rồi đối chiếu
+    từng con số — sửa tay một ô là test đỏ. Trong 52 test có một nhóm
+    <strong>đối chứng ngược</strong>: nếu bộ đếm cặp phá vỡ hay bộ dò khai gian
+    hỏng thành “lúc nào cũng báo 0” thì nhóm đó đỏ ngay. Riêng TN7 còn có bốn
+    test canh <strong>chiều dấu</strong> của hiệu số, thêm vào sau một lần bản đo
+    cũ in ngược chiều.</p>
   </div>
 </section>
 
@@ -1060,6 +1337,201 @@ python3 -m pytest tests/test_toi_uu_on_dinh.py -v</code></pre>
       chu(svg, X0 + w + 10, y + BH / 2 + 5, so(d.v, 2) + "%", {
         anchor: "start", fill: "var(--ink)", size: "13", weight: "500"
       });
+    });
+  }());
+
+  /* ---------------------------------------------------------------
+     5. TN7a — ba thiết kế bốc thăm trên bộ mẫu của trường (cột dọc
+        kèm râu ít nhất – nhiều nhất)
+
+        Cột vẽ THEO GỐC 0 chứ không cắt trục. Cắt trục ở 30 sẽ làm ba
+        cột trông chênh nhau hẳn, mà thông điệp của bảng này lại đúng
+        là chúng KHÔNG chênh nhau đáng kể. Râu min–max có mặt để thấy
+        dao động theo seed rộng hơn khoảng cách giữa ba cột.
+     --------------------------------------------------------------- */
+  (function () {
+    var svg = document.getElementById("ch-tn7a");
+    var tip = document.getElementById("tip-tn7a");
+    if (!svg) return;
+    var DATA = [
+      { ten: "A1", phu: "một lần cả tuần", v: 34.39, lo: 31, hi: 37 },
+      { ten: "A2", phu: "bốc lại mỗi buổi", v: 34.09, lo: 31, hi: 37 },
+      { ten: "A3", phu: "có bù", v: 33.70, lo: 31, hi: 36 }
+    ];
+    var X0 = 96, X1 = 700, TOP = 34, DAY = 196, MAX = 40;
+    var K = (DAY - TOP) / MAX;
+    function y(v) { return DAY - v * K; }
+
+    [0, 10, 20, 30, 40].forEach(function (t) {
+      svg.appendChild(el("line", {
+        x1: X0 - 10, y1: y(t), x2: X1, y2: y(t),
+        stroke: "var(--hairline)", "stroke-width": t === 0 ? 1.5 : 1
+      }));
+      chu(svg, X0 - 18, y(t) + 4, so(t), { anchor: "end", size: "11.5" });
+    });
+    chu(svg, X0 - 18, TOP - 20, "Em trắng tay cả tuần (trên 156 em có khai)", {
+      anchor: "start", size: "12", fill: "var(--slate)"
+    });
+
+    var BW = 116, PITCH = (X1 - X0) / DATA.length;
+    DATA.forEach(function (d, i) {
+      var cx = X0 + PITCH * (i + 0.5);
+      var r = el("rect", {
+        x: cx - BW / 2, y: y(d.v), width: BW, height: DAY - y(d.v),
+        rx: 3, fill: "var(--c-ok)"
+      });
+      svg.appendChild(r);
+      gan(svg, tip, r, d.ten + " " + d.phu + ": trung bình " + so(d.v, 2)
+        + " em trắng tay · dao động theo seed từ " + so(d.lo) + " tới " + so(d.hi)
+        + " · 0 cặp phá vỡ");
+      // Râu min–max, vẽ ĐÈ lên cột để so trực tiếp bề rộng dao động.
+      svg.appendChild(el("line", {
+        x1: cx, y1: y(d.lo), x2: cx, y2: y(d.hi),
+        stroke: "var(--d0)", "stroke-width": 2
+      }));
+      [d.lo, d.hi].forEach(function (v) {
+        svg.appendChild(el("line", {
+          x1: cx - 16, y1: y(v), x2: cx + 16, y2: y(v),
+          stroke: "var(--d0)", "stroke-width": 2
+        }));
+      });
+      chu(svg, cx, y(d.hi) - 12, so(d.v, 2), {
+        size: "15", weight: "600", fill: "var(--ink)"
+      });
+      chu(svg, cx, DAY + 22, d.ten, {
+        size: "14", weight: "600", family: "var(--f-body)", fill: "var(--ink)"
+      });
+      chu(svg, cx, DAY + 40, d.phu, { size: "11.5", family: "var(--f-body)" });
+    });
+    chu(svg, X0 - 18, DAY + 62,
+      "Khoảng dao động theo seed: 6 em. Khoảng cách giữa ba thiết kế: 0,7 em.", {
+      anchor: "start", size: "12", fill: "var(--slate)", family: "var(--f-body)"
+    });
+  }());
+
+  /* ---------------------------------------------------------------
+     6. TN7b — trắng tay theo tỉ lệ chọi, ba thiết kế (đường gấp khúc)
+     --------------------------------------------------------------- */
+  (function () {
+    var svg = document.getElementById("ch-tn7b");
+    var tip = document.getElementById("tip-tn7b");
+    if (!svg) return;
+    var MOC = ["0,5×", "1,0×", "1,5×", "2,0×", "4,0×"];
+    var DUONG = [
+      { ten: "A1 một lần cả tuần", mau: "var(--c-no)", v: [0, 1.20, 14.17, 54.73, 126.70] },
+      { ten: "A2 bốc lại mỗi buổi", mau: "var(--c-ok)", v: [0, 0, 0.80, 5.73, 47.67] },
+      { ten: "A3 có bù", mau: "var(--d3)", v: [0, 0, 0, 0, 0] }
+    ];
+    var X0 = 96, X1 = 620, TOP = 34, DAY = 232, MAX = 140;
+    var K = (DAY - TOP) / MAX;
+    function y(v) { return DAY - v * K; }
+    function x(i) { return X0 + (X1 - X0) * i / (MOC.length - 1); }
+
+    [0, 35, 70, 105, 140].forEach(function (t) {
+      svg.appendChild(el("line", {
+        x1: X0 - 10, y1: y(t), x2: X1 + 10, y2: y(t),
+        stroke: "var(--hairline)", "stroke-width": t === 0 ? 1.5 : 1
+      }));
+      chu(svg, X0 - 18, y(t) + 4, so(t), { anchor: "end", size: "11.5" });
+    });
+    chu(svg, X0 - 18, TOP - 14, "Em trắng tay cả tuần (trên 200 em)", {
+      anchor: "start", size: "12", fill: "var(--slate)"
+    });
+    MOC.forEach(function (m, i) {
+      chu(svg, x(i), DAY + 22, m, { size: "12.5" });
+    });
+    chu(svg, (X0 + X1) / 2, DAY + 44, "Tỉ lệ chọi — số em khai buổi đó trên mỗi chỗ", {
+      size: "12", family: "var(--f-body)", fill: "var(--slate)"
+    });
+
+    DUONG.forEach(function (d) {
+      var diem = d.v.map(function (v, i) { return x(i) + "," + y(v); }).join(" ");
+      svg.appendChild(el("polyline", {
+        points: diem, fill: "none", stroke: d.mau, "stroke-width": 2.5,
+        "stroke-linejoin": "round"
+      }));
+      d.v.forEach(function (v, i) {
+        var c = el("circle", { cx: x(i), cy: y(v), r: 4.5, fill: d.mau });
+        svg.appendChild(c);
+        gan(svg, tip, c, d.ten + " · chọi " + MOC[i] + ": " + so(v, 2)
+          + " em trắng tay trên 200");
+      });
+      // Nhãn cuối đường: neo START và dừng trước mép phải, để không tràn viewBox.
+      chu(svg, X1 + 16, y(d.v[d.v.length - 1]) + 4, d.ten.split(" ")[0], {
+        anchor: "start", size: "13", weight: "600", fill: d.mau
+      });
+    });
+    chu(svg, X0 - 18, DAY + 68,
+      "Em khai đủ 5 buổi · 30 seed mỗi mốc · 0 cặp phá vỡ ở cả ba thiết kế.", {
+      anchor: "start", size: "12", fill: "var(--slate)", family: "var(--f-body)"
+    });
+  }());
+
+  /* ---------------------------------------------------------------
+     7. TN7c — lợi thế của A2 tắt dần khi điểm lấn át bốc thăm
+
+        Trục dọc là TỈ LỆ (phần số em A1 bỏ lại mà A2 cứu được), không
+        phải số tuyệt đối: số tuyệt đối giảm một phần chỉ vì cả hai cùng
+        ít em trắng tay hơn, nên nó không tách được hai nguyên nhân.
+     --------------------------------------------------------------- */
+  (function () {
+    var svg = document.getElementById("ch-tn7c");
+    var tip = document.getElementById("tip-tn7c");
+    if (!svg) return;
+    var A = {
+      ten: "Tỉ lệ em có điểm", mau: "var(--c-ok)",
+      moc: ["0%", "10%", "25%", "50%", "75%", "90%", "100%"],
+      v: [92.49, 90.96, 75.06, 40.20, 19.03, 3.59, 19.23],
+      mo: "tỉ lệ em Tầng 1"
+    };
+    var B = {
+      ten: "Độ mịn của thang điểm", mau: "var(--c-no)",
+      moc: ["1 mức", "2 mức", "4 mức", "11 mức", "61 mức"],
+      v: [91.09, 55.93, 29.73, 23.81, 0.00],
+      mo: "số mức điểm"
+    };
+    var X0 = 96, X1 = 680, TOP = 34, DAY = 236, MAX = 100;
+    var K = (DAY - TOP) / MAX;
+    function y(v) { return DAY - v * K; }
+    function x(i, n) { return X0 + (X1 - X0) * i / (n - 1); }
+
+    [0, 25, 50, 75, 100].forEach(function (t) {
+      svg.appendChild(el("line", {
+        x1: X0 - 10, y1: y(t), x2: X1 + 10, y2: y(t),
+        stroke: "var(--hairline)", "stroke-width": t === 0 ? 1.5 : 1
+      }));
+      chu(svg, X0 - 18, y(t) + 4, so(t) + "%", { anchor: "end", size: "11.5" });
+    });
+    chu(svg, X0 - 18, TOP - 14,
+      "Phần số em A1 bỏ lại mà A2 cứu được", {
+      anchor: "start", size: "12", fill: "var(--slate)"
+    });
+
+    [A, B].forEach(function (d, k) {
+      var n = d.moc.length;
+      var diem = d.v.map(function (v, i) { return x(i, n) + "," + y(v); }).join(" ");
+      svg.appendChild(el("polyline", {
+        points: diem, fill: "none", stroke: d.mau, "stroke-width": 2.5,
+        "stroke-linejoin": "round",
+        "stroke-dasharray": k === 1 ? "6 4" : "none"
+      }));
+      d.v.forEach(function (v, i) {
+        var c = el("circle", { cx: x(i, n), cy: y(v), r: 4.5, fill: d.mau });
+        svg.appendChild(c);
+        gan(svg, tip, c, d.ten + " = " + d.moc[i] + ": A2 cứu được " + so(v, 0)
+          + "% số em mà A1 bỏ lại");
+        chu(svg, x(i, n), DAY + 20 + k * 18, d.moc[i], {
+          size: "11.5", fill: d.mau
+        });
+      });
+    });
+    chu(svg, X0 - 18, DAY + 66,
+      "Chọi giữ cố định 1,5× · 5 buổi · 30 seed mỗi mốc. Hai đường không dùng", {
+      anchor: "start", size: "12", fill: "var(--slate)", family: "var(--f-body)"
+    });
+    chu(svg, X0 - 18, DAY + 82,
+      "chung đơn vị trục ngang — chỉ dùng chung trục dọc.", {
+      anchor: "start", size: "12", fill: "var(--slate)", family: "var(--f-body)"
     });
   }());
 }());

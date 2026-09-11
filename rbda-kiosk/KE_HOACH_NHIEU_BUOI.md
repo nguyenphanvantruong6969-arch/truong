@@ -341,16 +341,17 @@ khoa học của kết quả — người thực hiện đề tài tự viết (
 
 ## 12. Đã làm tới đâu
 
-**Giai đoạn 1–3 xong.** Phần mềm khai báo được buổi, xếp được cả tuần, và có
-đủ ba màn hình mới. `512 test xanh` (thêm 37 test mới), ba bộ đo cũ ra đúng số
-cũ, và năm hàm lõi không sửa một dòng.
+**Giai đoạn 1–4 xong.** Phần mềm khai báo được buổi, xếp được cả tuần, có đủ
+ba màn hình mới, và ba thiết kế bốc thăm đã được đo chính thức (TN7, mục
+`NGHIEN_CUU_TOI_UU.md`). Ba bộ đo cũ ra đúng số cũ, và năm hàm lõi không sửa
+một dòng.
 
 | Giai đoạn | Trạng thái |
 |---|---|
 | 1 — Buổi vào dữ liệu, di trú, `.gitignore` | ✅ xong |
 | 2 — `run_rbda_nhieu_buoi`, ba cách bốc thăm, xuất thời khoá biểu | ✅ xong |
 | 3 — Lịch tuần, bảng tải, thời khoá biểu, độ phủ, song ngữ | ✅ xong |
-| 4 — Đo lường TN7 và mở rộng trang nghiên cứu | ⏳ chưa |
+| 4 — Đo lường TN7 và mở rộng trang nghiên cứu | ✅ xong |
 | 5 — Bộ câu hỏi Microsoft Forms mới | ⏳ chưa |
 
 ### Bốn chỗ thiết kế phải sửa khi chạm vào mã thật
@@ -377,26 +378,63 @@ cũ, và năm hàm lõi không sửa một dòng.
    thay vì 38. Ở chế độ nhiều buổi, bảng chỉ liệt kê chỗ đã xếp thật, còn con
    số "em trắng tay" lấy từ bảng Độ phủ.
 
-### Một điều đo được, chưa giải thích được — để dành cho giai đoạn 4
+### Dự đoán về bốc thăm: bị bác bỏ ở đâu, được xác nhận ở đâu
 
-Bảng đối chiếu ba cách bốc thăm, chạy trên bộ mẫu 5 buổi (160 em, seed 42):
+Mục 5.3 ghi một dự đoán trước khi đo: **`stb_ngay` (A2) sẽ giảm hẳn số em trắng
+tay**. Giai đoạn 4 đã đo (TN7 trong `NGHIEN_CUU_TOI_UU.md`,
+`du_lieu_test/do_boc_tham.py`, 23 test canh). Kết quả chia làm ba câu:
 
-| Cách bốc thăm | Trắng tay cả tuần | CLB TB/em | Độ lệch | Ô xếp khác |
-|---|---|---|---|---|
-| Một lần cho cả tuần | 38 | 1,294 | 0,953 | mốc |
-| Lại mỗi buổi | 38 | 1,288 | 0,945 | 21 |
-| Có bù | 37 | 1,288 | 0,931 | 6 |
+1. **Trên dữ liệu của trường, dự đoán gần như không đúng.** Bộ mẫu 5 buổi, 156
+   em có khai, **200 seed** ghép cặp: A1 để lại **34,39** em trắng tay, A2
+   **34,09**. Hiệu **+0,30 em**, khoảng tin cậy 95% **[+0,05 ; +0,54]** — thật
+   nhưng bằng **0,19%** số em. Không phải mức "giảm hẳn" mà dự đoán nói tới.
 
-Dự đoán nêu ở mục 3 là **STB ngày sẽ giảm hẳn số em trắng tay**. Trên bộ này
-nó **không giảm** — 38 so với 38.
+2. **Trên dữ liệu thuần bốc thăm, dự đoán đúng và đúng rất mạnh.** 200 em /
+   5 buổi / mọi em Tầng 2: A2 cứu được **1,2 → 79,0** em, thắng ở **mọi** mức
+   tỉ lệ chọi, không khoảng tin cậy nào chứa 0. Nên cài đặt đúng, cơ chế đúng;
+   chỉ là điều kiện áp dụng hẹp hơn lúc nêu dự đoán.
 
-Chưa vội kết luận dự đoán sai. Cách đọc đáng ngờ nhất: trên bộ dữ liệu này,
-phần lớn em trắng tay trượt vì **thiếu chỗ** chứ không vì **thua bốc thăm** —
-Thứ 4 có 128 em muốn mà chỉ 26 chỗ, nên đổi cách phá hoà không cứu được ai.
-Nếu đúng vậy thì dự đoán vẫn có thể đúng ở một bộ dữ liệu rộng chỗ hơn.
+3. **Nguyên nhân là ĐIỂM, không phải thiếu ghế.** Giả thuyết ghi ở bản trước —
+   *"em trắng tay trượt vì thiếu chỗ chứ không vì thua bốc thăm"* — đã bị bác
+   bỏ hai lần: 33/38 em trắng tay có khai từ hai buổi trở lên, và ở chọi
+   **4,0×** (thiếu ghế trầm trọng) A2 vẫn cứu **79** em. Thí nghiệm can thiệp
+   TN7c chỉ ra nguyên nhân thật: vặn tỉ lệ em **có điểm** từ 0% lên 100% thì
+   lợi thế của A2 đi từ **92%** số em A1 bỏ lại xuống tới *không phân biệt
+   được*; vặn độ mịn thang điểm cho y hệt (**91%** ở thang 1 mức → **0%** ở
+   thang 61 mức). Tầng 1 luôn đứng trên Tầng 2, nên em không có điểm là Tầng 2
+   ở **mọi** buổi — rủi ro đã tương quan sẵn qua điểm chứ không qua bộ số thăm,
+   và bốc lại thăm mỗi buổi không gỡ được mối tương quan đó.
 
-**Phân biệt hai điều đó là việc của giai đoạn 4**, và phải làm bằng cách quét
-nhiều seed cùng nhiều mức chật — không phải bằng một lần chạy trên một bộ dữ
-liệu được dựng cố ý cho chật. Cột "Ô xếp khác" cho thấy ba cách **thật sự cho
-kết quả khác nhau** (21 và 6 ô), nên bộ chọn không hỏng; chỉ là khác biệt ấy
-chưa đổi được con số tổng.
+**A3 thì đã có bằng chứng, không còn là suy luận.** TN7d dò kênh *giấu bớt
+buổi*: **113/300** em có cách khai gian có lợi dưới A3, **0/300** dưới A1 và
+A2. Kênh đó là kênh đánh đổi (phải bỏ một suất buổi trước để lên trước ở buổi
+sau), nhưng thế vẫn đủ hỏng: em nào biết mẹo thì đổi được, em nào khai thật thì
+không.
+
+### Hai lỗi của chính bộ đo, ghi lại vì chúng là lý do các test canh tồn tại
+
+1. **Kết luận trên một seed.** Bảng trong bản trước của mục này (38 / 38 / 37)
+   là **một** lần chạy ở seed 42. Một seed không đủ để so ba thiết kế bốc thăm,
+   vì chính cái đang đo là tác động của may rủi: dao động theo seed trên bộ đó
+   là **6 em**, gấp tám lần khoảng cách giữa ba thiết kế. Mọi số của TN7 giờ
+   đều là trung bình nhiều seed, ghép cặp theo seed, kèm khoảng tin cậy.
+
+2. **In sai chiều hiệu số.** Một bản đo trung gian in nhãn *"(âm = A2 tốt hơn)"*
+   cho hiệu `A1 − A2` trên số em trắng tay, trong khi âm nghĩa là A1 **ít** em
+   trắng tay hơn, tức A1 tốt hơn. Nhãn được gõ tay nên không đi theo công thức,
+   và không có gì phát hiện ra: mã chạy đúng, số đúng, chỉ câu chữ dẫn người
+   đọc sang kết luận ngược. Nay nhãn do `mo_ta_chieu()` sinh ra từ chính các
+   biến đã dùng để tính hiệu, và `tests/test_boc_tham.py` có bốn test canh
+   chiều dấu — đảo dấu trong `hieu_theo_cap` làm đỏ ba trong số đó.
+
+### Mặc định của phần mềm: vẫn A1, và đây là câu hỏi của trường
+
+TN7 nói A2 không thua ở ô nào và thắng đậm ở vùng bốc thăm quyết định, nhưng
+trên dữ liệu có điểm của trường thì ba thiết kế chênh nhau 0,19%. Đổi mặc định
+sang A2 có cái giá riêng: trường phải công bố **năm** bảng số thăm thay vì một.
+Đó là đánh đổi giữa **minh bạch** và **công bằng**, và phép đo không quyết định
+thay được. Mặc định giữ nguyên **A1**; tab **01 Vận hành** có sẵn bảng đối
+chiếu chạy cả ba thiết kế trên dữ liệu thật của trường mà không ghi gì vào cơ
+sở dữ liệu, để trường tự xem trên số của mình.
+
+**A3 thì không nên dùng ở bất kỳ tình huống nào** — xem TN7d ở trên.

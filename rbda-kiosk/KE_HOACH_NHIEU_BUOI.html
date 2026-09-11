@@ -534,6 +534,27 @@ footer {
   bình · cặp phá vỡ từng buổi · <strong>số em khai gian được</strong>. Dự đoán:
   A1 và A2 cho <span class="ok">0 em khai gian</span>, A3 <span class="bad">khác
   0</span>. Bộ đo đã có sẵn — <code>do_khai_that.py</code> dùng lại nguyên vẹn.</p>
+
+  <div class="note">
+    <h4>TN7 đã chạy — hai dự đoán trên đều đứng vững</h4>
+    <p><strong>Số CLB trung bình mỗi em bằng nhau, chỉ số em trắng tay khác.</strong>
+    Trên bộ mẫu 5 buổi, 200 seed: 1,329 · 1,328 · 1,325 câu lạc bộ mỗi em ở ba
+    thiết kế, trong khi số em trắng tay là 34,39 · 34,09 · 33,70. Ở lưới thuần
+    bốc thăm, số câu lạc bộ trung bình trùng nhau tới <em>chữ số thứ ba</em>
+    trong khi số em trắng tay chênh nhau tới 79 em. Không thiết kế nào tạo thêm
+    chỗ — chúng chỉ đổi <em>ai</em> được chỗ.</p>
+    <p><strong>A1 và A2 cho 0 em khai gian, A3 khác 0.</strong> Dò kênh
+    <em>giấu bớt buổi</em> trên 300 lượt: A1 <span class="ok">0</span> ·
+    A2 <span class="ok">0</span> · A3 <span class="bad">113</span> (37,7%).</p>
+    <p><strong>Điều đo được mà dự đoán chưa nói tới:</strong> lợi thế của A2
+    <em>lớn hay nhỏ</em> phụ thuộc gần như hoàn toàn vào việc còn bao nhiêu chỗ
+    cho bốc thăm quyết định. Trên dữ liệu có điểm của trường, A2 chỉ hơn A1
+    <strong>0,30 em trên 156</strong> (0,19%); trên dữ liệu thuần bốc thăm, A2
+    cứu <strong>1,2 → 79,0</strong> em trên 200. Số liệu và ba biểu đồ ở mục
+    <strong>TN7</strong> của <code>NGHIEN_CUU_TOI_UU.md</code>; bộ đo ở
+    <code>du_lieu_test/do_boc_tham.py</code>, 23 test canh ở
+    <code>tests/test_boc_tham.py</code>.</p>
+  </div>
 </section>
 
 <section id="dulieu">
