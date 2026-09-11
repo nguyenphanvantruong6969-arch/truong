@@ -1331,68 +1331,21 @@ button, input {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Chọn cách bốc thăm ---------- */
+/* ---------- Số bốc thăm theo buổi ---------- */
 
-.boc-tham-list {
-  display: grid;
-  gap: 10px;
-  margin: 14px 0 4px;
-}
-
-.boc-tham-item {
-  display: grid;
-  grid-template-columns: 20px 1fr;
-  gap: 12px;
-  align-items: start;
-  padding: 14px 16px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--paper-raised);
-  cursor: pointer;
-  transition: border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
-}
-
-.boc-tham-item:hover { border-color: var(--slate); }
-
-.boc-tham-item.is-chon {
-  border-color: var(--moss);
-  background: var(--moss-soft);
-}
-
-.boc-tham-item.is-chon.is-canh-bao {
-  border-color: var(--rust);
-  background: var(--rust-soft);
-}
-
-.boc-tham-item input { margin-top: 3px; }
-
-.boc-tham-ten {
-  display: block;
-  font-weight: 600;
-  font-size: 14.5px;
-  color: var(--ink);
-  margin-bottom: 4px;
-}
-
-.boc-tham-mo-ta {
-  display: block;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
-
-.canh-bao-do {
-  margin: 12px 0 0;
+/* Dải nhắc khi lần chạy gần nhất dùng cách bốc thăm cũ. Vàng chứ không đỏ:
+   đó là một sự kiện trong nhật ký, không phải một lỗi — bảng vẫn đúng, nó
+   chỉ đang mô tả một lần chạy bằng bản trước. */
+.canh-bao-vang {
+  margin: 12px 0;
   padding: 12px 16px;
-  border-left: 3px solid var(--rust);
-  background: var(--rust-soft);
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--ink);
 }
-
-tr.la-moc td { background: var(--moss-soft); }
 
 /* ---------- Tải theo buổi ---------- */
 

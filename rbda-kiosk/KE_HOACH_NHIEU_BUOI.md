@@ -427,14 +427,39 @@ không.
    biến đã dùng để tính hiệu, và `tests/test_boc_tham.py` có bốn test canh
    chiều dấu — đảo dấu trong `hieu_theo_cap` làm đỏ ba trong số đó.
 
-### Mặc định của phần mềm: vẫn A1, và đây là câu hỏi của trường
+### Đã chốt: phần mềm chỉ chạy A2, bỏ hẳn hai thiết kế kia
 
-TN7 nói A2 không thua ở ô nào và thắng đậm ở vùng bốc thăm quyết định, nhưng
-trên dữ liệu có điểm của trường thì ba thiết kế chênh nhau 0,19%. Đổi mặc định
-sang A2 có cái giá riêng: trường phải công bố **năm** bảng số thăm thay vì một.
-Đó là đánh đổi giữa **minh bạch** và **công bằng**, và phép đo không quyết định
-thay được. Mặc định giữ nguyên **A1**; tab **01 Vận hành** có sẵn bảng đối
-chiếu chạy cả ba thiết kế trên dữ liệu thật của trường mà không ghi gì vào cơ
-sở dữ liệu, để trường tự xem trên số của mình.
+Bản trước để mặc định **A1** kèm một bộ chọn ba thiết kế và một bảng đối chiếu,
+với lý do "đây là câu hỏi của trường, phép đo không quyết thay được". Đã chốt
+theo hướng khác: **phần mềm chạy duy nhất A2 `stb_ngay`**, không còn bộ chọn,
+không còn bảng đối chiếu, `api.run_pipeline` không còn nhận tham số chế độ.
 
-**A3 thì không nên dùng ở bất kỳ tình huống nào** — xem TN7d ở trên.
+**Vì sao chốt được:**
+
+1. **A2 không thua ở ô nào đã đo**, và hơn hẳn ở mọi vùng bốc thăm quyết định
+   (cứu 1,2 → 79,0 em trên 200). Trên dữ liệu có điểm của trường nó chênh 0,19%
+   — tức gần như miễn phí, không phải một cái giá.
+2. **Một buổi thì A2 ≡ A1** nhờ nhánh ngắn mạch trong `sinh_stb_theo_buoi`, nên
+   không con số nào trong `NGHIEN_CUU_TOI_UU.md` phải đo lại. Có test canh trên
+   ba bộ dữ liệu × 20 seed, và một test nữa canh qua đúng đường `api.run_pipeline`.
+3. **A3 có bằng chứng để loại**, không còn là lo ngại lý thuyết: 113/300 em
+   giấu bớt buổi thì có lợi, A1 và A2 đều 0/300 (TN7d).
+4. **Cái giá minh bạch em nêu ở bản trước là sai.** Ghi rằng A2 buộc trường
+   "công bố năm bảng số thăm thay vì một" — không đúng. Thứ tự từng buổi là hàm
+   TẤT ĐỊNH của bộ số đã khoá và `seed`, nên trường vẫn chỉ công bố **hai** thứ
+   như cũ và ai cũng tính lại được. Cái thiếu thật sự là phần mềm chưa **hiện**
+   thứ tự ấy ra — `stb_theo_buoi` được tính rồi vứt đi. Đã thêm bảng **Số bốc
+   thăm theo buổi** ở thẻ Kết quả và tệp `..._so_boc_tham_theo_buoi.csv`.
+
+**Hai thiết kế kia vẫn còn trong `rbda_priority_pipeline.py`, và đó là cố ý.**
+Chúng là đối chứng của TN7: xoá đi thì `do_boc_tham.py` không chạy được nữa và
+mọi con số TN7 mất khả năng tái lập. Chúng đổi vai trò từ *lựa chọn sản phẩm*
+thành *dụng cụ đo*. `TestMotThietKeDuyNhat` canh cả hai chiều: không có đường
+nào từ `api.py` gọi tới chúng, và chúng không bị xoá khỏi thuật toán.
+
+**Việc phải làm khi nâng cấp một trường đang chạy:** trường đã chạy nhiều buổi
+bằng bản cũ thì lần chạy tới ra kết quả khác (bộ số đã khoá không đổi, thứ tự
+trong từng buổi thì đổi). Trường một buổi không đổi gì. Dòng nhật ký cũ ghi
+`stb_tuan` **không bị sửa lại**, và `get_so_boc_tham_theo_buoi` đọc chính cột
+đó để dựng lại đúng thứ tự mà lần chạy ấy đã dùng — bảng luôn trung thực với
+lần chạy có thật, kể cả lần chạy bằng bản cũ.

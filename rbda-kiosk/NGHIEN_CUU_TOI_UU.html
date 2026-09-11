@@ -730,6 +730,17 @@ python3 -m pytest tests/test_toi_uu_on_dinh.py tests/test_boc_tham.py -v</code><
 
   <p>Dữ liệu chỉ có một buổi thì cả ba cho <strong>cùng một kết quả</strong>.</p>
 
+  <div class="note">
+    <h4>Phần mềm nay chỉ chạy A2, và bảng đo dưới đây là căn cứ</h4>
+    <p>Bộ chọn ba thiết kế đã bỏ khỏi giao diện; <code>api.run_pipeline</code>
+    không còn nhận tham số chế độ, và có test canh chữ ký hàm đó. A1 và A3 vẫn
+    nằm trong <code>rbda_priority_pipeline.py</code> để
+    <code>do_boc_tham.py</code> đối chứng được — không có chúng thì mọi con số ở
+    mục này mất khả năng tái lập.</p>
+    <p>Vì một buổi thì cả ba trùng nhau, việc chốt A2 <strong>không làm sai một
+    con số nào ở TN1–TN6</strong>.</p>
+  </div>
+
   <h3>TN7a — Trên bộ dữ liệu 5 buổi của trường, 200 seed, ghép cặp</h3>
 
   <p>Mỗi seed: bốc <strong>một</strong> bộ số, chạy cả ba thiết kế trên đúng bộ

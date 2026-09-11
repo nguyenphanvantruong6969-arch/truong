@@ -239,25 +239,38 @@ trượt.
 *Tỉ lệ chọi đếm theo **số học sinh**, không phải số lượt nguyện vọng, vì mỗi
 em chỉ lấy được một chỗ trong một buổi.*
 
-### Chọn cách bốc thăm
+### Bốc thăm qua các buổi — không phải chọn nữa
 
-Thẻ **Vận hành phân bổ** có ba lựa chọn. Chúng chỉ khác nhau khi có nhiều
-buổi; một buổi thì cả ba cho cùng kết quả.
+Nhiều buổi thì phần mềm **xáo lại thứ tự ở mỗi buổi**. Không có gì để chọn:
+đây là cách duy nhất, và nó được chọn bằng phép đo chứ không bằng cảm tính
+(**TN7** trong `NGHIEN_CUU_TOI_UU.md`).
 
-| Cách | Nghĩa |
-|---|---|
-| **Bốc thăm một lần cho cả tuần** (mặc định) | Mỗi em một số dùng chung mọi buổi. Dễ giải thích nhất, nhưng em bốc phải số xấu đứng cuối ở **mọi** buổi |
-| **Bốc thăm lại mỗi buổi** | Mỗi buổi xáo lại thứ tự từ chính bộ số đã khoá, nên may rủi san đều |
-| **Bốc thăm có bù** | Em chưa có CLB nào được xét trước ở buổi sau |
+Lý do bằng một câu: nếu dùng chung một bộ số cho cả tuần thì em rút phải số
+xấu sẽ đứng cuối ở **mọi** buổi — may rủi cộng dồn lên đúng một em. Xáo lại
+mỗi buổi thì may rủi san đều. Đo trên dữ liệu mà bốc thăm quyết định, cách này
+cứu **1,2 tới 79,0 em trên 200**, tuỳ mức chật.
 
-> ⚠️ **Cách thứ ba có bẫy.** Nó làm ưu tiên buổi sau phụ thuộc kết quả buổi
-> trước, nên một em có thể cố ý bỏ trống buổi đầu để giành ưu tiên buổi sau.
-> Hai cách đầu không có chỗ nào để làm thế.
+> **Trường chỉ tổ chức một buổi thì không đổi gì.** Một buổi thì không có gì
+> để san đều, nên phần mềm dùng thẳng bộ số đã khoá — kết quả y hệt các bản
+> trước.
+>
+> **Trường đã chạy nhiều buổi bằng bản cũ** (bản còn cho chọn cách bốc thăm)
+> thì lần chạy tới **sẽ ra kết quả khác**. Bộ số đã khoá không đổi, nhưng thứ
+> tự trong từng buổi thì đổi. Đã công bố kết quả rồi thì cân nhắc trước khi
+> chạy lại.
 
-Chưa biết chọn cách nào thì bấm **So sánh ba cách trên dữ liệu này**: phần mềm
-chạy thử cả ba ngay trên dữ liệu của trường và hiện bảng đối chiếu. Đây chỉ là
-xem trước — **không ghi kết quả, không thêm dòng nhật ký, không đụng số bốc
-thăm của ai**.
+### Thứ tự bốc thăm của từng buổi đọc ở đâu
+
+Thẻ **Kết quả**, bảng **Số bốc thăm theo buổi**: mỗi em một dòng, mỗi buổi một
+cột. Nút xuất kết quả tạo thêm `..._so_boc_tham_theo_buoi.csv` dán bảng được.
+
+Đây là thứ để trả lời câu phụ huynh sẽ hỏi: *"vì sao con tôi thứ Ba đứng thứ 30
+mà thứ Sáu đứng thứ 120?"*
+
+**Và nó không làm mất tính minh bạch.** Trường vẫn chỉ công bố **một** thứ: bộ
+số đã khoá cộng với con số gieo trong ô `seed`. Thứ tự từng buổi suy ra từ hai
+thứ đó theo một quy tắc cố định, nên ai tính lại cũng phải ra đúng bảng ấy —
+không có bước nào phần mềm tự bốc thêm.
 
 ### Kết quả đọc ở đâu
 

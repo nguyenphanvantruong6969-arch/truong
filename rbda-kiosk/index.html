@@ -107,39 +107,6 @@
         <div id="healthList" class="health-list"></div>
       </div>
 
-      <div class="panel" id="bocThamPanel" hidden>
-        <div class="panel-head">
-          <h2 data-i18n="boc_tham_title">Cách bốc thăm qua các buổi</h2>
-          <div class="panel-actions">
-            <button class="btn btn-secondary" id="btnSoSanhBocTham" data-i18n="btn_so_sanh_boc_tham">So sánh ba cách trên dữ liệu này</button>
-          </div>
-        </div>
-        <p class="hint-text" data-i18n="boc_tham_desc">Chỉ có ý nghĩa khi trường tổ chức nhiều buổi.</p>
-
-        <div class="boc-tham-list" id="bocThamList"></div>
-        <div class="canh-bao-do" id="bocThamCanhBao" hidden data-i18n="boc_tham_canh_bao_co_bu"></div>
-
-        <div id="soSanhBox" hidden>
-          <h3 class="sub-head" data-i18n="so_sanh_title">Ba cách bốc thăm cho kết quả gì</h3>
-          <p class="hint-text" data-i18n="so_sanh_desc">Chạy thử cả ba cách ngay trên dữ liệu đang có.</p>
-          <div class="scroll-x">
-            <table class="data-table">
-              <thead><tr>
-                <th data-i18n="th_cach_boc_tham">Cách bốc thăm</th>
-                <th class="num" data-i18n="th_trang_tay">Trắng tay cả tuần</th>
-                <th class="num" data-i18n="th_tb_clb">CLB trung bình mỗi em</th>
-                <th class="num" data-i18n="th_do_lech">Độ lệch</th>
-                <th class="num" data-i18n="th_hang_tb">Hạng nguyện vọng TB</th>
-                <th class="num" data-i18n="th_pha_vo">Cặp phá vỡ</th>
-                <th class="num" data-i18n="th_o_khac">Ô xếp khác</th>
-              </tr></thead>
-              <tbody id="soSanhBody"></tbody>
-            </table>
-          </div>
-          <p class="hint-text" id="soSanhCachDoc" data-i18n="so_sanh_cach_doc"></p>
-        </div>
-      </div>
-
       <div class="panel">
         <div class="panel-head">
           <h2 data-i18n="steps_panel_title">Các bước xử lý</h2>
@@ -263,6 +230,24 @@
             <tbody id="tkbBody"></tbody>
           </table>
         </div>
+      </div>
+
+      <div class="panel" id="thamPanel" hidden>
+        <div class="panel-head">
+          <h2 data-i18n="tham_title">Số bốc thăm theo buổi</h2>
+          <div class="panel-actions">
+            <input type="text" id="thamSearch" class="text-input" data-i18n-placeholder="placeholder_results_search" placeholder="Tìm theo mã hoặc tên học sinh…">
+          </div>
+        </div>
+        <p class="hint-text" data-i18n="tham_desc">Mỗi buổi một thứ tự riêng, suy ra từ bộ số đã khoá.</p>
+        <div class="canh-bao-vang" id="thamCachCu" hidden data-i18n="tham_cach_cu"></div>
+        <div class="scroll-x">
+          <table class="data-table" id="thamTable">
+            <thead><tr id="thamHead"></tr></thead>
+            <tbody id="thamBody"></tbody>
+          </table>
+        </div>
+        <p class="hint-text" data-i18n="tham_tai_lap">Cùng bộ số đã khoá và cùng hạt giống thì ai tính lại cũng ra đúng bảng này.</p>
       </div>
 
       <div class="panel">

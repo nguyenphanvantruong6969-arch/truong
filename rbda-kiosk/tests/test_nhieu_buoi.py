@@ -18,8 +18,9 @@ TestBaCachBocTham          ba cách cho kết quả KHÁC nhau, và cách nào c
 TestDiTru                  cơ sở dữ liệu lược đồ cũ mở được, không mất gì
 TestNhapDuLieu             cột `buoi`, bộ cột nguyện vọng theo buổi, và hai
                            phép soát cảnh báo
-TestSoSanhKhongGhiGi       hàm xem thử không được ghi vào cơ sở dữ liệu
+TestMotThietKeDuyNhat      phần mềm chỉ chạy `stb_ngay`, không mở lại lựa chọn
 TestChayDayDu              đường chạy đầy đủ qua API, xuất thời khoá biểu
+TestSoBocThamTheoBuoi      bảng thứ tự từng buổi phải đúng tới từng ô
 
 ĐÃ THỬ LÀM HỎNG ĐỂ XEM TEST CÓ BẮT ĐƯỢC KHÔNG
 ---------------------------------------------
@@ -28,6 +29,8 @@ TestChayDayDu              đường chạy đầy đủ qua API, xuất thời 
 | Bỏ lọc theo buổi trong `cat_du_lieu_theo_buoi` | **2 test đỏ** ở `TestRangBuocBuoi` |
 | Cài `stb_ngay` thành `stb_tuan` (bỏ nhánh hoán vị) | **1 test đỏ** ở `TestBaCachBocTham` |
 | Dùng `hash()` thay `zlib.crc32` trong `_seed_cua_buoi` | **1 test đỏ** — đúng test dựng riêng cho chuyện đó |
+| Thêm lại tham số `che_do_boc_tham` vào `api.run_pipeline` | **1 test đỏ** ở `TestMotThietKeDuyNhat` |
+| Đổi mặc định ngược về `stb_tuan` | **4 test đỏ** ở ba lớp khác nhau |
 
 Hai chuyện học được khi làm phép thử này, cả hai đều đã sửa:
 
@@ -45,8 +48,15 @@ chuỗi bị ngẫu nhiên hoá theo từng tiến trình, nên mọi test trong
 trình đều thấy cùng một giá trị và đều xanh. Chỉ phép so giữa HAI tiến
 trình mới bắt được — đó là lý do test ấy phải gọi `subprocess` và ép
 `PYTHONHASHSEED` khác nhau.
+
+**Phép phá thứ tư phải soát CHỮ KÝ hàm, không soát hành vi.** Ai đó thêm
+lại tham số `che_do_boc_tham` với mặc định `'stb_ngay'` sẽ qua được mọi
+test hành vi — kết quả vẫn đúng — trong khi giao diện hoặc một lời gọi
+khác đã có thể truyền `'stb_co_bu'` vào. Cái phải chặn là sự tồn tại của
+lựa chọn, nên test phải nhìn vào `inspect.signature`.
 """
 
+import inspect
 import json
 import os
 import shutil
@@ -134,9 +144,12 @@ class TestTrungKhit:
         for seed in range(1, 21):
             stb = loi.generate_stb_lottery(sorted(students), seed)
             cu = loi.run_rbda(students, clubs, scores, app, prefs, stb, elig)
+            # KHÔNG truyền chế độ: phải đi qua đúng MẶC ĐỊNH mà phần mềm
+            # dùng. Ghim cứng 'stb_tuan' ở đây thì test vẫn xanh sau một
+            # lần đổi mặc định làm hỏng đường chạy thật — mà đây là test
+            # giữ hiệu lực cho mọi con số trong NGHIEN_CUU_TOI_UU.md.
             moi = loi.run_rbda_nhieu_buoi(
-                students, clubs, scores, app, prefs, stb, elig,
-                che_do_boc_tham="stb_tuan", seed=seed,
+                students, clubs, scores, app, prefs, stb, elig, seed=seed,
             )
             assert moi.ds_buoi == [loi.BUOI_MAC_DINH]
             gop = {
@@ -180,9 +193,40 @@ class TestTrungKhit:
         }
         assert kq["stb_tuan"] == kq["stb_ngay"] == kq["stb_co_bu"]
 
+    @pytest.mark.parametrize("ten_bo", ["vi_du_huong_dan", "bo_sach"])
+    def test_duong_api_mot_buoi_van_trung_khit(self, tmp_path, ten_bo):
+        """Trùng khít phải đúng trên ĐƯỜNG THẬT, không chỉ ở tầng thuật toán.
 
-# ---------------------------------------------------------------------------
-# 2 — RÀNG BUỘC CỦA BÀI TOÁN NHIỀU BUỔI
+        `api.run_pipeline` mới là thứ trường bấm. Nó không còn nhận tham số
+        chế độ, nên test này là chỗ duy nhất canh được rằng cái mặc định nó
+        dùng vẫn cho đúng kết quả của bản trước khi có tính năng nhiều buổi.
+        """
+        from do_anh_huong_seed import BO_DU_LIEU, nap_bo
+
+        thu_muc = str(tmp_path / ten_bo)
+        os.makedirs(thu_muc, exist_ok=True)
+        duong = dict(
+            (ten.strip().split()[0], files) for ten, files in BO_DU_LIEU
+        )[ten_bo]
+        db = nap_bo(thu_muc, duong)
+
+        from api import PipelineAPI
+
+        api = PipelineAPI(db, thu_muc_xuat=thu_muc)
+        assert api.run_pipeline(seed=42)["ok"]
+
+        students, clubs, scores, app, prefs, stb = loi.load_from_sqlite(db)
+        elig = loi.default_reserve_eligible_fn(students, clubs)
+        cu = loi.run_rbda(students, clubs, scores, app, prefs, stb, elig)
+
+        conn = sqlite3.connect(db)
+        try:
+            rows = conn.execute(
+                "SELECT student_id, buoi, club_id FROM match_results").fetchall()
+        finally:
+            conn.close()
+        assert {b for _, b, _ in rows} == {loi.BUOI_MAC_DINH}
+        assert {sid: cid for sid, _, cid in rows} == dict(cu.assignment)
 # ---------------------------------------------------------------------------
 
 class TestRangBuocBuoi:
@@ -532,10 +576,11 @@ class TestNhapDuLieu:
 
 
 # ---------------------------------------------------------------------------
-# 6 — XEM THỬ KHÔNG ĐƯỢC GHI GÌ
+# 6 — MỘT THIẾT KẾ BỐC THĂM DUY NHẤT
 # ---------------------------------------------------------------------------
 
 def _chup_csdl(duong):
+    """Ảnh chụp những thứ một hàm CHỈ ĐỌC không được phép làm đổi."""
     conn = sqlite3.connect(duong)
     try:
         return (
@@ -550,36 +595,54 @@ def _chup_csdl(duong):
         conn.close()
 
 
-class TestSoSanhKhongGhiGi:
-    """`so_sanh_boc_tham` là nút "xem thử". Lỡ ghi xuống cơ sở dữ liệu thì
-    nó vừa đổi kết quả đã công bố, vừa để lại một dòng nhật ký trông y hệt
-    một lần chạy thật — hỏng cả kết quả lẫn dấu vết kiểm toán."""
+class TestMotThietKeDuyNhat:
+    """Phần mềm chạy DUY NHẤT `stb_ngay` — không còn bộ chọn, không còn
+    đường nào từ api.py tới `stb_tuan` hay `stb_co_bu`.
 
-    def test_khong_doi_gi_trong_csdl(self, api_nhieu_buoi):
+    Căn cứ của quyết định là TN7 (`du_lieu_test/do_boc_tham.py`): `stb_ngay`
+    không thua ở ô nào đã đo và hơn hẳn ở mọi vùng bốc thăm thật sự quyết
+    định, còn `stb_co_bu` mở kênh khai gian có thật (113/300 em).
+
+    Nhóm test này canh đúng một việc: không ai lặng lẽ mở lại lựa chọn đó.
+    Thêm lại tham số `che_do_boc_tham` vào `run_pipeline` là test đầu tiên
+    ĐỎ — đã thử thật, xem docstring đầu tệp.
+    """
+
+    def test_run_pipeline_khong_nhan_tham_so_che_do(self):
+        """Chữ ký hàm là chỗ duy nhất chặn được việc mở lại lựa chọn.
+
+        Kiểm hành vi thì không đủ: ai đó thêm tham số với mặc định
+        'stb_ngay' sẽ qua được mọi test hành vi, trong khi giao diện hay
+        một lời gọi khác đã có thể truyền 'stb_co_bu' vào.
+        """
+        from api import PipelineAPI
+
+        ts = list(inspect.signature(PipelineAPI.run_pipeline).parameters)
+        assert ts == ["self", "seed", "force_redraw_stb"], ts
+
+    def test_khong_con_ham_so_sanh_boc_tham(self):
+        """Bảng đối chiếu ba cách sinh ra để giúp CHỌN. Không còn gì để chọn
+        thì nó chỉ làm người vận hành phân vân về một việc đã quyết."""
+        from api import PipelineAPI
+
+        assert not hasattr(PipelineAPI, "so_sanh_boc_tham")
+
+    def test_chay_mac_dinh_thi_ghi_dung_stb_ngay(self, api_nhieu_buoi):
         api_nhieu_buoi.run_pipeline(seed=42)
-        truoc = _chup_csdl(api_nhieu_buoi.db_path)
-        kq = api_nhieu_buoi.so_sanh_boc_tham(seed=7)
-        assert kq["ok"], kq
-        assert _chup_csdl(api_nhieu_buoi.db_path) == truoc
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            assert conn.execute(
+                "SELECT che_do_boc_tham FROM run_meta WHERE id=1"
+            ).fetchone()[0] == "stb_ngay"
+        finally:
+            conn.close()
 
-    def test_chay_duoc_ngay_ca_khi_chua_bao_gio_chay_phan_bo(self, api_nhieu_buoi):
-        """Xem thử TRƯỚC khi chạy thật mới là lúc nó có ích nhất — mà lúc đó
-        số bốc thăm còn chưa được vẽ."""
-        truoc = _chup_csdl(api_nhieu_buoi.db_path)
-        kq = api_nhieu_buoi.so_sanh_boc_tham(seed=42)
-        assert kq["ok"], kq
-        assert len(kq["data"]["bang"]) == len(loi.CHE_DO_BOC_THAM)
-        assert _chup_csdl(api_nhieu_buoi.db_path) == truoc
-
-    def test_bang_co_du_ba_cach_va_cot_khac_moc(self, api_nhieu_buoi):
-        api_nhieu_buoi.run_pipeline(seed=42)
-        d = api_nhieu_buoi.so_sanh_boc_tham(seed=42)["data"]
-        assert [b["che_do"] for b in d["bang"]] == list(loi.CHE_DO_BOC_THAM)
-        assert d["bang"][0]["so_o_khac_moc"] == 0          # chính nó là mốc
-        # Ít nhất một cách khác phải lệch khỏi mốc, nếu không thì bảng đối
-        # chiếu không đối chiếu được gì.
-        assert any(b["so_o_khac_moc"] > 0 for b in d["bang"][1:])
-        assert all(b["cap_pha_vo"] == 0 for b in d["bang"])
+    def test_ba_che_do_van_con_trong_thuat_toan_de_TN7_do_duoc(self):
+        """Xoá `stb_tuan`/`stb_co_bu` khỏi thuật toán thì `do_boc_tham.py`
+        không chạy được nữa, và mọi con số TN7 trong NGHIEN_CUU_TOI_UU.md
+        mất khả năng tái lập — chúng là DỤNG CỤ ĐO, không phải lựa chọn."""
+        assert set(loi.CHE_DO_BOC_THAM) == {"stb_tuan", "stb_ngay", "stb_co_bu"}
+        assert loi.CHE_DO_BOC_THAM_MAC_DINH == "stb_ngay"
 
 
 # ---------------------------------------------------------------------------
@@ -605,8 +668,13 @@ class TestChayDayDu:
 
     def test_ghi_lai_cach_boc_tham_da_dung(self, api_nhieu_buoi):
         """Không ghi lại thì sau này không truy được kết quả cũ chạy bằng
-        cách nào — mà ba cách cho kết quả khác nhau."""
-        api_nhieu_buoi.run_pipeline(seed=42, che_do_boc_tham="stb_ngay")
+        cách nào — mà ba cách cho kết quả khác nhau.
+
+        Cột này vẫn phải ghi dù phần mềm chỉ còn một cách: một cơ sở dữ liệu
+        có thể chứa cả dòng cũ ghi 'stb_tuan' lẫn dòng mới ghi 'stb_ngay',
+        và `get_so_boc_tham_theo_buoi` đọc chính cột này để dựng lại đúng
+        thứ tự mà lần chạy đó đã dùng."""
+        api_nhieu_buoi.run_pipeline(seed=42)
         conn = sqlite3.connect(api_nhieu_buoi.db_path)
         try:
             assert conn.execute(
@@ -632,7 +700,109 @@ class TestChayDayDu:
             if t["tong_cho"]:
                 assert t["ti_le_choi"] == round(t["so_hoc_sinh"] / t["tong_cho"], 2)
 
-    def test_che_do_la_bi_tu_choi(self, api_nhieu_buoi):
-        kq = api_nhieu_buoi.run_pipeline(seed=42, che_do_boc_tham="lung_tung")
-        assert not kq["ok"]
-        assert kq["errors"][0]["code"] == "che_do_boc_tham_khong_hop_le"
+
+# ---------------------------------------------------------------------------
+# 8 — SỐ BỐC THĂM THEO BUỔI: THỨ TRƯỜNG PHẢI GIẢI THÍCH ĐƯỢC
+# ---------------------------------------------------------------------------
+
+class TestSoBocThamTheoBuoi:
+    """Phần mềm xáo lại thứ tự ở mỗi buổi, nên sẽ có phụ huynh hỏi *"vì sao
+    con tôi thứ Ba đứng thứ 30 mà thứ Sáu đứng thứ 120?"*. Bảng này là câu
+    trả lời, và nó phải ĐÚNG tới từng ô — một bảng gần đúng còn tệ hơn không
+    có bảng, vì nó trông như bằng chứng."""
+
+    def test_khop_tung_o_voi_lan_chay_that(self, api_nhieu_buoi):
+        api_nhieu_buoi.run_pipeline(seed=42)
+        d = api_nhieu_buoi.get_so_boc_tham_theo_buoi()["data"]
+
+        st, cl, sc, ap, pr, stb = loi.load_from_sqlite(api_nhieu_buoi.db_path)
+        kq = loi.run_rbda_nhieu_buoi(
+            st, cl, sc, ap, pr, stb,
+            loi.default_reserve_eligible_fn(st, cl), seed=42)
+
+        assert d["da_chay"] is True
+        assert d["hoc_sinh"], "bang rong"
+        for em in d["hoc_sinh"]:
+            for b in d["ds_buoi"]:
+                assert em["so"][b] == kq.stb_theo_buoi[b][em["student_id"]]
+
+    def test_moi_buoi_la_mot_hoan_vi_day_du(self, api_nhieu_buoi):
+        """Thứ tự trong một buổi phải là hoán vị của CẢ DÀN. Thiếu hay trùng
+        số nghĩa là có em không có chỗ đứng, hoặc hai em cùng một chỗ."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        d = api_nhieu_buoi.get_so_boc_tham_theo_buoi()["data"]
+        n = d["tong_hoc_sinh"]
+        for b in d["ds_buoi"]:
+            assert sorted(em["so"][b] for em in d["hoc_sinh"]) == list(range(n))
+
+    def test_tim_kiem_khong_doi_thu_hang(self, api_nhieu_buoi):
+        """Lọc rồi mới xáo thì con số hiện ra là thứ hạng trong NHÓM ĐÃ LỌC —
+        một con số không có thật, và trông y hệt thật."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        day_du = api_nhieu_buoi.get_so_boc_tham_theo_buoi()["data"]
+        mot_em = day_du["hoc_sinh"][7]
+        loc = api_nhieu_buoi.get_so_boc_tham_theo_buoi(
+            search=mot_em["student_id"])["data"]
+        assert len(loc["hoc_sinh"]) == 1
+        assert loc["hoc_sinh"][0]["so"] == mot_em["so"]
+        assert loc["tong_hoc_sinh"] == day_du["tong_hoc_sinh"]
+
+    def test_lan_chay_cu_bang_cach_cu_thi_hien_dung_cach_cu(self, api_nhieu_buoi):
+        """Cơ sở dữ liệu đã chạy bằng bản trước (ghi 'stb_tuan') mà hiển thị
+        theo cách mới thì bảng khoe một thứ tự CHƯA TỪNG được dùng để xếp ai
+        vào đâu."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            conn.execute("UPDATE run_meta SET che_do_boc_tham='stb_tuan' WHERE id=1")
+            conn.commit()
+        finally:
+            conn.close()
+
+        d = api_nhieu_buoi.get_so_boc_tham_theo_buoi()["data"]
+        assert d["cach_cu"] is True
+        assert d["che_do"] == "stb_tuan"
+        # Một bộ số cho cả tuần -> mọi cột của một em phải trùng nhau.
+        for em in d["hoc_sinh"][:20]:
+            assert len(set(em["so"].values())) == 1
+
+    def test_chua_chay_lan_nao_thi_bang_rong(self, api_nhieu_buoi):
+        d = api_nhieu_buoi.get_so_boc_tham_theo_buoi()["data"]
+        assert d["da_chay"] is False
+        assert d["hoc_sinh"] == []
+
+    def test_chi_doc_khong_ghi_gi(self, api_nhieu_buoi):
+        """Hàm này dựng lại thứ tự bằng cách TÍNH LẠI. Lỡ ghi xuống cơ sở dữ
+        liệu thì nó vừa đổi kết quả đã công bố, vừa để lại dấu vết trông như
+        một lần chạy thật — mà nó chỉ được gọi để xem."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        truoc = _chup_csdl(api_nhieu_buoi.db_path)
+        assert api_nhieu_buoi.get_so_boc_tham_theo_buoi()["ok"]
+        assert api_nhieu_buoi.get_so_boc_tham_theo_buoi(search="HS01")["ok"]
+        assert _chup_csdl(api_nhieu_buoi.db_path) == truoc
+
+    def test_xuat_them_tep_so_boc_tham(self, api_nhieu_buoi):
+        api_nhieu_buoi.run_pipeline(seed=42)
+        xuat = api_nhieu_buoi.export_csv()["data"]
+        duong = xuat["so_boc_tham_path"]
+        assert duong and os.path.exists(duong)
+        assert xuat["n_so_boc_tham_rows"] == 160
+        with open(duong, encoding="utf-8-sig") as f:
+            dong = f.read().splitlines()
+        assert dong[0].startswith("Mã học sinh,Họ tên,thu_2")
+        assert len(dong) == 161                       # 1 dòng tiêu đề + 160 em
+
+    def test_mot_buoi_thi_khong_xuat_tep_do(self, tmp_path):
+        """Một buổi thì bảng này không nói thêm điều gì so với bộ số đã khoá."""
+        from api import PipelineAPI
+
+        api = PipelineAPI(str(tmp_path / "app.db"), thu_muc_xuat=str(tmp_path))
+        for ten in ("VIDU_01_danh_sach_CLB.csv", "VIDU_02_chon_CLB_muon_thi.csv",
+                    "VIDU_03_xep_hang_nguyen_vong.csv"):
+            duong = os.path.join(GOC, "du_lieu_test", "vi_du_huong_dan", ten)
+            with open(duong, encoding="utf-8-sig") as f:
+                assert api.import_csv_auto(f.read())["ok"]
+        api.run_pipeline(seed=42)
+        xuat = api.export_csv()["data"]
+        assert xuat["nhieu_buoi"] is False
+        assert xuat["so_boc_tham_path"] is None

@@ -241,7 +241,6 @@
     refreshStbLockLine();
     refreshSidebarStatus();
     loadHealthReport();
-    loadBocTham();
   }
 
   /* ---- Cảnh báo sức khoẻ dữ liệu (pre-flight) ---- */
@@ -461,7 +460,7 @@
     el("btnRun").disabled = true;
     el("btnValidate").disabled = true;
 
-    callApi("run_pipeline", seed, forceRedraw, cachBocThamDangChon).then((res) => {
+    callApi("run_pipeline", seed, forceRedraw).then((res) => {
       el("btnRun").disabled = false;
       el("btnValidate").disabled = false;
       const steps = (res.data && res.data.steps) || (res.errors && res.errors.steps) || [];
@@ -804,6 +803,7 @@
     loadMatchResults(el("resultsSearch") ? el("resultsSearch").value : "");
     loadDoPhu();
     loadThoiKhoaBieu(el("tkbSearch") ? el("tkbSearch").value : "");
+    loadSoBocTham(el("thamSearch") ? el("thamSearch").value : "");
   }
 
   function loadClubFillStats() {
@@ -928,8 +928,11 @@
         debounce((ev) => loadThoiKhoaBieu(ev.target.value), 250)
       );
     }
-    if (el("btnSoSanhBocTham")) {
-      el("btnSoSanhBocTham").addEventListener("click", soSanhBocTham);
+    if (el("thamSearch")) {
+      el("thamSearch").addEventListener(
+        "input",
+        debounce((ev) => loadSoBocTham(ev.target.value), 250)
+      );
     }
     el("btnExport").addEventListener("click", () => {
       /* Khong truyen ten file -> backend tu dat vao THU MUC TAI XUONG
@@ -1306,96 +1309,47 @@
     });
   }
 
-  /* ---- Chọn cách bốc thăm (thẻ Vận hành) ---- */
+  /* ---- Số bốc thăm theo buổi (thẻ Kết quả) ----
 
-  const CACH_BOC_THAM = [
-    { ma: "stb_tuan",  khoa: "boc_tham_stb_tuan" },
-    { ma: "stb_ngay",  khoa: "boc_tham_stb_ngay" },
-    { ma: "stb_co_bu", khoa: "boc_tham_stb_co_bu", canhBao: true },
-  ];
-  let cachBocThamDangChon = "stb_tuan";
+     Phần mềm xáo lại thứ tự ở MỖI buổi, nên sẽ có phụ huynh hỏi đúng câu
+     "vì sao con tôi thứ Ba đứng thứ 30 mà thứ Sáu đứng thứ 120". Bảng này
+     là câu trả lời — và nó không phá tính minh bạch: trường vẫn chỉ công bố
+     MỘT bộ số đã khoá cộng hạt giống, thứ tự từng buổi suy ra tất định từ
+     hai thứ đó nên ai cũng tính lại được. */
 
-  function loadBocTham() {
-    const panel = el("bocThamPanel");
+  function loadSoBocTham(search) {
+    const panel = el("thamPanel");
     if (!panel) return;
-    callApi("get_danh_sach_buoi").then((res) => {
-      /* Một buổi thì ba cách cho cùng kết quả — bộ chọn chỉ làm người
-         dùng phân vân về một lựa chọn không đổi được gì. */
-      if (!res.ok || !res.data.nhieu_buoi) {
+    callApi("get_so_boc_tham_theo_buoi", search || "").then((res) => {
+      /* Một buổi thì bảng này không nói thêm gì so với bộ số đã khoá; chưa
+         chạy lần nào thì chưa có hạt giống nào để suy ra thứ tự. */
+      if (!res.ok || !res.data.nhieu_buoi || !res.data.da_chay) {
         panel.hidden = true;
-        cachBocThamDangChon = "stb_tuan";
         return;
       }
       panel.hidden = false;
-      veBocTham();
-    });
-  }
+      const d = res.data;
 
-  function veBocTham() {
-    const box = el("bocThamList");
-    if (!box) return;
-    clear(box);
-    CACH_BOC_THAM.forEach((c) => {
-      const chon = c.ma === cachBocThamDangChon;
-      const item = document.createElement("label");
-      item.className =
-        "boc-tham-item" + (chon ? " is-chon" : "") + (c.canhBao ? " is-canh-bao" : "");
-      item.innerHTML =
-        `<input type="radio" name="cachBocTham" value="${esc(c.ma)}"${chon ? " checked" : ""}>` +
-        `<span><span class="boc-tham-ten">${esc(t(c.khoa))}</span>` +
-        `<span class="boc-tham-mo-ta">${esc(t(c.khoa + "_hint"))}</span></span>`;
-      item.querySelector("input").addEventListener("change", () => {
-        cachBocThamDangChon = c.ma;
-        veBocTham();
-      });
-      box.appendChild(item);
-    });
-    const canhBao = el("bocThamCanhBao");
-    if (canhBao) canhBao.hidden = cachBocThamDangChon !== "stb_co_bu";
-  }
+      const canhBao = el("thamCachCu");
+      if (canhBao) canhBao.hidden = !d.cach_cu;
 
-  function soSanhBocTham() {
-    const btn = el("btnSoSanhBocTham");
-    const box = el("soSanhBox");
-    if (!box) return;
-    if (btn) btn.disabled = true;
-    showToast(t("so_sanh_dang_chay"), "info");
+      const head = el("thamHead");
+      clear(head);
+      head.innerHTML =
+        `<th>${esc(t("th_student_id"))}</th><th>${esc(t("th_name"))}</th>` +
+        d.ds_buoi.map((b) => `<th class="num">${esc(nhanBuoi(b))}</th>`).join("");
 
-    const seed = parseInt(el("seedInput").value, 10) || 42;
-    callApi("so_sanh_boc_tham", seed).then((res) => {
-      if (btn) btn.disabled = false;
-      if (!res.ok) {
-        showToast(trErrs(res.errors).join("; "), "error");
-        return;
-      }
-      box.hidden = false;
-      const body = el("soSanhBody");
+      const body = el("thamBody");
       clear(body);
-
-      const ten = {
-        stb_tuan: t("boc_tham_stb_tuan"),
-        stb_ngay: t("boc_tham_stb_ngay"),
-        stb_co_bu: t("boc_tham_stb_co_bu"),
-      };
-      res.data.bang.forEach((r, i) => {
+      d.hoc_sinh.forEach((em) => {
         const tr = document.createElement("tr");
-        if (i === 0) tr.className = "la-moc";
-        const oKhac = i === 0
-          ? `<span class="hint-text">${esc(t("so_sanh_moc_label"))}</span>`
-          : esc(r.so_o_khac_moc);
         tr.innerHTML =
-          `<td>${esc(ten[r.che_do] || r.che_do)}</td>` +
-          `<td class="num">${esc(r.so_em_trang_tay)}</td>` +
-          `<td class="num">${esc(r.trung_binh_clb)}</td>` +
-          `<td class="num">${esc(r.do_lech_chuan)}</td>` +
-          `<td class="num">${esc(r.thu_hang_tb === null ? "—" : r.thu_hang_tb)}</td>` +
-          `<td class="num">${esc(r.cap_pha_vo)}</td>` +
-          `<td class="num">${oKhac}</td>`;
+          `<td>${esc(em.student_id)}</td><td>${esc(em.name || "")}</td>` +
+          d.ds_buoi
+            .map((b) => `<td class="num">${esc(em.so[b])}</td>`)
+            .join("");
         body.appendChild(tr);
       });
-      el("soSanhCachDoc").textContent = res.data.nhieu_buoi
-        ? t("so_sanh_cach_doc")
-        : t("so_sanh_mot_buoi");
     });
   }
 

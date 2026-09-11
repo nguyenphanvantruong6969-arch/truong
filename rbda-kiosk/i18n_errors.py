@@ -245,10 +245,6 @@ MESSAGES = {
         "vi": "Có {n} câu lạc bộ chưa khai buổi sinh hoạt trong khi các câu lạc bộ khác đã khai: {club_ids}. Những câu lạc bộ này sẽ bị xếp chung một buổi, nghĩa là học sinh chỉ vào được một trong số chúng. Hãy khai buổi cho tất cả, hoặc bỏ trống cột buổi ở tất cả.",
         "en": "{n} clubs have no session while others do: {club_ids}. Those clubs will all share one session, so a student can only join one of them. Either set a session for every club, or leave the session column empty for all of them.",
     },
-    "che_do_boc_tham_khong_hop_le": {
-        "vi": "Cách bốc thăm '{che_do}' không hợp lệ. Chỉ nhận: bốc thăm một lần cho cả tuần, bốc thăm lại mỗi buổi, hoặc bốc thăm có bù.",
-        "en": "Lottery design '{che_do}' is not valid. Accepted values: one draw for the week, a fresh draw each session, or a compensating draw.",
-    },
     "nguyen_vong_lech_buoi": {
         "vi": "Dòng {line}: học sinh {student_id} xếp câu lạc bộ {club_id} vào cột của buổi {buoi_cot}, nhưng câu lạc bộ đó sinh hoạt buổi {buoi_that}. Nguyện vọng này bị bỏ qua.",
         "en": "Row {line}: student {student_id} ranked {club_id} under the {buoi_cot} column, but that club meets on {buoi_that}. This preference was skipped.",

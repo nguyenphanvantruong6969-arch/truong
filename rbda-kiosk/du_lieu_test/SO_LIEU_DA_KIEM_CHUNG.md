@@ -384,9 +384,19 @@ về thống kê, gần như không phân biệt được trên thực tế.
    buổi trước để lên trước ở buổi sau), nhưng vẫn đủ để dữ liệu nguyện vọng
    thu về không còn là nguyện vọng thật.
 
-Mặc định của phần mềm hiện là **A1**, và tab **01 Vận hành** có sẵn bảng đối
-chiếu chạy cả ba thiết kế trên dữ liệu thật của trường mà không ghi gì vào cơ
-sở dữ liệu.
+**Đã chốt theo bảng đo này: phần mềm chạy duy nhất A2.** Không còn bộ chọn,
+không còn bảng đối chiếu trên giao diện, và `api.run_pipeline` không còn nhận
+tham số chế độ — có test canh chữ ký hàm đó. Một buổi thì A2 cho kết quả y hệt
+A1, nên không con số nào ở các mục trên phải đo lại.
+
+A1 và A3 vẫn còn trong `rbda_priority_pipeline.py` **để TN7 đối chứng được** —
+xoá chúng đi thì `do_boc_tham.py` không chạy lại được và mọi số ở mục này mất
+khả năng tái lập.
+
+Thứ tự bốc thăm của từng buổi đọc ở thẻ **02 Kết quả**, bảng *Số bốc thăm theo
+buổi*, và ở tệp `..._so_boc_tham_theo_buoi.csv`. Trường vẫn chỉ công bố hai
+thứ như trước — bộ số đã khoá và `seed` — vì thứ tự từng buổi là hàm tất định
+của hai thứ đó.
 
 ## 4. Kịch bản nhỏ kiểm được bằng tay
 

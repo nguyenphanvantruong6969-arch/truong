@@ -453,8 +453,28 @@ def verify_stability(
 #
 # Bỏ BẤT KỲ điều kiện nào ở trên là mất hệ quả đó — xem KE_HOACH_NHIEU_BUOI.md.
 
+# BA THIẾT KẾ BỐC THĂM — MỘT ĐỂ DÙNG, HAI ĐỂ ĐO
+#
+# Phần mềm chạy DUY NHẤT `stb_ngay`. Không có bộ chọn trên giao diện, và
+# `api.run_pipeline` không nhận tham số chế độ — có test canh chữ ký hàm đó.
+#
+# `stb_tuan` và `stb_co_bu` còn nằm đây vì chúng là ĐỐI CHỨNG của TN7
+# (`du_lieu_test/do_boc_tham.py`): không có chúng thì không chạy lại được phép
+# đo đã dùng để chọn `stb_ngay`, và mọi con số TN7 trong NGHIEN_CUU_TOI_UU.md
+# mất khả năng tái lập. Chúng là DỤNG CỤ ĐO, không phải lựa chọn sản phẩm.
+#
+# Căn cứ chọn `stb_ngay` (TN7, 200 seed, ghép cặp, khoảng tin cậy bootstrap):
+#   * không thua `stb_tuan` ở ô nào đã đo, và hơn hẳn ở mọi vùng mà bốc thăm
+#     thật sự quyết định — cứu 1,2 tới 79,0 em trên 200;
+#   * một buổi thì nó NGẮN MẠCH về đúng bộ số đã khoá, nên kết quả y hệt phần
+#     mềm trước khi có tính năng nhiều buổi (TestTrungKhit);
+#   * `stb_co_bu` bị loại vì mở kênh khai gian có thật: 113/300 em giấu bớt
+#     buổi thì có lợi, trong khi hai thiết kế kia đều 0/300 (TN7d).
+#
+# Thêm lại một đường cho api.py chạy `stb_tuan` hay `stb_co_bu` là đi ngược
+# quyết định trên. Muốn đổi thì đo lại trước, đừng đổi rồi đo sau.
 CHE_DO_BOC_THAM = ("stb_tuan", "stb_ngay", "stb_co_bu")
-CHE_DO_BOC_THAM_MAC_DINH = "stb_tuan"
+CHE_DO_BOC_THAM_MAC_DINH = "stb_ngay"
 
 
 def buoi_cua_club(clubs: dict[str, dict]) -> dict[str, str]:
@@ -533,16 +553,21 @@ def _seed_cua_buoi(seed: int, buoi: str) -> int:
 def sinh_stb_theo_buoi(
     stb_goc: dict[str, int], ds_buoi: list[str], seed: int, che_do: str,
 ) -> dict[str, dict[str, int]]:
-    """Bộ số bốc thăm cho từng buổi, theo một trong ba thiết kế.
+    """Bộ số bốc thăm cho từng buổi.
+
+    `stb_ngay` là thiết kế phần mềm DÙNG. Hai chế độ kia chỉ để TN7 đối
+    chứng, và để đọc lại trung thực một lần chạy cũ đã ghi trong nhật ký —
+    không có đường nào từ giao diện chọn chúng.
 
     Cả ba thiết kế đều là HÀM CỦA `stb_goc` — bộ số đã bốc và đã KHOÁ. Đó
     là điều kiện để cơ chế khoá bốc thăm còn nguyên ý nghĩa ở mọi chế độ:
     không chế độ nào tự bốc một bộ số mới ngoài tầm kiểm soát của `stb_lock`.
 
-      stb_tuan  — dùng thẳng `stb_goc` cho MỌI buổi. Em số xấu đứng cuối
-                  Tầng 2 ở mọi buổi, nên may rủi CỘNG DỒN.
-      stb_ngay  — hoán vị VỊ TRÍ trong dàn số, mỗi buổi một hoán vị dẫn
-                  xuất từ (seed, tên buổi). May rủi SAN ĐỀU qua các ngày.
+      stb_ngay  — ĐANG DÙNG. Hoán vị VỊ TRÍ trong dàn số, mỗi buổi một
+                  hoán vị dẫn xuất từ (seed, tên buổi). May rủi SAN ĐỀU
+                  qua các ngày.
+      stb_tuan  — đối chứng. Dùng thẳng `stb_goc` cho MỌI buổi, nên em số
+                  xấu đứng cuối Tầng 2 ở mọi buổi: may rủi CỘNG DỒN.
 
     `stb_co_bu` không sinh được ở đây vì nó cần biết kết cục của buổi
     trước — nó được dựng dần trong run_rbda_nhieu_buoi, cũng từ `stb_goc`.
@@ -598,6 +623,12 @@ def _stb_co_bu(stb_goc: dict[str, int], so_clb_da_co: dict[str, int]) -> dict[st
     cái kênh khai gian mà cả dự án được dựng lên để bịt: một em có thể cố ý
     bỏ trống buổi đầu để giành ưu tiên buổi sau. Chế độ này có mặt để ĐO,
     không phải để khuyến nghị. Xem KE_HOACH_NHIEU_BUOI.md mục 5.3.
+
+    ĐÃ ĐO VÀ ĐÃ BỊ LOẠI. TN7d dựng đúng kênh nói trên rồi đếm: 113/300 em
+    tìm được cách giấu bớt buổi có lợi dưới chế độ này, còn `stb_tuan` và
+    `stb_ngay` đều 0/300. Phần mềm không chạy nó nữa; hàm còn ở đây để
+    `du_lieu_test/do_boc_tham.py` chạy lại được phép đo ấy, và để đọc lại
+    một lần chạy cũ đã ghi chế độ này trong nhật ký.
     """
     thu_tu = sorted(stb_goc, key=lambda sid: (so_clb_da_co.get(sid, 0), stb_goc[sid]))
     return {sid: i for i, sid in enumerate(thu_tu)}
@@ -655,14 +686,19 @@ def run_rbda_nhieu_buoi(
 
     Dữ liệu chỉ có MỘT buổi (không CLB nào khai `buoi`) thì hàm này gọi
     run_rbda đúng một lần với đúng dữ liệu đó — kết quả TRÙNG KHÍT phần mềm
-    trước khi có tính năng nhiều buổi, miễn là che_do_boc_tham='stb_tuan'.
-    Có test canh điều đó trên ba bộ dữ liệu × 20 seed
+    trước khi có tính năng nhiều buổi, và trùng khít với BẤT KỲ chế độ nào
+    trong ba chế độ, nhờ nhánh ngắn mạch trong `sinh_stb_theo_buoi`. Chính
+    vì thế việc đổi mặc định sang 'stb_ngay' không làm sai một con số nào
+    trong NGHIEN_CUU_TOI_UU.md. Có test canh trên ba bộ dữ liệu × 20 seed
     (tests/test_nhieu_buoi.py::TestTrungKhit).
 
     Args:
         stb_lottery: bộ số bốc thăm ĐÃ KHOÁ, giống hệt tham số cùng tên của
             run_rbda. Cả ba thiết kế đều dẫn xuất từ bộ số này.
-        che_do_boc_tham: 'stb_tuan' | 'stb_ngay' | 'stb_co_bu'.
+        che_do_boc_tham: mặc định 'stb_ngay' — thiết kế DUY NHẤT phần mềm
+            chạy. 'stb_tuan' và 'stb_co_bu' chỉ dành cho bộ đo TN7 và cho
+            việc đọc lại một lần chạy cũ; `api.run_pipeline` không nhận
+            tham số này và có test canh chữ ký của nó.
         seed: chỉ dùng để dẫn xuất hoán vị cho 'stb_ngay'. Hai chế độ kia
             bỏ qua nó hoàn toàn.
     """

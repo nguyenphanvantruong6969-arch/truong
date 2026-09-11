@@ -229,11 +229,69 @@ python du_lieu_test/do_cau_hoi_boc_tham.py
 
 ---
 
+## Câu 4 — Nhiều buổi thì sao? Có phải bốc mấy lần không?
+
+Trường tổ chức nhiều buổi trong tuần thì phần mềm **xáo lại thứ tự ở mỗi
+buổi**. Nghe qua thì như bốc thăm nhiều lần, và câu hỏi đi kèm là câu đáng
+hỏi: *vậy có phải công bố năm bảng số thăm không, và ai kiểm được?*
+
+**Không. Vẫn chỉ bốc MỘT lần, và vẫn chỉ công bố MỘT thứ.**
+
+### Vì sao phải xáo lại
+
+Dùng chung một bộ số cho cả tuần thì em rút phải số xấu đứng cuối Tầng 2 ở
+**mọi** buổi. May rủi không tản ra mà **cộng dồn** lên đúng một em: rủi ở thứ
+Hai thì cũng rủi ở thứ Sáu, vì vẫn là con số ấy.
+
+Đo được (TN7, `NGHIEN_CUU_TOI_UU.md`): trên dữ liệu mà bốc thăm quyết định,
+xáo lại mỗi buổi cứu được **1,2 tới 79,0 em trên 200** khỏi cảnh trắng tay cả
+tuần, tuỳ mức chật. Nó **không tạo thêm chỗ** — số câu lạc bộ trung bình mỗi em
+gần như không đổi — nó chỉ đổi **ai** được chỗ: bớt cảnh vài em ôm nhiều câu
+lạc bộ còn nhiều em không có gì.
+
+### Vì sao vẫn kiểm được
+
+Thứ tự của từng buổi **không phải bốc mới**. Nó là hàm của đúng hai thứ:
+
+```
+thứ tự buổi d  =  f( bộ số ĐÃ KHOÁ ,  seed ,  tên buổi d )
+```
+
+Quy tắc `f` cố định, không có nguồn ngẫu nhiên nào khác chen vào, và nó dùng
+`zlib.crc32` chứ không dùng `hash()` của Python — `hash()` của chuỗi bị ngẫu
+nhiên hoá theo từng tiến trình, nên cùng dữ liệu cùng seed vẫn ra hai kết quả
+khác nhau ở hai lần mở máy. Đó đúng là loại lỗi không ai phát hiện ra cho tới
+khi có người đối chiếu hai lần chạy. Có test canh riêng chỗ này, và nó chạy
+phép so giữa **hai tiến trình** khác nhau.
+
+Hệ quả cho nhà trường:
+
+| | |
+|---|---|
+| Công bố mấy thứ? | **Hai**: bộ số đã khoá, và con số gieo (`seed`) |
+| Ai kiểm lại được? | Bất kỳ ai có hai thứ đó — thứ tự từng buổi phải ra đúng bảng của trường |
+| Bốc mấy lần? | **Một**. `stb_lock` vẫn khoá đúng một bộ số như trước |
+| Xem thứ tự từng buổi ở đâu? | Thẻ **Kết quả** → bảng **Số bốc thăm theo buổi**, và tệp `..._so_boc_tham_theo_buoi.csv` |
+
+### Còn cách "em chưa có câu lạc bộ nào thì được ưu tiên buổi sau"?
+
+Nghe công bằng, và **đã bị loại sau khi đo**. Nó làm ưu tiên buổi sau phụ thuộc
+**kết cục** buổi trước, mà kết cục lại phụ thuộc nguyện vọng đã khai — tức là
+mở đúng cái kênh khai gian mà cả phần mềm được dựng lên để bịt.
+
+Đo được: **113/300** em tìm được cách giấu bớt một buổi để có lợi dưới cách đó,
+trong khi hai cách kia đều **0/300**. Phần mềm không chạy nó.
+
+---
+
 ## Bảng tra nhanh
 
 | Câu hỏi | Trả lời | Số đo |
 |---|---|---|
 | Đổi seed, bốc thăm còn công bằng không? | Còn | Lệch tối đa **1,44%** / 10 000 lần bốc |
+| Nhiều buổi thì bốc mấy lần? | **Một** | Thứ tự từng buổi suy ra tất định từ bộ số đã khoá + seed |
+| Xáo lại mỗi buổi có đáng không? | Có | Cứu **1,2 → 79,0** em trên 200, tuỳ mức chật |
+| Cách "có bù" thì sao? | **Đã loại** | **113/300** em khai gian được; hai cách kia **0/300** |
 | Mã học sinh có kéo thứ hạng không? | Không | Tương quan **đổi dấu** qua 8 khối seed |
 | Bốc thăm có lật được kết quả của em điểm cao hơn không? | Không | **0/100** seed |
 | Đổi thứ tự nhập có ảnh hưởng không? | Không | **0/20** lần xáo |

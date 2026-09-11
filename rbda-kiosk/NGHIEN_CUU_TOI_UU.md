@@ -354,6 +354,12 @@ thăm dùng cho các buổi thì có ba cách dựng:
 Cả ba đều là **hàm của bộ số đã khoá**, nên cơ chế khoá bốc thăm còn nguyên ý
 nghĩa ở cả ba. Dữ liệu chỉ có một buổi thì cả ba cho **cùng một kết quả**.
 
+> **Phần mềm nay chỉ chạy A2, và bảng đo dưới đây là căn cứ.** Bộ chọn ba thiết
+> kế đã bỏ; `api.run_pipeline` không còn nhận tham số chế độ. A1 và A3 vẫn nằm
+> trong `rbda_priority_pipeline.py` để `do_boc_tham.py` đối chứng được — không
+> có chúng thì mọi con số ở mục này mất khả năng tái lập. Vì một buổi thì cả ba
+> trùng nhau, việc chốt A2 **không làm sai một con số nào ở TN1–TN6**.
+
 ### TN7a — Trên bộ dữ liệu 5 buổi, 200 seed, ghép cặp
 
 Mỗi seed: bốc **một** bộ số, chạy cả ba thiết kế trên đúng bộ số đó. Nên chênh

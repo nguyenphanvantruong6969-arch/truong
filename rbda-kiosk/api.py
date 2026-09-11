@@ -37,20 +37,18 @@ from rbda_priority_pipeline import (
     validate_data_integrity,
     generate_stb_lottery,
     chen_stb_cho_hoc_sinh_moi,
-    run_rbda,
     sanity_check_result,
     verify_stability,
     export_match_results,
     default_reserve_eligible_fn,
     connect_db,
     BUOI_MAC_DINH,
-    CHE_DO_BOC_THAM,
     CHE_DO_BOC_THAM_MAC_DINH,
     cac_dong_match_results,
     cat_du_lieu_theo_buoi,
     nhom_theo_buoi,
     run_rbda_nhieu_buoi,
-    verify_stability_tuan,
+    sinh_stb_theo_buoi,
 )
 from i18n_errors import err
 
@@ -612,8 +610,7 @@ class PipelineAPI:
                 pass
         return backup_path
 
-    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False,
-                     che_do_boc_tham: str = CHE_DO_BOC_THAM_MAC_DINH):
+    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
         """
         Nút 'Chạy pipeline' — chạy trọn 5 bước, trả về log từng bước
         để UI hiển thị lên stepper theo thời gian thực (từng bước một,
@@ -645,12 +642,21 @@ class PipelineAPI:
             công — CSV là sản phẩm phụ, lỗi ghi file không được phép
             khiến DB rơi vào trạng thái dở dang.
 
-        che_do_boc_tham: 'stb_tuan' (mặc định) | 'stb_ngay' | 'stb_co_bu'.
-        Chỉ có ý nghĩa khi trường khai nhiều buổi sinh hoạt; một buổi thì
-        cả ba cho cùng kết quả. Mặc định để 'stb_tuan' vì đó là thiết kế
-        DUY NHẤT cho kết quả y hệt bản trước khi có tính năng nhiều buổi —
-        nên không con số nào trong tài liệu nghiên cứu phải đo lại.
-        Muốn đổi thì xem bảng đối chiếu ở `so_sanh_boc_tham()` trước.
+        CÁCH BỐC THĂM KHÔNG PHẢI LỰA CHỌN, VÀ HÀM NÀY KHÔNG NHẬN NÓ.
+        Phần mềm chạy duy nhất `stb_ngay` — bốc lại thứ tự ở mỗi buổi, dẫn
+        xuất tất định từ bộ số ĐÃ KHOÁ cộng với `seed`. Căn cứ là TN7
+        (`du_lieu_test/do_boc_tham.py`, 200 seed, ghép cặp, khoảng tin cậy
+        bootstrap); hai thiết kế còn lại trong
+        `rbda_priority_pipeline.CHE_DO_BOC_THAM` là dụng cụ đo, không có
+        đường nào từ đây gọi tới chúng.
+
+        Thêm lại một tham số chế độ vào chữ ký hàm này là mở lại đúng cái
+        lựa chọn phép đo đã đóng — có test canh chữ ký
+        (tests/test_nhieu_buoi.py::TestMotThietKeDuyNhat).
+
+        Trường chỉ có MỘT buổi thì không đổi gì: `sinh_stb_theo_buoi` ngắn
+        mạch về đúng bộ số đã khoá, nên kết quả y hệt bản trước khi có tính
+        năng nhiều buổi.
         """
         steps_log = []
         conn = None
@@ -763,9 +769,6 @@ class PipelineAPI:
             # Chạy xong PHẢI qua hai chốt (sanity + ổn định) rồi mới được
             # ghi. Hỏng một trong hai là rollback toàn bộ giao dịch.
             steps_log.append({"step": "rbda_cascade", "status": "running"})
-            if che_do_boc_tham not in CHE_DO_BOC_THAM:
-                return _fail(err("che_do_boc_tham_khong_hop_le",
-                                 che_do=che_do_boc_tham))
             reserve_fn = default_reserve_eligible_fn(students, clubs)
             # Mot buoi hay nhieu buoi deu di qua DUNG mot duong nay: voi du
             # lieu mot buoi, run_rbda_nhieu_buoi goi run_rbda dung mot lan
@@ -774,7 +777,7 @@ class PipelineAPI:
             result = run_rbda_nhieu_buoi(
                 students, clubs, tested_scores, applicants, preferences,
                 stb_lottery, is_reserve_eligible_fn=reserve_fn,
-                che_do_boc_tham=che_do_boc_tham, seed=seed,
+                che_do_boc_tham=CHE_DO_BOC_THAM_MAC_DINH, seed=seed,
             )
             sanity_problems = []
             stability_problems = []
@@ -827,8 +830,18 @@ class PipelineAPI:
                 "n_total=excluded.n_total, che_do_boc_tham=excluded.che_do_boc_tham, "
                 "so_buoi=excluded.so_buoi",
                 (seed, run_at, result.rounds_run, n_matched, len(so_clb),
-                 che_do_boc_tham, len(result.ds_buoi)),
+                 result.che_do_boc_tham, len(result.ds_buoi)),
             )
+            # Ghi che_do_boc_tham lay tu chinh KET QUA chu khong tu hang so:
+            # cot nay la DAU VET KIEM TOAN, no phai noi dung cach ma lan chay
+            # nay da dung. Lay tu hang so thi hai thu troi khoi nhau ma khong
+            # co gi bao — va `get_so_boc_tham_theo_buoi` doc lai chinh cot nay
+            # de dung lai thu tu tung buoi, nen mot gia tri sai o day lam bang
+            # so boc tham hien ra mot thu tu chua bao gio duoc dung.
+            #
+            # Dong cu ghi 'stb_tuan' (chay bang ban truoc khi chot mot thiet ke)
+            # KHONG BAO GIO duoc sua lai.
+            #
             # run_history: KHONG BAO GIO ghi de — moi lan chay them 1 dong moi,
             # de nguoi dung luon xem lai duoc lich su chay pipeline (giai quyet #3).
             cur.execute(
@@ -837,7 +850,8 @@ class PipelineAPI:
                 " che_do_boc_tham, so_buoi) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (seed, run_at, result.rounds_run, n_matched, len(so_clb),
-                 1 if stb_redrawn else 0, che_do_boc_tham, len(result.ds_buoi)),
+                 1 if stb_redrawn else 0, result.che_do_boc_tham,
+                 len(result.ds_buoi)),
             )
 
             # Diem commit DUY NHAT cua toan bo pipeline: neu bat ky dong
@@ -2242,101 +2256,88 @@ class PipelineAPI:
         except Exception as e:
             return _fail(err("error_reading_results", detail=str(e)))
 
-    def so_sanh_boc_tham(self, seed: int = 42):
-        """Chạy KHAN cả ba cách bốc thăm trên dữ liệu hiện tại rồi so.
+    def get_so_boc_tham_theo_buoi(self, search: str = ""):
+        """Thứ tự bốc thăm của từng em ở TỪNG BUỔI.
 
-        KHÔNG GHI GÌ: không đụng `match_results`, không thêm dòng
-        `run_history`, không chạm `stb_lock`, không vẽ lại số bốc thăm của
-        ai. Toàn bộ diễn ra trong bộ nhớ. Có test canh điều đó
-        (tests/test_nhieu_buoi.py::TestSoSanhKhongGhiGi) — một hàm "xem
-        thử" mà lỡ ghi vào cơ sở dữ liệu thì nó vừa đổi kết quả đã công bố
-        vừa để lại dấu vết trông như một lần chạy thật.
+        VÌ SAO BẢNG NÀY PHẢI CÓ. Phần mềm xáo lại thứ tự ở mỗi buổi. Một
+        phụ huynh nhìn kết quả sẽ hỏi đúng câu: *"vì sao con tôi thứ Ba
+        đứng thứ 30 mà thứ Sáu đứng thứ 120?"*. Không trả lời được câu đó
+        thì cách bốc thăm này không dùng được ở trường, dù nó công bằng
+        hơn theo phép đo.
 
-        Dùng để trả lời bằng SỐ ĐO câu "nên dùng cách bốc thăm nào", thay
-        vì chọn theo cảm tính. Ba cách chỉ khác nhau khi trường có nhiều
-        buổi; một buổi thì cả ba cho cùng kết quả, và bảng này sẽ nói thế.
+        VÀ NÓ KHÔNG PHÁ TÍNH MINH BẠCH. Trường vẫn chỉ công bố MỘT thứ: bộ
+        số đã khoá, cộng với hạt giống. Thứ tự từng buổi là hàm TẤT ĐỊNH
+        của hai thứ đó (`sinh_stb_theo_buoi`, dẫn xuất bằng `zlib.crc32`
+        chứ không bằng `hash()`), nên ai cũng tính lại được và phải ra
+        đúng bảng này. Có test canh việc hai tiến trình khác nhau ra cùng
+        kết quả.
+
+        TÍNH LẠI, KHÔNG LƯU THÊM. Không có bảng mới trong cơ sở dữ liệu,
+        không phải di trú gì. Hàm dẫn xuất là tất định nên tính lại cho
+        đúng bộ số mà lần chạy đã dùng — lưu thêm một bản sao chỉ tạo ra
+        cơ hội cho hai bản trôi khỏi nhau.
+
+        DÙNG CHẾ ĐỘ ĐÃ GHI TRONG NHẬT KÝ, KHÔNG DÙNG CHẾ ĐỘ HIỆN TẠI. Một
+        cơ sở dữ liệu đã chạy bằng bản trước (ghi 'stb_tuan') mà hiển thị
+        theo cách mới thì bảng này khoe một thứ tự CHƯA TỪNG được dùng để
+        xếp ai vào đâu — sai, và sai theo kiểu không ai nhận ra. Đọc chế
+        độ từ `run_meta` thì bảng luôn trung thực với lần chạy có thật, và
+        khi lần chạy đó dùng một bộ số cho cả tuần thì các cột trùng nhau,
+        tự nó nói lên điều đó. Cờ `cach_cu` bật để giao diện nói rõ.
         """
         try:
-            students, clubs, tested_scores, applicants, preferences, _ = (
-                load_from_sqlite(self.db_path)
-            )
-            if not students or not clubs:
-                return _fail(err("no_data_to_run"))
+            with self._ket_noi_doc() as cur:
+                ds_buoi = self._ds_buoi(cur)
+                meta = cur.execute(
+                    "SELECT seed, che_do_boc_tham FROM run_meta WHERE id=1"
+                ).fetchone()
 
-            # Dung DUNG bo so da khoa neu co; chua khoa thi ve tam mot bo
-            # TRONG BO NHO de co cai ma so — khong ghi xuong CSDL.
-            stb = {sid: info.get("stb") for sid, info in students.items()}
-            if any(v is None for v in stb.values()):
-                stb = generate_stb_lottery(sorted(students), seed)
+                query = ("SELECT student_id, name, stb_number FROM students "
+                         "WHERE stb_number IS NOT NULL")
+                params = ()
+                if search:
+                    query += " AND (student_id LIKE ? OR name LIKE ?)"
+                    params = (f"%{search}%", f"%{search}%")
+                rows = cur.execute(
+                    query + " ORDER BY student_id", params).fetchall()
 
-            reserve_fn = default_reserve_eligible_fn(students, clubs)
-            ds_buoi = sorted({(c.get("buoi") or BUOI_MAC_DINH) for c in clubs.values()})
+                # Bo so PHAI lay TOAN BO hoc sinh, khong loc theo o tim kiem:
+                # thu tu trong mot buoi la thu hang trong CA DAN. Loc trong
+                # roi moi xao thi con so hien ra la thu hang trong nhom da
+                # loc — mot con so khong co that, va trong y het that.
+                tat_ca = dict(cur.execute(
+                    "SELECT student_id, stb_number FROM students "
+                    "WHERE stb_number IS NOT NULL").fetchall())
 
-            bang = []
-            moc_xep = None          # kết quả của cách đầu tiên, làm mốc so sánh
-            for che_do in CHE_DO_BOC_THAM:
-                kq = run_rbda_nhieu_buoi(
-                    students, clubs, tested_scores, applicants, preferences,
-                    stb, is_reserve_eligible_fn=reserve_fn,
-                    che_do_boc_tham=che_do, seed=seed,
-                )
-                so_clb = kq.so_clb_moi_em()
-                cac_gia_tri = list(so_clb.values())
-                pha_vo = sum(
-                    len(v) for v in verify_stability_tuan(
-                        kq, clubs, preferences, reserve_fn).values()
-                )
-                hang = [
-                    m.rank_in_student_pref[sid]
-                    for m in kq.per_buoi.values()
-                    for sid in m.rank_in_student_pref
-                ]
-                # Số ô (em, buổi) khác so với cách ĐẦU TIÊN trong danh sách.
-                #
-                # Cột này có mặt vì các cột tổng ở trên có thể gần như bằng
-                # nhau mà kết quả vẫn khác hẳn: đo trên bộ mẫu 5 buổi, ba
-                # cách cho số em trắng tay 38/38/37 — nhìn vào tưởng như
-                # nhau — trong khi có 21 ô xếp khác chỗ. Thiếu cột này thì
-                # người đọc kết luận "ba cách như nhau", và đó là kết luận
-                # sai: chúng khác ở CHỖ NÀO xếp ai, chỉ không khác ở TỔNG.
-                if moc_xep is None:
-                    moc_xep = kq.assignment
-                    so_o_khac = 0
-                else:
-                    so_o_khac = sum(
-                        1
-                        for sid in kq.assignment
-                        for b in kq.ds_buoi
-                        if kq.assignment[sid].get(b) != moc_xep.get(sid, {}).get(b)
-                    )
+            if meta is None or not tat_ca:
+                return _ok({"ds_buoi": ds_buoi, "hoc_sinh": [], "seed": None,
+                            "nhieu_buoi": len(ds_buoi) > 1, "da_chay": False,
+                            "cach_cu": False, "che_do": None})
 
-                bang.append({
-                    "che_do": che_do,
-                    "so_o_khac_moc": so_o_khac,
-                    "so_em_trang_tay": sum(1 for n in cac_gia_tri if n == 0),
-                    "trung_binh_clb": round(
-                        sum(cac_gia_tri) / len(cac_gia_tri), 3) if cac_gia_tri else 0,
-                    # Do lech chuan = "may rui deu hay lech". Day moi la cho
-                    # ba cach khac nhau: ky vong bang nhau, phuong sai thi khong.
-                    "do_lech_chuan": (
-                        round(statistics.pstdev(cac_gia_tri), 3)
-                        if len(cac_gia_tri) > 1 else 0
-                    ),
-                    "thu_hang_tb": round(sum(hang) / len(hang), 3) if hang else None,
-                    "cap_pha_vo": pha_vo,
-                    "so_em_du_clb": sum(1 for n in cac_gia_tri if n == len(ds_buoi)),
-                })
+            seed = meta["seed"]
+            che_do = meta["che_do_boc_tham"] or CHE_DO_BOC_THAM_MAC_DINH
+            theo_buoi = sinh_stb_theo_buoi(tat_ca, ds_buoi, seed, che_do)
 
+            hoc_sinh = [
+                {
+                    "student_id": r["student_id"],
+                    "name": r["name"],
+                    "so": {b: theo_buoi[b].get(r["student_id"]) for b in ds_buoi},
+                }
+                for r in rows
+            ]
             return _ok({
-                "seed": seed,
                 "ds_buoi": ds_buoi,
+                "hoc_sinh": hoc_sinh,
+                "tong_hoc_sinh": len(tat_ca),
+                "seed": seed,
+                "che_do": che_do,
+                "cach_cu": che_do != CHE_DO_BOC_THAM_MAC_DINH,
                 "nhieu_buoi": len(ds_buoi) > 1,
-                "tong_hoc_sinh": len(students),
-                "bang": bang,
+                "da_chay": True,
             })
         except Exception as e:
-            return _fail([err("error_running_pipeline", detail=str(e)),
-                          traceback.format_exc()])
+            return _fail(err("error_reading_results", detail=str(e)))
 
     # -----------------------------------------------------------------
     # XUẤT KẾT QUẢ
@@ -2520,6 +2521,8 @@ class PipelineAPI:
             # day la thu de doc.
             duong_tkb = None
             n_tkb = 0
+            duong_tham = None
+            n_tham = 0
             if nhieu_buoi:
                 theo_em: dict = {}
                 for r in rows:
@@ -2564,6 +2567,28 @@ class PipelineAPI:
                         ],
                     )
 
+                # ---- So boc tham tung buoi: TEP DE TRUONG DAN BANG ----
+                # Phan mem xao lai thu tu o moi buoi, nen se co phu huynh hoi
+                # "vi sao con toi thu Ba dung thu 30 ma thu Sau dung thu 120".
+                # Khong dua duoc tep nay ra thi cach boc tham do khong dung
+                # duoc o truong, du phep do noi no cong bang hon.
+                #
+                # Truong van chi cong bo MOT thu: bo so da khoa cong hat giong.
+                # Bang nay la ham TAT DINH cua hai thu do, ai cung tinh lai duoc.
+                kq_tham = self.get_so_boc_tham_theo_buoi()
+                if kq_tham["ok"] and kq_tham["data"]["da_chay"]:
+                    duong_tham = goc + "_so_boc_tham_theo_buoi.csv"
+                    ghi(
+                        duong_tham,
+                        ["Mã học sinh", "Họ tên"] + list(ds_buoi),
+                        [
+                            [e["student_id"], e["name"] or ""]
+                            + [e["so"].get(b, "") for b in ds_buoi]
+                            for e in kq_tham["data"]["hoc_sinh"]
+                        ],
+                    )
+                    n_tham = len(kq_tham["data"]["hoc_sinh"])
+
             return _ok({
                 "path": output_path,
                 "n_rows": len(rows),
@@ -2572,6 +2597,8 @@ class PipelineAPI:
                 "nhieu_buoi": nhieu_buoi,
                 "thoi_khoa_bieu_path": duong_tkb,
                 "n_thoi_khoa_bieu_rows": n_tkb,
+                "so_boc_tham_path": duong_tham,
+                "n_so_boc_tham_rows": n_tham,
             })
         except Exception as e:
             return _fail(err("error_exporting_csv", detail=str(e)))
