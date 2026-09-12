@@ -2,20 +2,34 @@
 
 ## Lấy bản `.exe` mới nhất ở đâu
 
-Mỗi lần mã nguồn đổi, GitHub tự đóng gói một bản Windows mới. Không cần máy nào
-cài Python để lấy nó.
+**Cách thường dùng — mục Releases.** Mở kho mã trên GitHub → **Releases** → bản
+`ban-moi-nhat` → tải `PhanBoCauLacBo-windows.zip` ở mục *Assets*. Đường dẫn này
+tải được **không cần đăng nhập**, nên gửi cho ai cũng mở được.
 
-1. Mở kho mã trên GitHub → thẻ **Actions** → workflow **Đóng gói bản Windows**
-2. Bấm vào lần chạy trên cùng có dấu ✅
-3. Kéo xuống mục **Artifacts** → tải tệp `PhanBoCauLacBo-<số>-<mã commit>`
-4. Giải nén
+**Nếu cần đúng một lần build cụ thể** (ví dụ để đối chiếu lỗi): thẻ **Actions**
+→ workflow *Build Windows executable (rbda-kiosk)* → chọn lần chạy → mục
+**Artifacts**. Cách này **phải đăng nhập GitHub** mới tải được.
 
 > ⚠️ **Giải nén CẢ thư mục, đừng lấy riêng tệp `.exe`.** Bên cạnh nó có thư mục
-> `_internal` chứa toàn bộ thư viện và giao diện; tách rời ra thì app không mở
-> được. Chép sang máy khác cũng phải chép cả thư mục.
+> `_internal` chứa toàn bộ thư viện và giao diện, và tệp
+> `PhanBoCauLacBo.exe.config` mà .NET bắt buộc phải thấy nằm cạnh `.exe`. Tách
+> rời ra thì app không mở được. Chép sang máy khác cũng phải chép cả thư mục.
 
-Trong thư mục giải nén có sẵn `PHIEN_BAN.txt` ghi bản đó build từ commit nào —
-dùng khi cần đối chiếu máy nhà trường đang chạy bản nào.
+Trong thư mục giải nén có `PHIEN_BAN.txt` ghi bản đó build từ commit nào — dùng
+khi cần biết máy nhà trường đang chạy bản nào.
+
+### Ra bản mới
+
+Bản `.exe` **không tự sinh ra khi đẩy mã lên**, và đó là cố ý: bước cuối ghi đè
+bản phát hành công khai, nên một commit đang làm dở không được phép thành bản
+chính thức. Muốn ra bản mới thì bấm tay: thẻ **Actions** → workflow *Build
+Windows executable (rbda-kiosk)* → **Run workflow** → chọn nhánh → **Run**.
+
+Workflow chạy bộ test trên Windows trước, rồi mới đóng gói, rồi **so từng tệp
+giao diện trong gói với mã nguồn bằng mã băm**. Bước cuối là bước quan trọng
+nhất: nó chặn đúng loại lỗi khó thấy nhất — gói build thành công nhưng bên trong
+là giao diện của bản cũ. Cần bản gấp mà một test đang đỏ thì tick
+**Bo qua bo test**.
 
 **Muốn build tay trên máy Windows của mình** (cần Python 3.10 trở lên): chạy
 `build_windows.bat` trong thư mục mã nguồn, kết quả nằm ở
