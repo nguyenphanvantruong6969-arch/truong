@@ -30,6 +30,11 @@ def _extract_js_error_messages():
     result = subprocess.run(
         [node, "-e", _EXTRACT_SCRIPT, "--", os.path.join(BASE_DIR, "i18n.js")],
         capture_output=True, text=True, check=True,
+        # BAT BUOC co encoding. text=True giai ma theo bang ma mac
+        # dinh CUA MAY: tren Windows la cp1252, vo ngay o chu tieng
+        # Viet trong i18n.js. Khi do stdout ra None va json.loads
+        # nem TypeError — mot loi khong he nhac gi toi bang ma.
+        encoding="utf-8",
     )
     return json.loads(result.stdout)
 
@@ -60,6 +65,11 @@ def test_ui_strings_vi_and_en_have_identical_keys():
     result = subprocess.run(
         [node, "-e", _EXTRACT_UI_STRINGS_SCRIPT, "--", os.path.join(BASE_DIR, "i18n.js")],
         capture_output=True, text=True, check=True,
+        # BAT BUOC co encoding. text=True giai ma theo bang ma mac
+        # dinh CUA MAY: tren Windows la cp1252, vo ngay o chu tieng
+        # Viet trong i18n.js. Khi do stdout ra None va json.loads
+        # nem TypeError — mot loi khong he nhac gi toi bang ma.
+        encoding="utf-8",
     )
     keys = json.loads(result.stdout)
     vi_keys, en_keys = set(keys["vi"]), set(keys["en"])
@@ -85,6 +95,11 @@ def test_every_data_i18n_attribute_in_html_has_a_ui_strings_entry():
     result = subprocess.run(
         [node, "-e", _EXTRACT_UI_STRINGS_SCRIPT, "--", os.path.join(BASE_DIR, "i18n.js")],
         capture_output=True, text=True, check=True,
+        # BAT BUOC co encoding. text=True giai ma theo bang ma mac
+        # dinh CUA MAY: tren Windows la cp1252, vo ngay o chu tieng
+        # Viet trong i18n.js. Khi do stdout ra None va json.loads
+        # nem TypeError — mot loi khong he nhac gi toi bang ma.
+        encoding="utf-8",
     )
     keys = json.loads(result.stdout)
     vi_keys = set(keys["vi"])

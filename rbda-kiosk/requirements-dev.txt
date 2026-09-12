@@ -4,3 +4,7 @@ pytest>=8.0
 # thật bằng Chromium). Thiếu gói này thì các test đó TỰ BỎ QUA, phần
 # còn lại của bộ test vẫn chạy đủ.
 playwright>=1.40
+# Chi dung cho tests/test_bieu_tuong.py: doc logo.ico de kiem no co du cac
+# co Windows can. Thieu goi nay thi test do TU BO QUA, phan mem chay khong
+# can toi no.
+pillow>=10.0

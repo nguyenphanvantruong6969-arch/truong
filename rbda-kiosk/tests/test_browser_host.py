@@ -126,11 +126,16 @@ def test_recovery_page_also_gets_the_shim(hosted):
 def test_static_assets_are_served_unmodified(hosted):
     base, _ = hosted
     with urllib.request.urlopen(f"{base}/app.js") as r:
-        js = r.read().decode("utf-8")
+        js_byte = r.read()
     # app.js phải được phục vụ NGUYÊN VĂN — chỉ .html mới bị chèn shim
-    assert "callApi" in js
-    with open(os.path.join(RESOURCE_DIR, "app.js"), encoding="utf-8") as f:
-        assert js == f.read()
+    assert "callApi" in js_byte.decode("utf-8")
+    # So NGUYÊN BYTE, không so chuỗi đã giải mã. Mở tệp ở chế độ văn bản
+    # thì Python tự đổi CRLF thành LF, mà trên Windows git lấy về đúng
+    # CRLF — so chuỗi sẽ báo lệch ở MỌI dòng dù máy chủ phục vụ đúng từng
+    # byte. So byte vừa hết lệ thuộc hệ điều hành, vừa chặt hơn: nó bắt
+    # được cả những sửa đổi mà phép giải mã làm mờ đi.
+    with open(os.path.join(RESOURCE_DIR, "app.js"), "rb") as f:
+        assert js_byte == f.read()
     # style.css cũng phải phục vụ được, nếu không giao diện sẽ trắng trơn
     with urllib.request.urlopen(f"{base}/style.css") as r:
         assert "--ink" in r.read().decode("utf-8")

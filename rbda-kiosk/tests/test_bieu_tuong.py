@@ -36,7 +36,10 @@ def test_trang_web_tro_toi_bieu_tuong(trang):
 def test_logo_ico_co_du_cac_co():
     """Windows lấy cỡ khác nhau cho thanh tác vụ, cửa sổ và danh sách tệp.
     Thiếu cỡ nào thì Windows tự phóng to cỡ khác, ra hình vỡ."""
-    from PIL import Image
+    # Cùng quy ước với nhóm test giao diện: thiếu gói phụ thì BỎ QUA chứ
+    # không làm đỏ. Pillow nằm trong requirements-dev.txt, không nằm trong
+    # requirements.txt vì phần mềm chạy không cần tới nó.
+    Image = pytest.importorskip("PIL.Image", reason="chưa cài Pillow")
     with Image.open(os.path.join(GOC, "logo.ico")) as im:
         co = {kt[0] for kt in im.info.get("sizes", set())}
     for can in (16, 32, 48, 256):

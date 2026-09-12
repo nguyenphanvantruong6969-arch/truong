@@ -59,6 +59,7 @@ lựa chọn, nên test phải nhìn vào `inspect.signature`.
 import inspect
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -114,7 +115,11 @@ def _bo_mot_buoi(tmp_path, ten_bo):
     """Nạp một trong ba bộ dữ liệu CŨ (đều chỉ có một buổi)."""
     from do_anh_huong_seed import BO_DU_LIEU, nap_bo
 
-    thu_muc = str(tmp_path / ten_bo)
+    # Ten bo du lieu "TEST_0*" co dau sao, ma Windows KHONG cho dat ten
+    # thu muc chua ky tu do — os.makedirs nem WinError 123. Ten thu muc o
+    # day chi de tach cac bo ra cho khoi dam, khong mang y nghia gi, nen
+    # thay ky tu cam la duoc.
+    thu_muc = str(tmp_path / re.sub(r'[<>:"/\\|?*]', "_", ten_bo))
     os.makedirs(thu_muc, exist_ok=True)
     duong = dict(
         (ten.strip().split()[0], files) for ten, files in BO_DU_LIEU
