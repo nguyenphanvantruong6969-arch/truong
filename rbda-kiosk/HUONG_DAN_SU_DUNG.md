@@ -259,6 +259,37 @@ cứu **1,2 tới 79,0 em trên 200**, tuỳ mức chật.
 > tự trong từng buổi thì đổi. Đã công bố kết quả rồi thì cân nhắc trước khi
 > chạy lại.
 
+### Chỉ xếp một buổi, hoặc một dải buổi
+
+Thẻ **Vận hành phân bổ**, khối **Buổi sẽ xếp** ngay trên các bước xử lý. Mặc
+định chọn hết — bấm Chạy mà không để ý khối này thì kết quả y như trước.
+
+Hai cách chọn, cùng sửa một tập:
+
+| Cách | Dùng khi |
+|---|---|
+| **Bấm vào từng buổi** để bật/tắt | Chỉ một buổi, hoặc vài buổi rời rạc |
+| **Từ … đến …** | Một dải liên tiếp, ví dụ thứ Hai đến thứ Năm |
+
+> **Buổi không chọn GIỮ NGUYÊN kết quả của lần xếp trước.** Đây là điểm chính
+> của tính năng: một câu lạc bộ thứ Năm đổi sức chứa hoặc bị huỷ thì xếp lại
+> riêng thứ Năm, các ngày đã in ra dán bảng không bị đụng tới. Dòng chữ dưới
+> các nút luôn nói rõ buổi nào đang được giữ.
+
+**Chạy riêng một buổi cho đúng kết quả của buổi đó khi chạy cả tuần.** Không
+có chuyện xếp lần lượt từng ngày lại ra kết quả khác xếp cả tuần một lần —
+phần mềm có test canh điều này trên cả năm buổi.
+
+> ⚠️ **Không vẽ lại số bốc thăm khi chỉ xếp một phần.** Phần mềm chặn hẳn, kèm
+> lời giải thích. Vẽ lại là đổi thứ tự ưu tiên của **mọi** buổi, kể cả những
+> buổi đang giữ kết quả cũ — kết quả cũ ấy lập tức không còn giải thích được
+> bằng bộ số mới. Muốn vẽ lại thì chọn tất cả các buổi.
+
+**Nhãn buổi và thứ tự ngày.** Phần mềm nhận ra các cách viết thường gặp —
+`thu_2`, `thu 2`, `Thứ Hai`, `t2`, và cả nhãn có đuôi như `thu_3_tiet_9` — rồi
+sắp theo đúng thứ tự trong tuần. Nhãn không nhận ra được (ví dụ `ngoai_khoa`)
+vẫn dùng bình thường, chỉ xếp xuống cuối danh sách theo vần chữ cái.
+
 ### Thứ tự bốc thăm của từng buổi đọc ở đâu
 
 Thẻ **Kết quả**, bảng **Số bốc thăm theo buổi**: mỗi em một dòng, mỗi buổi một

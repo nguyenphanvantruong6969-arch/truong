@@ -245,6 +245,18 @@ MESSAGES = {
         "vi": "Có {n} câu lạc bộ chưa khai buổi sinh hoạt trong khi các câu lạc bộ khác đã khai: {club_ids}. Những câu lạc bộ này sẽ bị xếp chung một buổi, nghĩa là học sinh chỉ vào được một trong số chúng. Hãy khai buổi cho tất cả, hoặc bỏ trống cột buổi ở tất cả.",
         "en": "{n} clubs have no session while others do: {club_ids}. Those clubs will all share one session, so a student can only join one of them. Either set a session for every club, or leave the session column empty for all of them.",
     },
+    "buoi_khong_ton_tai": {
+        "vi": "Không có buổi sinh hoạt nào tên '{buoi}'. Các buổi đang có: {dang_co}.",
+        "en": "There is no session called '{buoi}'. Available sessions: {dang_co}.",
+    },
+    "chua_chon_buoi_nao": {
+        "vi": "Chưa chọn buổi nào để xếp. Hãy chọn ít nhất một buổi, hoặc chọn tất cả.",
+        "en": "No session selected. Pick at least one session, or select them all.",
+    },
+    "khong_ve_lai_tham_khi_chay_mot_phan": {
+        "vi": "Không vẽ lại số bốc thăm khi chỉ xếp một phần các buổi. Vẽ lại là đổi thứ tự ưu tiên của mọi buổi, kể cả những buổi đang giữ kết quả cũ — kết quả cũ đó sẽ không còn khớp với bộ số mới. Muốn vẽ lại thì chọn tất cả các buổi.",
+        "en": "The lottery cannot be redrawn while only some sessions are being allocated. A redraw changes the priority order for every session, including the ones keeping their existing results — those results would no longer match the new numbers. Select every session to redraw.",
+    },
     "nguyen_vong_lech_buoi": {
         "vi": "Dòng {line}: học sinh {student_id} xếp câu lạc bộ {club_id} vào cột của buổi {buoi_cot}, nhưng câu lạc bộ đó sinh hoạt buổi {buoi_that}. Nguyện vọng này bị bỏ qua.",
         "en": "Row {line}: student {student_id} ranked {club_id} under the {buoi_cot} column, but that club meets on {buoi_that}. This preference was skipped.",

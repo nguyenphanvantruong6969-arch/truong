@@ -241,6 +241,7 @@
     refreshStbLockLine();
     refreshSidebarStatus();
     loadHealthReport();
+    loadChonBuoi();
   }
 
   /* ---- Cảnh báo sức khoẻ dữ liệu (pre-flight) ---- */
@@ -431,7 +432,19 @@
       bar.id = "runConfirmBar";
       bar.className = "run-confirm-bar";
       const msg = document.createElement("span");
-      msg.textContent = wantsRedraw ? t("confirm_redraw_run") : t("confirm_overwrite_run");
+      /* Chạy một phần thì câu "sẽ GHI ĐÈ kết quả cũ" nói sai phạm vi: nó
+         chỉ ghi đè những buổi đang chọn. Người vận hành đọc câu đó rồi
+         huỷ vì tưởng mất hết các ngày đã công bố — đúng cái tính năng này
+         sinh ra để tránh. Nêu đích danh buổi sẽ bị ghi đè. */
+      const chon = buoiGuiDi();
+      if (wantsRedraw) {
+        msg.textContent = t("confirm_redraw_run");
+      } else if (chon) {
+        msg.textContent = t("confirm_overwrite_mot_phan")
+          .replace("{buoi}", chon.map(nhanBuoi).join(", "));
+      } else {
+        msg.textContent = t("confirm_overwrite_run");
+      }
       bar.appendChild(msg);
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "btn btn-primary";
@@ -460,7 +473,7 @@
     el("btnRun").disabled = true;
     el("btnValidate").disabled = true;
 
-    callApi("run_pipeline", seed, forceRedraw).then((res) => {
+    callApi("run_pipeline", seed, forceRedraw, buoiGuiDi()).then((res) => {
       el("btnRun").disabled = false;
       el("btnValidate").disabled = false;
       const steps = (res.data && res.data.steps) || (res.errors && res.errors.steps) || [];
@@ -928,6 +941,16 @@
         debounce((ev) => loadThoiKhoaBieu(ev.target.value), 250)
       );
     }
+    if (el("btnChonTatCaBuoi")) {
+      el("btnChonTatCaBuoi").addEventListener("click", () => {
+        buoiDangChon = new Set(dsBuoiCoThe);
+        dongBoDaiVoiChip();
+        veChonBuoi();
+      });
+    }
+    ["chonBuoiTu", "chonBuoiDen"].forEach((id) => {
+      if (el(id)) el(id).addEventListener("change", apDungDaiBuoi);
+    });
     if (el("thamSearch")) {
       el("thamSearch").addEventListener(
         "input",
@@ -1307,6 +1330,115 @@
         box.appendChild(cot);
       });
     });
+  }
+
+  /* ---- Chọn buổi sẽ xếp (thẻ Vận hành) ----
+
+     Hai cách chọn cho hai thói quen khác nhau, cùng sửa một tập:
+       · bấm từng chip  -> chọn đúng một buổi, hoặc một tập rời rạc
+       · Từ ... đến ... -> chọn một dải liên tiếp trong tuần
+
+     Buổi không chọn GIỮ NGUYÊN kết quả lần xếp trước — đó là lý do tính
+     năng này tồn tại, nên dòng nhắc phải nằm ngay đây chứ không nằm trong
+     tài liệu. */
+
+  let dsBuoiCoThe = [];
+  let buoiDangChon = new Set();
+
+  function loadChonBuoi() {
+    const box = el("chonBuoiBox");
+    if (!box) return;
+    callApi("get_danh_sach_buoi").then((res) => {
+      /* Một buổi thì không có gì để chọn — bộ chọn chỉ làm rối một màn
+         hình vốn đã chạy đúng. */
+      if (!res.ok || !res.data.nhieu_buoi) {
+        box.hidden = true;
+        dsBuoiCoThe = [];
+        buoiDangChon = new Set();
+        return;
+      }
+      box.hidden = false;
+      dsBuoiCoThe = res.data.ds_buoi;
+      /* Mặc định chọn HẾT: bấm Chạy mà không để ý bộ chọn thì phải ra
+         đúng hành vi cũ. Mặc định chọn một buổi là lặng lẽ đổi nghĩa của
+         nút Chạy. */
+      buoiDangChon = new Set(dsBuoiCoThe);
+      veChonBuoiDai();
+      veChonBuoi();
+    });
+  }
+
+  function veChonBuoiDai() {
+    ["chonBuoiTu", "chonBuoiDen"].forEach((id) => {
+      const sel = el(id);
+      if (!sel) return;
+      clear(sel);
+      dsBuoiCoThe.forEach((b) => {
+        const o = document.createElement("option");
+        o.value = b;
+        o.textContent = nhanBuoi(b);
+        sel.appendChild(o);
+      });
+    });
+  }
+
+  function veChonBuoi() {
+    const box = el("chonBuoiChip");
+    if (!box) return;
+    clear(box);
+    dsBuoiCoThe.forEach((b) => {
+      const nut = document.createElement("button");
+      nut.type = "button";
+      nut.className = "buoi-chip" + (buoiDangChon.has(b) ? " is-chon" : "");
+      nut.textContent = nhanBuoi(b);
+      nut.setAttribute("aria-pressed", buoiDangChon.has(b) ? "true" : "false");
+      nut.addEventListener("click", () => {
+        if (buoiDangChon.has(b)) buoiDangChon.delete(b);
+        else buoiDangChon.add(b);
+        dongBoDaiVoiChip();
+        veChonBuoi();
+      });
+      box.appendChild(nut);
+    });
+
+    /* Nhắc đúng tình huống đang xảy ra, không nhắc chung chung. Chọn hết
+       thì không có buổi nào bị giữ lại, nói câu đó là thừa và gây phân vân. */
+    const nhac = el("chonBuoiNhac");
+    if (nhac) {
+      const duoc = dsBuoiCoThe.filter((b) => !buoiDangChon.has(b));
+      nhac.textContent = duoc.length
+        ? t("chon_buoi_nhac_giu").replace("{buoi}", duoc.map(nhanBuoi).join(", "))
+        : t("chon_buoi_nhac_het");
+    }
+  }
+
+  function dongBoDaiVoiChip() {
+    /* Dải chỉ có nghĩa khi tập đang chọn là một đoạn LIỀN NHAU. Rời rạc
+       thì để nguyên hai ô, đừng ép nó nói một điều không đúng. */
+    const chon = dsBuoiCoThe.filter((b) => buoiDangChon.has(b));
+    if (!chon.length) return;
+    const dau = dsBuoiCoThe.indexOf(chon[0]);
+    const cuoi = dsBuoiCoThe.indexOf(chon[chon.length - 1]);
+    if (cuoi - dau + 1 !== chon.length) return;
+    if (el("chonBuoiTu")) el("chonBuoiTu").value = chon[0];
+    if (el("chonBuoiDen")) el("chonBuoiDen").value = chon[chon.length - 1];
+  }
+
+  function apDungDaiBuoi() {
+    const tu = dsBuoiCoThe.indexOf(el("chonBuoiTu").value);
+    const den = dsBuoiCoThe.indexOf(el("chonBuoiDen").value);
+    if (tu < 0 || den < 0) return;
+    const [a, b] = tu <= den ? [tu, den] : [den, tu];
+    buoiDangChon = new Set(dsBuoiCoThe.slice(a, b + 1));
+    veChonBuoi();
+  }
+
+  /* Trả về null khi chọn HẾT: null là "chạy cả tuần" ở phía API, và đó
+     đúng là điều người dùng đang nói. */
+  function buoiGuiDi() {
+    if (!dsBuoiCoThe.length) return null;
+    if (buoiDangChon.size === dsBuoiCoThe.length) return null;
+    return dsBuoiCoThe.filter((b) => buoiDangChon.has(b));
   }
 
   /* ---- Số bốc thăm theo buổi (thẻ Kết quả) ----

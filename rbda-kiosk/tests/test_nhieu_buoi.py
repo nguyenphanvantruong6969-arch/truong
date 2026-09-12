@@ -21,6 +21,10 @@ TestNhapDuLieu             cột `buoi`, bộ cột nguyện vọng theo buổi,
 TestMotThietKeDuyNhat      phần mềm chỉ chạy `stb_ngay`, không mở lại lựa chọn
 TestChayDayDu              đường chạy đầy đủ qua API, xuất thời khoá biểu
 TestSoBocThamTheoBuoi      bảng thứ tự từng buổi phải đúng tới từng ô
+TestThuTuNgayTrongTuan     sắp buổi theo THỨ TỰ NGÀY, không theo vần chữ cái
+TestChonBuoi               chạy riêng một buổi ra ĐÚNG kết quả của buổi đó
+                           khi chạy cả tuần
+TestChonBuoiQuaAPI         buổi không chọn GIỮ NGUYÊN kết quả cũ
 
 ĐÃ THỬ LÀM HỎNG ĐỂ XEM TEST CÓ BẮT ĐƯỢC KHÔNG
 ---------------------------------------------
@@ -31,6 +35,10 @@ TestSoBocThamTheoBuoi      bảng thứ tự từng buổi phải đúng tới t
 | Dùng `hash()` thay `zlib.crc32` trong `_seed_cua_buoi` | **1 test đỏ** — đúng test dựng riêng cho chuyện đó |
 | Thêm lại tham số `che_do_boc_tham` vào `api.run_pipeline` | **1 test đỏ** ở `TestMotThietKeDuyNhat` |
 | Đổi mặc định ngược về `stb_tuan` | **4 test đỏ** ở ba lớp khác nhau |
+| Truyền danh sách buổi ĐÃ LỌC vào `sinh_stb_theo_buoi` | **1 test đỏ** — đúng cái bất biến của `chi_buoi` |
+| Xoá `match_results` không điều kiện | **2 test đỏ** ở `TestChonBuoiQuaAPI` |
+| Sắp buổi theo vần chữ cái như bản cũ | **2 test đỏ** ở `TestThuTuNgayTrongTuan` |
+| Bỏ chặn vẽ lại số bốc thăm khi chạy một phần | **1 test đỏ** |
 
 Hai chuyện học được khi làm phép thử này, cả hai đều đã sửa:
 
@@ -54,6 +62,14 @@ lại tham số `che_do_boc_tham` với mặc định `'stb_ngay'` sẽ qua đư
 test hành vi — kết quả vẫn đúng — trong khi giao diện hoặc một lời gọi
 khác đã có thể truyền `'stb_co_bu'` vào. Cái phải chặn là sự tồn tại của
 lựa chọn, nên test phải nhìn vào `inspect.signature`.
+
+**Phép phá thứ năm là phép phá tinh vi nhất trong tệp này.** Truyền danh
+sách buổi ĐÃ LỌC vào `sinh_stb_theo_buoi` trông hoàn toàn hợp lý — đang
+chạy buổi nào thì sinh số cho buổi ấy. Nhưng hàm đó ngắn mạch khi danh
+sách chỉ có một phần tử, nên chạy riêng thứ Năm sẽ dùng bộ số GỐC thay vì
+hoán vị của thứ Năm. Kết quả vẫn ổn định, vẫn 0 cặp phá vỡ, chỉ khác kết
+quả của chính buổi đó khi chạy cả tuần — không test nào về ràng buộc hay
+ổn định bắt được. Phải có một test so THẲNG hai đường với nhau.
 """
 
 import inspect
@@ -623,7 +639,13 @@ class TestMotThietKeDuyNhat:
         from api import PipelineAPI
 
         ts = list(inspect.signature(PipelineAPI.run_pipeline).parameters)
-        assert ts == ["self", "seed", "force_redraw_stb"], ts
+        # Canh HAI dieu khac nhau:
+        #   1. Khong tham so nao lien quan toi cach boc tham — day moi la
+        #      dieu phai giu, va no dung du chu ky ham co doi vi ly do khac.
+        #   2. Chu ky dung y nguyen danh sach duoi day — de mot tham so moi
+        #      them vao lang le phai di qua mot lan sua test co chu y.
+        assert not [t for t in ts if "che_do" in t or "boc_tham" in t], ts
+        assert ts == ["self", "seed", "force_redraw_stb", "chi_buoi"], ts
 
     def test_khong_con_ham_so_sanh_boc_tham(self):
         """Bảng đối chiếu ba cách sinh ra để giúp CHỌN. Không còn gì để chọn
@@ -811,3 +833,234 @@ class TestSoBocThamTheoBuoi:
         xuat = api.export_csv()["data"]
         assert xuat["nhieu_buoi"] is False
         assert xuat["so_boc_tham_path"] is None
+
+
+# ---------------------------------------------------------------------------
+# 9 — CHẠY RIÊNG MỘT SỐ BUỔI
+# ---------------------------------------------------------------------------
+
+class TestThuTuNgayTrongTuan:
+    """Nhãn buổi là chữ tự do, nhưng gần như trường nào cũng đặt theo ngày.
+
+    Sắp theo vần chữ cái thì "Thứ Hai / Thứ Ba / Thứ Tư / Thứ Năm" ra Ba,
+    Hai, Năm, Tư. Trên màn hình đã khó đọc; ở bộ chọn KHOẢNG buổi thì nó
+    chọn ra một tập khác hẳn điều người dùng định nói.
+    """
+
+    @pytest.mark.parametrize("nhan,mong_doi", [
+        ("thu_2", 2), ("thu 3", 3), ("Thứ Hai", 2), ("thứ_năm", 5),
+        ("t6", 6), ("thu_3_tiet_9", 3), ("monday", 2), ("cn", 8),
+    ])
+    def test_nhan_ra_ngay_trong_tuan(self, nhan, mong_doi):
+        assert loi.so_thu_trong_tuan(nhan) == mong_doi
+
+    @pytest.mark.parametrize("nhan", [
+        "buoi_1", "ngoai_khoa", "sang", "__mac_dinh__", "",
+        # Hai nhãn dưới là lý do luật nhận diện phải siết: cho cắt đuôi ở
+        # nhãn KHÔNG có tiền tố "thứ" thì "sau_gio" thành thứ Sáu và
+        # "tu_chon" thành thứ Tư — nhận nhầm im lặng.
+        "sau_gio", "tu_chon",
+    ])
+    def test_khong_doan_bua_nhan_la(self, nhan):
+        assert loi.so_thu_trong_tuan(nhan) is None
+
+    def test_sap_theo_ngay_chu_khong_theo_van(self):
+        vietnam = ["Thứ Tư", "Thứ Hai", "Thứ Năm", "Thứ Ba"]
+        assert loi.sap_buoi(vietnam) == ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm"]
+        assert sorted(vietnam) != loi.sap_buoi(vietnam), (
+            "neu hai cach sap trung nhau thi test nay khong canh duoc gi"
+        )
+
+    def test_nhan_khong_nhan_ra_xep_sau_va_theo_van(self):
+        tron = ["ngoai_khoa", "thu_5", "abc", "thu_2"]
+        assert loi.sap_buoi(tron) == ["thu_2", "thu_5", "abc", "ngoai_khoa"]
+
+
+class TestChonBuoi:
+    """Chạy riêng một buổi, hoặc một dải buổi trong tuần."""
+
+    def test_chay_rieng_mot_buoi_giong_chay_ca_tuan(self, du_lieu_nhieu_buoi):
+        """BẤT BIẾN QUAN TRỌNG NHẤT của cả tính năng.
+
+        Kết quả thứ Năm không được phụ thuộc vào việc hôm đó người vận hành
+        bấm chạy cả tuần hay chạy riêng thứ Năm. Hỏng điều này thì kết quả
+        không tái lập được và không giải thích được với phụ huynh.
+
+        Chỗ dễ hỏng: `sinh_stb_theo_buoi` ngắn mạch khi danh sách buổi chỉ
+        có một phần tử. Truyền danh sách ĐÃ LỌC vào đó thì chạy riêng một
+        buổi rơi vào nhánh ngắn mạch và dùng bộ số gốc thay vì hoán vị của
+        buổi ấy. Đã thử phá đúng chỗ đó — xem docstring đầu tệp.
+        """
+        st, cl, sc, ap, pr, stb, elig = du_lieu_nhieu_buoi
+        ca_tuan = loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig, seed=42)
+        assert len(ca_tuan.ds_buoi) == 5
+
+        for buoi in ca_tuan.ds_buoi:
+            rieng = loi.run_rbda_nhieu_buoi(
+                st, cl, sc, ap, pr, stb, elig, seed=42, chi_buoi=[buoi])
+            assert rieng.ds_buoi == [buoi]
+            for sid in st:
+                assert rieng.assignment[sid][buoi] == ca_tuan.assignment[sid][buoi], (
+                    "buoi %s lech khi chay rieng" % buoi)
+
+    def test_chay_mot_dai_giong_chay_ca_tuan(self, du_lieu_nhieu_buoi):
+        st, cl, sc, ap, pr, stb, elig = du_lieu_nhieu_buoi
+        ca_tuan = loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig, seed=42)
+        dai = loi.run_rbda_nhieu_buoi(
+            st, cl, sc, ap, pr, stb, elig, seed=42,
+            chi_buoi=["thu_2", "thu_3", "thu_4"])
+        assert dai.ds_buoi == ["thu_2", "thu_3", "thu_4"]
+        for sid in st:
+            for b in dai.ds_buoi:
+                assert dai.assignment[sid][b] == ca_tuan.assignment[sid][b]
+
+    def test_thu_tu_chon_khong_doi_ket_qua(self, du_lieu_nhieu_buoi):
+        """Truyền ['thu_4','thu_2'] phải giống ['thu_2','thu_4']."""
+        st, cl, sc, ap, pr, stb, elig = du_lieu_nhieu_buoi
+        a = loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig, seed=42,
+                                    chi_buoi=["thu_4", "thu_2"])
+        b = loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig, seed=42,
+                                    chi_buoi=["thu_2", "thu_4"])
+        assert a.ds_buoi == b.ds_buoi == ["thu_2", "thu_4"]
+        assert a.assignment == b.assignment
+
+    def test_buoi_khong_ton_tai_thi_bao_loi(self, du_lieu_nhieu_buoi):
+        st, cl, sc, ap, pr, stb, elig = du_lieu_nhieu_buoi
+        with pytest.raises(ValueError):
+            loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig,
+                                    chi_buoi=["thu_9"])
+
+    def test_chon_rong_thi_bao_loi(self, du_lieu_nhieu_buoi):
+        st, cl, sc, ap, pr, stb, elig = du_lieu_nhieu_buoi
+        with pytest.raises(ValueError):
+            loi.run_rbda_nhieu_buoi(st, cl, sc, ap, pr, stb, elig, chi_buoi=[])
+
+
+class TestChonBuoiQuaAPI:
+    """Đường chạy thật: giữ nguyên kết quả các buổi không chọn."""
+
+    def _dem_theo_buoi(self, api):
+        conn = sqlite3.connect(api.db_path)
+        try:
+            return dict(conn.execute(
+                "SELECT buoi, COUNT(*) FROM match_results "
+                "WHERE club_id IS NOT NULL GROUP BY buoi"))
+        finally:
+            conn.close()
+
+    def _chup_o(self, api):
+        conn = sqlite3.connect(api.db_path)
+        try:
+            return dict(conn.execute(
+                "SELECT student_id || '|' || buoi, COALESCE(club_id, '') "
+                "FROM match_results"))
+        finally:
+            conn.close()
+
+    def test_giu_nguyen_ket_qua_buoi_khong_chon(self, api_nhieu_buoi):
+        """Câu `DELETE FROM match_results` không điều kiện của bản trước sẽ
+        xoá sạch kết quả các ngày đã công bố. Mất dữ liệu, im lặng, và chỉ
+        lấy lại được từ bản sao lưu."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        truoc = self._chup_o(api_nhieu_buoi)
+        assert len(self._dem_theo_buoi(api_nhieu_buoi)) == 5
+
+        assert api_nhieu_buoi.run_pipeline(seed=42, chi_buoi=["thu_5"])["ok"]
+        sau = self._chup_o(api_nhieu_buoi)
+
+        assert set(truoc) == set(sau), "mat dong match_results cua buoi khac"
+        assert len(self._dem_theo_buoi(api_nhieu_buoi)) == 5
+        # Cùng seed, cùng dữ liệu -> thứ Năm cũng phải ra y hệt.
+        assert truoc == sau
+
+    def test_ghi_lai_buoi_da_chay(self, api_nhieu_buoi):
+        """Kết quả trong cơ sở dữ liệu giờ có thể là hợp của nhiều lần chạy.
+        Không ghi lại lần nào phủ buổi nào thì mất khả năng truy nguồn."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        api_nhieu_buoi.run_pipeline(seed=42, chi_buoi=["thu_3", "thu_2"])
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            assert conn.execute(
+                "SELECT buoi_da_chay FROM run_meta WHERE id=1"
+            ).fetchone()[0] == "thu_2,thu_3"
+            lich_su = [r[0] for r in conn.execute(
+                "SELECT buoi_da_chay FROM run_history ORDER BY run_id")]
+        finally:
+            conn.close()
+        assert lich_su == ["thu_2,thu_3,thu_4,thu_5,thu_6", "thu_2,thu_3"]
+
+    def test_chon_het_bang_chay_ca_tuan(self, api_nhieu_buoi):
+        """Tích hết các buổi thì phải giống hệt không tích gì — cùng một ý
+        định, không được ra hai đường chạy khác nhau."""
+        assert api_nhieu_buoi.run_pipeline(
+            seed=42, chi_buoi=["thu_2", "thu_3", "thu_4", "thu_5", "thu_6"])["ok"]
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            assert conn.execute(
+                "SELECT so_buoi FROM run_meta WHERE id=1").fetchone()[0] == 5
+        finally:
+            conn.close()
+
+    def test_khong_cho_ve_lai_tham_khi_chay_mot_phan(self, api_nhieu_buoi):
+        """Vẽ lại số bốc thăm là đổi thứ tự ưu tiên của MỌI buổi, kể cả
+        những buổi đang giữ kết quả cũ — kết quả cũ đó lập tức không còn
+        giải thích được bằng bộ số mới. Phải chặn bằng LỖI, không phải
+        bằng cảnh báo: đây là thứ không sửa lại được sau khi đã chạy."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        kq = api_nhieu_buoi.run_pipeline(
+            seed=42, chi_buoi=["thu_5"], force_redraw_stb=True)
+        assert not kq["ok"]
+        assert kq["errors"][0]["code"] == "khong_ve_lai_tham_khi_chay_mot_phan"
+
+    def test_ve_lai_tham_van_duoc_khi_chon_het(self, api_nhieu_buoi):
+        api_nhieu_buoi.run_pipeline(seed=42)
+        assert api_nhieu_buoi.run_pipeline(
+            seed=42, force_redraw_stb=True,
+            chi_buoi=["thu_2", "thu_3", "thu_4", "thu_5", "thu_6"])["ok"]
+
+    def test_buoi_la_va_chon_rong_bi_tu_choi(self, api_nhieu_buoi):
+        for chi_buoi, ma in ((["thu_9"], "buoi_khong_ton_tai"),
+                             ([], "chua_chon_buoi_nao")):
+            kq = api_nhieu_buoi.run_pipeline(seed=42, chi_buoi=chi_buoi)
+            assert not kq["ok"]
+            assert kq["errors"][0]["code"] == ma
+
+    def test_nhan_buoi_duoc_chuan_hoa(self, api_nhieu_buoi):
+        """Giao diện gửi đúng nhãn trong cơ sở dữ liệu, nhưng lời gọi từ
+        chỗ khác có thể gõ hoa/thường hay thừa khoảng trắng."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        assert api_nhieu_buoi.run_pipeline(
+            seed=42, chi_buoi=["Thu_2", " thu 3 "])["ok"]
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            assert conn.execute(
+                "SELECT buoi_da_chay FROM run_meta WHERE id=1"
+            ).fetchone()[0] == "thu_2,thu_3"
+        finally:
+            conn.close()
+
+    def test_da_xep_dem_tren_CA_CSDL_khong_chi_lan_chay_nay(self, api_nhieu_buoi):
+        """Chạy riêng thứ Năm không được làm con số "đã xếp CLB" trên bảng
+        điều khiển tụt xuống còn số em có CLB thứ Năm."""
+        api_nhieu_buoi.run_pipeline(seed=42)
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            ca_tuan = conn.execute(
+                "SELECT n_matched FROM run_meta WHERE id=1").fetchone()[0]
+        finally:
+            conn.close()
+
+        api_nhieu_buoi.run_pipeline(seed=42, chi_buoi=["thu_5"])
+        conn = sqlite3.connect(api_nhieu_buoi.db_path)
+        try:
+            mot_buoi = conn.execute(
+                "SELECT n_matched FROM run_meta WHERE id=1").fetchone()[0]
+        finally:
+            conn.close()
+        assert mot_buoi == ca_tuan
+
+    def test_danh_sach_buoi_sap_theo_ngay_va_kem_so_thu(self, api_nhieu_buoi):
+        d = api_nhieu_buoi.get_danh_sach_buoi()["data"]
+        assert d["ds_buoi"] == ["thu_2", "thu_3", "thu_4", "thu_5", "thu_6"]
+        assert d["thu_trong_tuan"] == {
+            "thu_2": 2, "thu_3": 3, "thu_4": 4, "thu_5": 5, "thu_6": 6}

@@ -48,7 +48,9 @@ from rbda_priority_pipeline import (
     cat_du_lieu_theo_buoi,
     nhom_theo_buoi,
     run_rbda_nhieu_buoi,
+    sap_buoi,
     sinh_stb_theo_buoi,
+    so_thu_trong_tuan,
 )
 from i18n_errors import err
 
@@ -610,7 +612,8 @@ class PipelineAPI:
                 pass
         return backup_path
 
-    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False):
+    def run_pipeline(self, seed: int = 42, force_redraw_stb: bool = False,
+                     chi_buoi=None):
         """
         Nút 'Chạy pipeline' — chạy trọn 5 bước, trả về log từng bước
         để UI hiển thị lên stepper theo thời gian thực (từng bước một,
@@ -657,6 +660,29 @@ class PipelineAPI:
         Trường chỉ có MỘT buổi thì không đổi gì: `sinh_stb_theo_buoi` ngắn
         mạch về đúng bộ số đã khoá, nên kết quả y hệt bản trước khi có tính
         năng nhiều buổi.
+
+        CHẠY RIÊNG MỘT SỐ BUỔI — `chi_buoi`
+        -----------------------------------
+        `chi_buoi=None` (mặc định) chạy hết mọi buổi, y như trước.
+
+        Truyền danh sách buổi thì chỉ những buổi đó được tính lại, và
+        **kết quả các buổi khác GIỮ NGUYÊN**. Đây là tình huống có thật:
+        một câu lạc bộ thứ Năm đổi sức chứa hoặc bị huỷ, cần xếp lại riêng
+        thứ Năm mà không đụng tới các ngày đã công bố.
+
+        Ba điều phải giữ, và cả ba đều có test canh:
+
+        1. **Xoá có phạm vi.** Chỉ `DELETE` những dòng `match_results` của
+           buổi được chọn. Câu `DELETE FROM match_results` không điều kiện
+           của bản trước sẽ xoá sạch kết quả các ngày đã công bố — mất dữ
+           liệu, im lặng, và không lấy lại được ngoài bản sao lưu.
+        2. **Không vẽ lại số bốc thăm khi chạy một phần.** Vẽ lại là đổi
+           thứ tự ưu tiên của MỌI buổi, kể cả những buổi đang giữ kết quả
+           cũ — kết quả cũ ấy lập tức không còn giải thích được bằng bộ số
+           mới. Bị chặn bằng lỗi, không phải bằng cảnh báo.
+        3. **Ghi lại lần chạy này phủ buổi nào** vào `run_meta` và
+           `run_history`. Kết quả trong cơ sở dữ liệu giờ có thể là hợp của
+           nhiều lần chạy, nên thiếu cột đó là mất khả năng truy nguồn.
         """
         steps_log = []
         conn = None
@@ -689,6 +715,34 @@ class PipelineAPI:
             if errors:
                 steps_log.append({"step": "validate", "status": "error", "detail": errors})
                 return _fail({"steps": steps_log, "errors": errors})
+            # Soat danh sach buoi TRUOC khi ve so boc tham. Ve roi moi phat
+            # hien tham so sai la da tieu mat mot bo so — cung ly do vi sao
+            # buoc kiem tra du lieu nam truoc buoc boc tham.
+            ds_buoi_tat_ca = sorted(
+                {(c.get("buoi") or BUOI_MAC_DINH) for c in clubs.values()})
+            if chi_buoi is None:
+                chi_buoi_chuan = None
+            else:
+                chi_buoi_chuan = [self.chuan_hoa_buoi(b) or BUOI_MAC_DINH
+                                  for b in chi_buoi]
+                la = sorted(set(chi_buoi_chuan) - set(ds_buoi_tat_ca))
+                if la:
+                    return _fail(err("buoi_khong_ton_tai",
+                                     buoi=", ".join(la),
+                                     dang_co=", ".join(ds_buoi_tat_ca)))
+                if not chi_buoi_chuan:
+                    return _fail(err("chua_chon_buoi_nao"))
+                if set(chi_buoi_chuan) == set(ds_buoi_tat_ca):
+                    chi_buoi_chuan = None        # chon het = chay ca tuan
+
+            # Ve lai so boc tham la doi thu tu uu tien cua MOI buoi, ke ca
+            # nhung buoi dang giu ket qua cu. Ket qua cu ay lap tuc khong
+            # con giai thich duoc bang bo so moi — hai thu trong cung mot
+            # co so du lieu noi hai dieu khac nhau. Chan bang LOI chu khong
+            # phai canh bao: day la thu khong sua lai duoc sau khi da chay.
+            if chi_buoi_chuan is not None and force_redraw_stb:
+                return _fail(err("khong_ve_lai_tham_khi_chay_mot_phan"))
+
             steps_log.append({"step": "validate", "status": "done"})
 
             # ---------------- Bước 3/6 · SỐ BỐC THĂM ----------------
@@ -778,6 +832,7 @@ class PipelineAPI:
                 students, clubs, tested_scores, applicants, preferences,
                 stb_lottery, is_reserve_eligible_fn=reserve_fn,
                 che_do_boc_tham=CHE_DO_BOC_THAM_MAC_DINH, seed=seed,
+                chi_buoi=chi_buoi_chuan,
             )
             sanity_problems = []
             stability_problems = []
@@ -805,7 +860,14 @@ class PipelineAPI:
 
             # ---------------- Bước 5/6 · GHI KẾT QUẢ ----------------
             steps_log.append({"step": "write_results", "status": "running"})
-            cur.execute("DELETE FROM match_results")
+            # XOA CO PHAM VI. `DELETE FROM match_results` khong dieu kien se
+            # xoa sach ket qua cac buoi KHONG chay trong lan nay — cac buoi
+            # ma truong co the da in ra dan bang. Mat du lieu, im lang, va
+            # chi lay lai duoc tu ban sao luu.
+            cur.executemany(
+                "DELETE FROM match_results WHERE buoi = ?",
+                [(b,) for b in result.ds_buoi],
+            )
             cur.executemany(
                 "INSERT INTO match_results "
                 "(student_id, buoi, club_id, round_num, matched_tier, rank_in_student_pref) "
@@ -817,20 +879,32 @@ class PipelineAPI:
             # "Da duoc xep" = co it nhat MOT CLB trong tuan. Mot em co CLB
             # thu 3 nhung trong thu 5 van la da duoc xep — cho trong buoi
             # nao thi doc o bang do phu, khong doc o con so nay.
+            #
+            # Dem lai tu CO SO DU LIEU chu khong tu `result`. Chay mot phan
+            # thi `result` chi chua nhung buoi vua chay, nen dem theo no se
+            # bao it hon su that: mot em da co CLB thu Hai tu lan chay truoc
+            # van dang duoc xep, du lan nay chi chay thu Nam. Con so tren
+            # bang dieu khien phai noi ve CO SO DU LIEU, khong phai ve lan
+            # chay vua roi.
+            n_matched = cur.execute(
+                "SELECT COUNT(DISTINCT student_id) FROM match_results "
+                "WHERE club_id IS NOT NULL"
+            ).fetchone()[0]
             so_clb = result.so_clb_moi_em()
-            n_matched = sum(1 for n in so_clb.values() if n > 0)
             run_at = _now()
+            buoi_da_chay = ",".join(result.ds_buoi)
 
             cur.execute(
                 "INSERT INTO run_meta "
-                "(id, seed, run_at, rounds_run, n_matched, n_total, che_do_boc_tham, so_buoi) "
-                "VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
+                "(id, seed, run_at, rounds_run, n_matched, n_total, che_do_boc_tham, "
+                " so_buoi, buoi_da_chay) "
+                "VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET seed=excluded.seed, run_at=excluded.run_at, "
                 "rounds_run=excluded.rounds_run, n_matched=excluded.n_matched, "
                 "n_total=excluded.n_total, che_do_boc_tham=excluded.che_do_boc_tham, "
-                "so_buoi=excluded.so_buoi",
+                "so_buoi=excluded.so_buoi, buoi_da_chay=excluded.buoi_da_chay",
                 (seed, run_at, result.rounds_run, n_matched, len(so_clb),
-                 result.che_do_boc_tham, len(result.ds_buoi)),
+                 result.che_do_boc_tham, len(result.ds_buoi), buoi_da_chay),
             )
             # Ghi che_do_boc_tham lay tu chinh KET QUA chu khong tu hang so:
             # cot nay la DAU VET KIEM TOAN, no phai noi dung cach ma lan chay
@@ -847,11 +921,11 @@ class PipelineAPI:
             cur.execute(
                 "INSERT INTO run_history "
                 "(seed, run_at, rounds_run, n_matched, n_total, stb_redrawn, "
-                " che_do_boc_tham, so_buoi) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                " che_do_boc_tham, so_buoi, buoi_da_chay) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (seed, run_at, result.rounds_run, n_matched, len(so_clb),
                  1 if stb_redrawn else 0, result.che_do_boc_tham,
-                 len(result.ds_buoi)),
+                 len(result.ds_buoi), buoi_da_chay),
             )
 
             # Diem commit DUY NHAT cua toan bo pipeline: neu bat ky dong
@@ -2067,13 +2141,20 @@ class PipelineAPI:
     # -----------------------------------------------------------------
 
     def _ds_buoi(self, cur) -> list[str]:
-        """Danh sách buổi đang có CLB, sắp theo tên. Rỗng CLB -> danh sách rỗng."""
-        return [
+        """Danh sách buổi đang có CLB, sắp theo THỨ TỰ NGÀY. Rỗng CLB -> rỗng.
+
+        Sắp trong Python chứ không bằng `ORDER BY` của SQL: thứ tự ngày
+        trong tuần không phải thứ tự vần chữ cái, mà SQLite thì không biết
+        "Thứ Hai" đứng trước "Thứ Ba". Sắp theo vần ở đây từng cho ra Ba,
+        Bảy, Hai, Năm, Sáu, Tư — vô nghĩa trên màn hình, và sai hẳn với
+        tính năng chọn KHOẢNG buổi.
+        """
+        return sap_buoi(
             r[0] for r in cur.execute(
-                "SELECT DISTINCT COALESCE(buoi, ?) AS b FROM clubs ORDER BY b",
+                "SELECT DISTINCT COALESCE(buoi, ?) AS b FROM clubs",
                 (BUOI_MAC_DINH,),
             )
-        ]
+        )
 
     def get_danh_sach_buoi(self):
         """Các buổi sinh hoạt đang dùng, kèm cờ cho biết trường có dùng nhiều buổi không.
@@ -2089,6 +2170,10 @@ class PipelineAPI:
                 "ds_buoi": ds,
                 "nhieu_buoi": len(ds) > 1,
                 "buoi_mac_dinh": BUOI_MAC_DINH,
+                # Thứ mấy trong tuần, hoặc null nếu nhãn không nhận ra
+                # được. Giao diện dùng để nhóm và để bộ chọn khoảng biết
+                # đâu là "liền kề".
+                "thu_trong_tuan": {b: so_thu_trong_tuan(b) for b in ds},
             })
         except Exception as e:
             return _fail(err("error_reading_club_list", detail=str(e)))

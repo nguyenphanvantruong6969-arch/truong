@@ -485,19 +485,99 @@ def buoi_cua_club(clubs: dict[str, dict]) -> dict[str, str]:
     }
 
 
+# Nhãn buổi là CHỮ TỰ DO do trường đặt, nhưng gần như trường nào cũng đặt
+# theo ngày trong tuần. Bảng này để sắp chúng theo THỨ TỰ NGÀY chứ không
+# theo vần chữ cái.
+#
+# VÌ SAO CẦN. Trường ghi "Thứ Hai / Thứ Ba / Thứ Tư / Thứ Năm" thì sắp theo
+# vần ra: Ba, Hai, Năm, Tư — thứ Ba đứng trước thứ Hai. Trên màn hình đã
+# khó đọc, mà ở tính năng chọn KHOẢNG buổi ("từ thứ Hai đến thứ Năm") thì
+# nó chọn ra một tập hoàn toàn khác với điều người dùng định nói.
+#
+# Số theo đúng cách gọi tiếng Việt: thứ Hai là 2, ..., thứ Bảy là 7, Chủ
+# nhật là 8 (xếp cuối tuần, đúng thứ tự lịch học).
+_SO_CUA_THU = {
+    "2": 2, "hai": 2, "mon": 2, "monday": 2,
+    "3": 3, "ba": 3, "tue": 3, "tuesday": 3,
+    "4": 4, "tu": 4, "tư": 4, "wed": 4, "wednesday": 4,
+    "5": 5, "nam": 5, "năm": 5, "thu": 5, "thursday": 5,
+    "6": 6, "sau": 6, "sáu": 6, "fri": 6, "friday": 6,
+    "7": 7, "bay": 7, "bảy": 7, "sat": 7, "saturday": 7,
+    "cn": 8, "chu_nhat": 8, "chủ_nhật": 8, "sun": 8, "sunday": 8,
+}
+
+
+def so_thu_trong_tuan(buoi: str) -> Optional[int]:
+    """Nhãn buổi này là thứ mấy? Không nhận ra được thì trả None.
+
+    Nhận các cách viết thường gặp — `thu_2`, `thu 2`, `thứ_hai`, `t2`,
+    `monday` — và cả nhãn có ĐUÔI như `thu_3_tiet_9`, vì trường có thêm
+    tiết thì vẫn là thứ Ba.
+
+    Không nhận ra thì KHÔNG đoán bừa: trả None để chỗ gọi xếp nhãn đó
+    xuống cuối theo vần chữ cái. Đoán sai một nhãn lạ còn tệ hơn không
+    đoán, vì nó lặng lẽ đổi thứ tự chạy mà không ai thấy.
+    """
+    ten = (buoi or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not ten or ten == BUOI_MAC_DINH:
+        return None
+    for tien_to in ("thứ_", "thu_", "thứ", "thu", "t"):
+        if not ten.startswith(tien_to):
+            continue
+        con_lai = ten[len(tien_to):]
+        if not con_lai:
+            continue
+        # Có tiền tố "thứ" rồi thì cắt được phần đuôi: "3_tiet_9" thử lần
+        # lượt "3_tiet_9", "3_tiet", rồi "3" — trường thêm tiết vào nhãn thì
+        # vẫn là thứ Ba.
+        manh = con_lai.split("_")
+        for n in range(len(manh), 0, -1):
+            khoa = "_".join(manh[:n])
+            if khoa in _SO_CUA_THU:
+                return _SO_CUA_THU[khoa]
+
+    # Không có tiền tố "thứ" thì đòi khớp TRỌN nhãn, không cắt đuôi. Cho
+    # cắt đuôi ở đây là nhận nhầm: "sau_gio" thành thứ Sáu, "tu_chon" thành
+    # thứ Tư. Nhận nhầm chỉ đổi THỨ TỰ chứ không đổi kết quả xếp lớp, nhưng
+    # nó đổi cái tập mà "từ ... đến ..." chọn ra — im lặng và khó thấy.
+    return _SO_CUA_THU.get(ten)
+
+
+def khoa_sap_buoi(buoi: str):
+    """Khoá sắp xếp: buổi mặc định trước, rồi theo thứ trong tuần, rồi vần.
+
+    Nhãn không nhận ra được xếp SAU mọi nhãn nhận ra được, và trong nhóm đó
+    thì theo vần chữ cái — giữ đúng nếp cũ cho dữ liệu đặt tên tuỳ ý.
+    """
+    if buoi == BUOI_MAC_DINH:
+        return (0, 0, "")
+    so = so_thu_trong_tuan(buoi)
+    return (1, so, buoi) if so is not None else (2, 0, buoi)
+
+
+def sap_buoi(ds_buoi) -> list[str]:
+    """Sắp danh sách buổi theo thứ tự ngày trong tuần."""
+    return sorted(ds_buoi, key=khoa_sap_buoi)
+
+
 def nhom_theo_buoi(clubs: dict[str, dict]) -> dict[str, list[str]]:
-    """{buoi: [club_id]} — buổi sắp theo tên, club sắp theo mã.
+    """{buoi: [club_id]} — buổi sắp theo THỨ TỰ NGÀY, club sắp theo mã.
 
     Sắp xếp không phải để cho đẹp: thứ tự xét buổi QUYẾT ĐỊNH kết quả ở chế
     độ `stb_co_bu` (buổi xét trước sinh ra "số CLB đã có" cho buổi xét sau).
     Thứ tự đến từ dict của Python là thứ tự chèn, mà thứ tự chèn phụ thuộc
     thứ tự đọc từ CSDL — không tái lập được. Sắp ở đây là chốt nó lại.
+
+    Trước đây sắp theo vần chữ cái. Đổi sang thứ tự ngày KHÔNG làm đổi số
+    liệu TN7: bộ mẫu dùng `thu_2`..`thu_6` và bộ mô phỏng dùng `buoi_1`..
+    `buoi_5`, cả hai vần chữ cái đều trùng thứ tự ngày. Có phép đối chiếu
+    lại `so_lieu_boc_tham.json` xác nhận điều đó.
     """
     theo_buoi: dict[str, list[str]] = {}
     cua = buoi_cua_club(clubs)
     for cid in sorted(clubs):
         theo_buoi.setdefault(cua[cid], []).append(cid)
-    return {b: theo_buoi[b] for b in sorted(theo_buoi)}
+    return {b: theo_buoi[b] for b in sap_buoi(theo_buoi)}
 
 
 def cat_du_lieu_theo_buoi(
@@ -681,6 +761,7 @@ def run_rbda_nhieu_buoi(
     che_do_boc_tham: str = CHE_DO_BOC_THAM_MAC_DINH,
     seed: int = 0,
     max_rounds: int = 1000,
+    chi_buoi: Optional[list[str]] = None,
 ) -> KetQuaTuan:
     """Xếp CLB cho cả tuần: cắt theo buổi, gọi run_rbda từng buổi, ghép lại.
 
@@ -701,6 +782,27 @@ def run_rbda_nhieu_buoi(
             tham số này và có test canh chữ ký của nó.
         seed: chỉ dùng để dẫn xuất hoán vị cho 'stb_ngay'. Hai chế độ kia
             bỏ qua nó hoàn toàn.
+        chi_buoi: chạy CHỈ những buổi này (None = chạy hết). Dùng khi trường
+            muốn xếp riêng một buổi, hoặc một dải buổi trong tuần.
+
+    BẤT BIẾN QUAN TRỌNG NHẤT CỦA `chi_buoi`
+    ---------------------------------------
+    Chạy riêng thứ Năm phải cho ra ĐÚNG kết quả thứ Năm của lần chạy cả
+    tuần. Không giữ được điều đó thì kết quả phụ thuộc vào việc người vận
+    hành bấm chạy mấy lần và chạy theo nhóm nào — một thứ không giải thích
+    được với phụ huynh, và không tái lập được.
+
+    Chỗ dễ hỏng nằm ở bộ số bốc thăm: `sinh_stb_theo_buoi` ngắn mạch khi
+    danh sách buổi chỉ có một phần tử. Truyền danh sách ĐÃ LỌC vào đó thì
+    chạy riêng một buổi sẽ rơi vào nhánh ngắn mạch và dùng bộ số gốc thay
+    vì hoán vị của buổi ấy — ra kết quả khác hẳn. Nên bộ số vẫn sinh từ
+    TOÀN BỘ danh sách buổi của trường, việc lọc chỉ áp vào vòng lặp chạy.
+    Có test canh: `TestChonBuoi::test_chay_rieng_mot_buoi_giong_chay_ca_tuan`.
+
+    `stb_co_bu` KHÔNG giữ được bất biến này, và đó là bản chất của nó: số
+    của buổi sau phụ thuộc kết cục các buổi trước, nên bỏ bớt buổi là đổi
+    đầu vào. Chế độ đó chỉ còn dùng cho phép đo TN7, và TN7 không dùng
+    `chi_buoi`.
     """
     if che_do_boc_tham not in CHE_DO_BOC_THAM:
         raise ValueError(
@@ -708,8 +810,25 @@ def run_rbda_nhieu_buoi(
             % (list(CHE_DO_BOC_THAM), che_do_boc_tham))
 
     theo_buoi = nhom_theo_buoi(clubs)
-    ds_buoi = list(theo_buoi)
-    stb_tinh = sinh_stb_theo_buoi(stb_lottery, ds_buoi, seed, che_do_boc_tham)
+    ds_buoi_tat_ca = list(theo_buoi)
+
+    if chi_buoi is None:
+        ds_buoi = ds_buoi_tat_ca
+    else:
+        la = [b for b in chi_buoi if b not in ds_buoi_tat_ca]
+        if la:
+            raise ValueError(
+                "chi_buoi co buoi khong ton tai: %r (dang co: %r)"
+                % (sorted(la), ds_buoi_tat_ca))
+        chon = set(chi_buoi)
+        ds_buoi = [b for b in ds_buoi_tat_ca if b in chon]
+        if not ds_buoi:
+            raise ValueError("chi_buoi rong: khong co buoi nao de chay")
+
+    # Bộ số bốc thăm sinh từ TOÀN BỘ danh sách buổi, không phải danh sách đã
+    # lọc — xem phần "BẤT BIẾN QUAN TRỌNG NHẤT" ở docstring.
+    stb_tinh = sinh_stb_theo_buoi(
+        stb_lottery, ds_buoi_tat_ca, seed, che_do_boc_tham)
 
     ket = KetQuaTuan(
         assignment={sid: {} for sid in students},
@@ -1009,7 +1128,8 @@ CREATE TABLE IF NOT EXISTS run_meta (
     n_matched INTEGER,
     n_total INTEGER,
     che_do_boc_tham TEXT,       -- 'stb_tuan' | 'stb_ngay' | 'stb_co_bu'
-    so_buoi INTEGER
+    so_buoi INTEGER,
+    buoi_da_chay TEXT           -- cac buoi lan chay do phu, ngan cach bang dau phay
 );
 
 -- Nhat ky TOAN BO cac lan chay pipeline (khong bao gio xoa/ghi de) —
@@ -1029,7 +1149,11 @@ CREATE TABLE IF NOT EXISTS run_history (
     -- chay bang thiet ke boc tham nao — ma ba thiet ke cho ket qua khac
     -- nhau, nen thieu no la mat kha nang kiem toan.
     che_do_boc_tham TEXT,
-    so_buoi INTEGER
+    so_buoi INTEGER,
+    -- Chay duoc RIENG tung buoi, nen mot bo ket qua trong CSDL co the la
+    -- hop cua nhieu lan chay. Khong ghi lai lan chay nay phu nhung buoi
+    -- nao thi khong ai truy nguoc duoc "ket qua thu Nam den tu dau".
+    buoi_da_chay TEXT
 );
 
 -- Khoa so bac tham (STB). Chi 1 dong duy nhat. Khi da_khoa = 1, nut
@@ -1110,7 +1234,8 @@ def di_tru_schema(db_path: str) -> list[str]:
         for bang in ("run_meta", "run_history"):
             if bang not in co_bang:
                 continue
-            for cot, kieu in (("che_do_boc_tham", "TEXT"), ("so_buoi", "INTEGER")):
+            for cot, kieu in (("che_do_boc_tham", "TEXT"), ("so_buoi", "INTEGER"),
+                              ("buoi_da_chay", "TEXT")):
                 if not _co_cot(cur, bang, cot):
                     cur.execute("ALTER TABLE %s ADD COLUMN %s %s" % (bang, cot, kieu))
                     da_lam.append("%s.%s" % (bang, cot))

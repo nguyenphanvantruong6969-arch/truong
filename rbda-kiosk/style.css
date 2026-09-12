@@ -1331,6 +1331,77 @@ button, input {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Chọn buổi sẽ xếp ---------- */
+
+.chon-buoi {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+}
+
+.chon-buoi-dau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.chon-buoi-nhan {
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
+.chon-buoi-dai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.chon-buoi-dai select { padding: 5px 8px; font-size: 13.5px; }
+
+.btn-nho { padding: 5px 10px; font-size: 13px; }
+
+.chon-buoi-chip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* Chip BỎ chọn phải nhìn ra ngay là đang tắt — nó là thứ quyết định buổi
+   nào giữ nguyên kết quả cũ. Nền nhạt + chữ mờ + gạch ngang, ba dấu hiệu
+   chồng nhau để không phụ thuộc riêng màu sắc. */
+.buoi-chip {
+  padding: 7px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--slate);
+  font-family: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+
+.buoi-chip:hover { border-color: var(--slate); }
+
+.buoi-chip.is-chon {
+  border-color: var(--moss);
+  background: var(--moss-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.buoi-chip:not(.is-chon) { text-decoration: line-through; }
+
 /* ---------- Số bốc thăm theo buổi ---------- */
 
 /* Dải nhắc khi lần chạy gần nhất dùng cách bốc thăm cũ. Vàng chứ không đỏ:

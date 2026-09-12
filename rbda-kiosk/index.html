@@ -122,6 +122,21 @@
 
         <div class="stb-lock-line" id="stbLockLine"></div>
 
+        <div class="chon-buoi" id="chonBuoiBox" hidden>
+          <div class="chon-buoi-dau">
+            <span class="chon-buoi-nhan" data-i18n="chon_buoi_title">Buổi sẽ xếp</span>
+            <div class="chon-buoi-dai">
+              <label data-i18n="chon_buoi_tu">Từ</label>
+              <select id="chonBuoiTu" class="text-input"></select>
+              <label data-i18n="chon_buoi_den">đến</label>
+              <select id="chonBuoiDen" class="text-input"></select>
+              <button type="button" class="btn btn-ghost btn-nho" id="btnChonTatCaBuoi" data-i18n="chon_buoi_tat_ca">Tất cả</button>
+            </div>
+          </div>
+          <div class="chon-buoi-chip" id="chonBuoiChip"></div>
+          <p class="hint-text" id="chonBuoiNhac" data-i18n="chon_buoi_nhac">Buổi không chọn giữ nguyên kết quả của lần xếp trước.</p>
+        </div>
+
         <ol class="stepper" id="stepper">
           <li class="step" data-step="validate">
             <span class="step-dot"></span>
