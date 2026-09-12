@@ -75,3 +75,12 @@ KHAO_SAT*.xlsx
 
 build/
 dist/
+
+# build_windows.bat dung mot moi truong ao RIENG (.venv_build) de khong
+# dung toi .venv dang lam viec. Khong chan thi mot lan build tay lam ca
+# nghin tep thu vien hien ra trong "git status".
+.venv_build/
+
+# pip freeze cua may da build — workflow tu sinh roi kem vao ban giao di,
+# no noi ve MOT lan build cu the chu khong phai ve ma nguon.
+phien_ban_goi.txt

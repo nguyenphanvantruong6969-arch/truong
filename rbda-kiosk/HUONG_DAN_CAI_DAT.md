@@ -1,5 +1,32 @@
 # Hướng dẫn cài đặt trên máy Windows
 
+## Lấy bản `.exe` mới nhất ở đâu
+
+Mỗi lần mã nguồn đổi, GitHub tự đóng gói một bản Windows mới. Không cần máy nào
+cài Python để lấy nó.
+
+1. Mở kho mã trên GitHub → thẻ **Actions** → workflow **Đóng gói bản Windows**
+2. Bấm vào lần chạy trên cùng có dấu ✅
+3. Kéo xuống mục **Artifacts** → tải tệp `PhanBoCauLacBo-<số>-<mã commit>`
+4. Giải nén
+
+> ⚠️ **Giải nén CẢ thư mục, đừng lấy riêng tệp `.exe`.** Bên cạnh nó có thư mục
+> `_internal` chứa toàn bộ thư viện và giao diện; tách rời ra thì app không mở
+> được. Chép sang máy khác cũng phải chép cả thư mục.
+
+Trong thư mục giải nén có sẵn `PHIEN_BAN.txt` ghi bản đó build từ commit nào —
+dùng khi cần đối chiếu máy nhà trường đang chạy bản nào.
+
+**Muốn build tay trên máy Windows của mình** (cần Python 3.10 trở lên): chạy
+`build_windows.bat` trong thư mục mã nguồn, kết quả nằm ở
+`dist\PhanBoCauLacBo\`.
+
+> **Không build được `.exe` từ máy Linux hay macOS.** PyInstaller đóng gói cho
+> đúng hệ điều hành đang chạy lệnh. Đó là lý do việc đóng gói giao cho máy ảo
+> Windows của GitHub.
+
+---
+
 ## Vì sao Windows báo "không có chữ ký số hợp lệ"?
 
 Khi chạy `PhanBoCauLacBo.exe` lần đầu, Windows hiện một trong hai màn hình:
