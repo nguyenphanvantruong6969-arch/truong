@@ -1640,6 +1640,7 @@ Hai mốc dùng được khi giám khảo hỏi về ranh giới sử dụng AI:
 | Giải thích thuật toán RB-DA (tiếng Việt, có sơ đồ) | artifact `ef3cc025-51d6-4bb8-a8ee-92ac23c945c8` |
 | Kế hoạch kiểm thử mất dữ liệu | artifact `c0aa29df-b2b2-4e40-8e72-4adb63627a26` |
 | Nhật ký AI (PDF in được) | artifact `1369e5c3-3d9f-4d8f-8c00-0328bc1b5131` |
+| Nhật ký AI (bản Word in được, 117 câu lệnh + bảng tra nhanh) | `rbda-kiosk/NHAT_KY_AI.docx` — sinh lại bằng `python3 tao_nhat_ky_word.py` từ `NHAT_KY_AI.html` |
 | Phần mềm chạy cơ chế gì (5 lớp + cái giá của ổn định) | artifact `eced0ff9-08df-4922-a17e-5f85d99f79aa` · `CO_CHE_THUAT_TOAN.md` |
 | Tài liệu thuật toán + dữ liệu test | `TAI_LIEU_RBDA.zip` (đã gửi cho học sinh) |
 | README chi tiết | `rbda-kiosk/README.md` |
