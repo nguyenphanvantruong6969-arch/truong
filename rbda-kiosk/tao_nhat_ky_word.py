@@ -4,7 +4,7 @@
 
 Tệp Word giữ nguyên nội dung của artifact: từng câu lệnh (nguyên văn), mục đích
 của câu lệnh đó, việc AI đã làm, tệp AI tạo ra và phần kiểm chứng. Thêm một bảng
-tra nhanh ở đầu Mục 3 để dò theo số thứ tự câu lệnh.
+tra nhanh ở đầu Mục 5 để dò theo số thứ tự câu lệnh.
 
 Chạy lại:  python3 tao_nhat_ky_word.py [NHAT_KY_AI.html] [NHAT_KY_AI.docx]
 """
@@ -35,6 +35,19 @@ WASH_CAUTION = "F7EEDA"
 WASH_FLAG    = "F7E7E4"
 WASH_RULE    = "EAE7DE"
 WASH_HEAD    = "F2F0EA"
+WASH_OK      = "E6EFE9"
+
+# Thanh của biểu đồ tiến độ vẽ bằng ký tự khối: 1 ô = 1 commit khi max <= 30.
+BAR_CHAR, BAR_MAX_CHARS = "\u2588", 30
+
+# Tông màu của hộp trong sơ đồ: (nền, màu viền, màu chữ nhấn)
+TONE = {
+    "is-stamp":   (WASH_PROMPT,  "1F4E79", STAMP),
+    "is-ok":      (WASH_OK,      "2F6B4F", OK),
+    "is-caution": (WASH_CAUTION, "8A6410", CAUTION),
+    "is-flag":    (WASH_FLAG,    "A63A2B", FLAG),
+    "":           (WASH_HEAD,    "DAD6CB", INK_SOFT),
+}
 
 F_BODY = "Calibri"
 F_MONO = "Consolas"
@@ -88,6 +101,48 @@ def cell_borders(cell, color="DAD6CB", size=6):
         el.set(qn("w:color"), color)
         borders.append(el)
     tcPr.append(borders)
+
+
+def cell_padding(cell, top=60, bottom=60, left=100, right=100):
+    """Lề trong của một ô, đơn vị dxa (1/20 pt). Word mặc định 0 trên/dưới."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    mar = OxmlElement("w:tcMar")
+    for canh, gt in (("top", top), ("left", left), ("bottom", bottom), ("right", right)):
+        el = OxmlElement(f"w:{canh}")
+        el.set(qn("w:w"), str(gt))
+        el.set(qn("w:type"), "dxa")
+        mar.append(el)
+    tcPr.append(mar)
+
+
+def row_cant_split(row):
+    """Không cắt một hộp làm đôi giữa hai trang."""
+    trPr = row._tr.get_or_add_trPr()
+    trPr.append(OxmlElement("w:cantSplit"))
+
+
+def gop_o(cells, dau, rong):
+    """Gộp `rong` ô liên tiếp từ cột `dau`, bỏ các đoạn rỗng thừa do gộp sinh ra."""
+    cell = cells[dau]
+    if rong > 1:
+        cell = cell.merge(cells[min(dau + rong, len(cells)) - 1])
+    pars = cell.paragraphs
+    for par in pars[1:]:
+        if not par.text.strip():
+            par._p.getparent().remove(par._p)
+    return cell
+
+
+def css_var(tag, ten, mac_dinh=None):
+    """Đọc một biến CSS (vd --gt) trong thuộc tính style= của một thẻ."""
+    for phan in (tag.get("style") or "").split(";"):
+        if ":" in phan:
+            k, v = phan.split(":", 1)
+            if k.strip() == ten:
+                return float(v.strip())
+    if mac_dinh is None:
+        raise ValueError(f"thiếu biến {ten} trong style= của <{tag.name}>")
+    return mac_dinh
 
 
 def keep_with_next(par):
@@ -257,8 +312,14 @@ def render_alert(doc, div):
 def render_table(doc, table_tag):
     head = table_tag.find("thead")
     headers = [th for th in head.find_all("th")] if head else []
-    body_rows = table_tag.find("tbody").find_all("tr", recursive=False)
-    ncols = len(headers) if headers else len(body_rows[0].find_all(["td", "th"]))
+    body = table_tag.find("tbody")
+    # Bảng không có <tbody> vẫn phải dựng được, đừng để sập cả lần chạy.
+    body_rows = (body or table_tag).find_all("tr", recursive=False)
+    if head is not None:
+        body_rows = [r for r in body_rows if r.find_parent("thead") is None]
+    ncols = len(headers) if headers else max(
+        sum(int(td.get("colspan", 1)) for td in r.find_all(["td", "th"], recursive=False))
+        for r in body_rows)
     t = doc.add_table(rows=0, cols=ncols)
     t.style = "Table Grid"
     if headers:
@@ -270,7 +331,15 @@ def render_table(doc, table_tag):
             add_inline(par, th, bold=True, size=9, color=INK_SOFT)
     for tr in body_rows:
         cells = t.add_row().cells
-        for cell, td in zip(cells, tr.find_all(["td", "th"], recursive=False)):
+        cot = 0
+        for td in tr.find_all(["td", "th"], recursive=False):
+            rong = int(td.get("colspan", 1))
+            if cot >= len(cells):
+                break
+            cell = gop_o(cells, cot, rong)
+            if rong > 1:
+                shade_cell(cell, WASH_HEAD)
+            cot += rong
             par = cell.paragraphs[0]
             par.paragraph_format.space_after = Pt(0)
             pill = td.find("span", class_="pill")
@@ -355,7 +424,7 @@ def render_entry(doc, article):
     doc.add_paragraph().paragraph_format.space_after = Pt(2)
 
 
-# ------------------------------------------------------- tờ chép tay Mục 6
+# ------------------------------------------------------- tờ chép tay Mục 8
 def render_to_nk(doc, article):
     doc.add_page_break()
     head = article.find("div", class_="nk-dau")
@@ -452,6 +521,247 @@ def render_to_nk(doc, article):
                 style_run(p2.add_run(clean(box.get_text(" ", strip=True))),
                           size=9, color=INK_FAINT)
             doc.add_paragraph()
+
+
+# ------------------------------------------------- sơ đồ và biểu đồ tiến độ
+RONG_TRANG = Cm(17.0)          # bề ngang chữ với lề 2,0 cm hai bên
+
+
+def tone_cua(tag):
+    for lop in tag.get("class") or []:
+        if lop in TONE:
+            return TONE[lop]
+    return TONE[""]
+
+
+def kiem_tra_so_do(fig):
+    """Sơ đồ sai cấu trúc thì dừng hẳn, đừng in ra một sơ đồ méo."""
+    cot = int(fig.get("data-cot", 1))
+    for lop in fig.find_all("div", class_="so-do-lop"):
+        hop = lop.find_all("div", class_="so-do-hop", recursive=False)
+        tong = sum(int(h.get("data-rong", 1)) for h in hop)
+        if tong != cot:
+            raise ValueError(
+                f"sơ đồ '{lop.get('data-lop')}': tổng data-rong = {tong}, "
+                f"khác data-cot = {cot}")
+        for h in hop:
+            if h.find(["pre", "table"]) is not None:
+                raise ValueError(
+                    f"sơ đồ '{lop.get('data-lop')}': hộp chứa <pre>/<table> "
+                    "— sẽ sinh bảng lồng trong Word")
+    return cot
+
+
+def do_hop(cell, hop, nen, vien):
+    """Đổ một .so-do-hop vào một ô Word: nền + viền theo tông, rồi ba đoạn chữ."""
+    shade_cell(cell, nen)
+    cell_borders(cell, color=vien)
+    cell_padding(cell)
+    cell.paragraphs[0]._p.getparent().remove(cell.paragraphs[0]._p)
+    phan = (("hop-ten", dict(bold=True, size=10, color=INK)),
+            ("hop-tep", dict(mono=True, size=8.5, color=STAMP)),
+            ("hop-mo", dict(size=8.5, color=INK_SOFT)))
+    for lop, kieu in phan:
+        the = hop.find(class_=lop)
+        if the is None:
+            continue
+        par = cell.add_paragraph()
+        par.paragraph_format.space_before = Pt(0)
+        par.paragraph_format.space_after = Pt(1)
+        add_inline(par, the, **kieu)
+    if not cell.paragraphs:
+        cell.add_paragraph()
+
+
+def render_so_do(doc, fig):
+    """<figure class="so-do" data-cot="N"> → bảng Word 1 cột nhãn + N cột nội dung."""
+    cot = kiem_tra_so_do(fig)
+    cap = fig.find("figcaption")
+    if cap is not None:
+        par = doc.add_paragraph()
+        par.paragraph_format.space_before = Pt(10)
+        par.paragraph_format.space_after = Pt(4)
+        add_inline(par, cap, italic=True, size=9, color=INK_SOFT)
+        keep_with_next(par)
+
+    rong_nhan = Cm(3.0)
+    rong_cot = Cm((17.0 - 3.0) / cot)
+    t = doc.add_table(rows=0, cols=cot + 1)
+    t.autofit = False
+
+    for node in fig.children:
+        if not isinstance(node, Tag):
+            continue
+        cls = node.get("class") or []
+        if "so-do-lop" in cls:
+            row = t.add_row()
+            row_cant_split(row)
+            cells = row.cells
+            cells[0].width = rong_nhan
+            for c in cells[1:]:
+                c.width = rong_cot
+            nhan = cells[0]
+            shade_cell(nhan, WASH_RULE)
+            cell_padding(nhan)
+            par = nhan.paragraphs[0]
+            par.paragraph_format.space_after = Pt(0)
+            style_run(par.add_run((node.get("data-lop") or "").upper()),
+                      mono=True, size=7.5, color=INK_FAINT)
+            vi_tri = 1
+            for hop in node.find_all("div", class_="so-do-hop", recursive=False):
+                rong = int(hop.get("data-rong", 1))
+                nen, vien, _ = tone_cua(hop)
+                o = gop_o(cells, vi_tri, rong)
+                o.width = Cm(rong_cot.cm * rong)
+                do_hop(o, hop, nen, vien)
+                vi_tri += rong
+        elif "so-do-mui-ten" in cls:
+            row = t.add_row()
+            row_cant_split(row)
+            cells = row.cells
+            cells[0].width = rong_nhan
+            o = gop_o(cells, 1, cot)
+            o.width = Cm(17.0 - 3.0)
+            cell_padding(o, top=40, bottom=40)
+            par = o.paragraphs[0]
+            par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            par.paragraph_format.space_after = Pt(0)
+            mau = OK if node.get("data-huong") == "len" else STAMP
+            style_run(par.add_run(node.get_text(strip=True) or "\u2193"),
+                      bold=True, mono=True, size=11, color=mau)
+            style_run(par.add_run("   " + (node.get("data-nhan") or "")),
+                      mono=True, size=8, color=INK_FAINT)
+
+    ghi = fig.find("p", class_="so-do-ghi")
+    if ghi is not None:
+        par = doc.add_paragraph()
+        par.paragraph_format.space_after = Pt(4)
+        add_inline(par, ghi, italic=True, size=9, color=INK_FAINT)
+    doc.add_paragraph().paragraph_format.space_after = Pt(4)
+
+
+def kiem_tra_tien_do(fig):
+    """Số vẽ ra thanh và số in bằng chữ phải khớp nhau, nếu không thì dừng."""
+    hang = fig.find_all("li", class_="tien-do-hang")
+    gia_tri = []
+    for h in hang:
+        gt = css_var(h, "--gt")
+        vmax = css_var(h, "--max")
+        the_so = h.find(class_="td-so")
+        so_chu = float((the_so.get_text(strip=True) if the_so else "").replace(",", "."))
+        ten = clean(h.find(class_="td-pha").get_text(" ", strip=True))
+        if gt != so_chu:
+            raise ValueError(f"biểu đồ '{ten}': --gt={gt} khác số in ra {so_chu}")
+        gia_tri.append((gt, vmax, ten))
+    dinh = max(g for g, _, _ in gia_tri)
+    for gt, vmax, ten in gia_tri:
+        if vmax != dinh:
+            raise ValueError(f"biểu đồ '{ten}': --max={vmax} khác giá trị lớn nhất {dinh}")
+    tong = sum(g for g, _, _ in gia_tri)
+    khai = float(fig.get("data-tong-thay", tong))
+    if tong != khai:
+        raise ValueError(f"biểu đồ: cộng các giai đoạn = {tong}, khác data-tong-thay = {khai}")
+    return hang, dinh, tong
+
+
+def render_tien_do(doc, fig):
+    """<figure class="tien-do"> → bảng 4 cột, thanh vẽ bằng ký tự khối."""
+    hang, dinh, tong = kiem_tra_tien_do(fig)
+    don_vi = fig.get("data-don-vi", "commit")
+    moi_o = 1 if dinh <= BAR_MAX_CHARS else dinh / BAR_MAX_CHARS
+
+    cap = fig.find("figcaption")
+    par = doc.add_paragraph()
+    par.paragraph_format.space_before = Pt(10)
+    par.paragraph_format.space_after = Pt(2)
+    if cap is not None:
+        add_inline(par, cap, italic=True, size=9, color=INK_SOFT)
+    keep_with_next(par)
+    par = doc.add_paragraph()
+    par.paragraph_format.space_after = Pt(4)
+    thang = (f"Mỗi ô {BAR_CHAR} = 1 {don_vi}." if moi_o == 1
+             else f"Mỗi ô {BAR_CHAR} \u2248 {moi_o:.1f} {don_vi}.")
+    style_run(par.add_run(thang + " Trục bắt đầu từ 0."), mono=True, size=8, color=INK_FAINT)
+    keep_with_next(par)
+
+    rong = [Cm(4.4), Cm(5.6), Cm(1.7), Cm(5.3)]
+    t = doc.add_table(rows=0, cols=4)
+    t.autofit = False
+    tieu_de = t.add_row().cells
+    for cell, chu, w in zip(tieu_de, ["GIAI ĐOẠN",
+                                      f"PHÂN BỐ {don_vi.upper()} NHÌN THẤY ĐƯỢC (0–{dinh:g})",
+                                      "SỐ", "VIỆC CHÍNH"], rong):
+        cell.width = w
+        shade_cell(cell, WASH_HEAD)
+        cell_padding(cell)
+        par = cell.paragraphs[0]
+        par.paragraph_format.space_after = Pt(0)
+        style_run(par.add_run(chu), bold=True, mono=True, size=8, color=INK_SOFT)
+
+    for h in hang:
+        gt = css_var(h, "--gt")
+        la_dinh = "la-dinh" in (h.get("class") or [])
+        cells = t.add_row().cells
+        for cell, w in zip(cells, rong):
+            cell.width = w
+            cell_padding(cell)
+            cell.paragraphs[0].paragraph_format.space_after = Pt(0)
+
+        # cột 1 — tên giai đoạn
+        par = cells[0].paragraphs[0]
+        stt = h.find(class_="td-stt")
+        if stt is not None:
+            style_run(par.add_run(stt.get_text(strip=True) + " · "),
+                      bold=True, mono=True, size=9, color=STAMP)
+            stt.extract()
+        add_inline(par, h.find(class_="td-pha"), bold=True, size=9.5)
+
+        # cột 2 — thanh + các ngày
+        par = cells[1].paragraphs[0]
+        n = int(round(gt / moi_o))
+        if n > 0:
+            style_run(par.add_run(BAR_CHAR * n), mono=True, size=8,
+                      color=OK if la_dinh else STAMP)
+        else:
+            style_run(par.add_run("\u2014 "), mono=True, size=8, color=INK_FAINT)
+            style_run(par.add_run(h.get("data-khong-do") or "không đo được"),
+                      italic=True, size=8, color=CAUTION)
+        ngay = h.find(class_="td-ngay")
+        if ngay is not None:
+            p2 = cells[1].add_paragraph()
+            p2.paragraph_format.space_after = Pt(0)
+            style_run(p2.add_run(clean(ngay.get_text(" ", strip=True))),
+                      mono=True, size=7.5, color=INK_FAINT)
+
+        # cột 3 — con số
+        par = cells[2].paragraphs[0]
+        par.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        style_run(par.add_run(f"{gt:g}"), bold=True, size=11, color=INK)
+        p2 = cells[2].add_paragraph()
+        p2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        p2.paragraph_format.space_after = Pt(0)
+        style_run(p2.add_run(don_vi), size=7.5, color=INK_FAINT)
+
+        # cột 4 — việc chính
+        viec = h.find(class_="td-viec")
+        if viec is not None:
+            add_inline(cells[3].paragraphs[0], viec, size=9)
+
+    meta = fig.get("data-tong-meta")
+    cells = t.add_row().cells
+    o = gop_o(cells, 0, 4)
+    o.width = RONG_TRANG
+    shade_cell(o, WASH_RULE)
+    cell_padding(o)
+    par = o.paragraphs[0]
+    par.paragraph_format.space_after = Pt(0)
+    chu = f"Cộng các giai đoạn: {tong:g}"
+    if meta:
+        thieu = float(meta) - tong
+        chu += (f"   ·   Tổng theo siêu dữ liệu: {float(meta):g}"
+                f"   ·   Chưa nhìn thấy được: {thieu:g} (bản sao kho nông)")
+    style_run(par.add_run(chu), mono=True, size=8, color=INK_SOFT)
+    doc.add_paragraph().paragraph_format.space_after = Pt(4)
 
 
 # ------------------------------------------------------------- bảng tra nhanh
@@ -604,6 +914,7 @@ def build(src: Path, dst: Path):
     entries = sheet.find_all("article", class_="entry")
     index_done = False
     pending_index = False
+    bo_qua = []
 
     for node in sheet.children:
         if not isinstance(node, Tag):
@@ -621,7 +932,8 @@ def build(src: Path, dst: Path):
                 text = text.replace(label, "", 1).strip()
                 text = f"{label} — {text}"
             add_heading(doc, text, 1)
-            pending_index = label.startswith("MỤC 3")
+            # Neo theo id, không theo số mục: đánh số lại không phá được nữa.
+            pending_index = node.get("id") == "muc-nhat-ky"
         elif name == "h3":
             add_heading(doc, clean(node.get_text(" ", strip=True)), 2)
         elif name == "h4":
@@ -638,6 +950,10 @@ def build(src: Path, dst: Path):
             render_alert(doc, node)
         elif "table-wrap" in cls:
             render_table(doc, node.find("table"))
+        elif "so-do" in cls:
+            render_so_do(doc, node)
+        elif "tien-do" in cls:
+            render_tien_do(doc, node)
         elif name == "article" and "entry" in cls:
             if not index_done:
                 render_index(doc, entries)
@@ -682,6 +998,10 @@ def build(src: Path, dst: Path):
             par.paragraph_format.space_before = Pt(16)
             par_border(par, ("top",), size=6)
             add_inline(par, node, size=9, color=INK_FAINT)
+        else:
+            # Không nhận ra thì PHẢI kêu lên: bỏ qua im lặng là mất nguyên một
+            # khối khỏi bản Word mà không ai biết.
+            bo_qua.append(f"<{name} class={cls}>")
 
     normalize_cells(doc)
 
@@ -693,6 +1013,10 @@ def build(src: Path, dst: Path):
                       "nội dung giữ nguyên bản artifact.")
 
     doc.save(dst)
+    if bo_qua:
+        print("CẢNH BÁO — các khối cấp 1 bị bỏ qua, KHÔNG có trong bản Word:")
+        for x in bo_qua:
+            print("   ", x)
     return len(entries)
 
 

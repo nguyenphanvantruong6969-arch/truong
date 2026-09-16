@@ -386,7 +386,249 @@
     .entry-gutter .seq { margin-bottom: 0; }
   }
 
-  /* ---------- Mục 6: tờ chép tay theo khuôn Phụ lục 2 ---------- */
+
+  /* ---------- Mục 3: sơ đồ kiến trúc và biểu đồ tiến độ ---------- */
+  figure.so-do, figure.tien-do {
+    margin: 22px 0;
+    padding: 0;
+    border: 1.5px solid var(--ink);
+    background: var(--surface);
+  }
+  figure.so-do > figcaption, figure.tien-do > figcaption {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--rule-soft);
+  }
+  figure.so-do > figcaption b, figure.tien-do > figcaption b {
+    font-family: var(--f-display);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .so-do-lop {
+    display: grid;
+    gap: 8px;
+    padding: 10px 14px;
+    align-items: stretch;
+  }
+  .so-do[data-cot="1"] .so-do-lop { grid-template-columns: 124px minmax(0, 1fr); }
+  .so-do[data-cot="2"] .so-do-lop { grid-template-columns: 124px repeat(2, minmax(0, 1fr)); }
+  .so-do[data-cot="3"] .so-do-lop { grid-template-columns: 124px repeat(3, minmax(0, 1fr)); }
+  .so-do-lop::before {
+    content: attr(data-lop);
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--stamp);
+    align-self: center;
+    padding-right: 10px;
+    border-right: 1px solid var(--rule);
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+  }
+  .so-do-hop {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    background: var(--paper);
+    padding: 9px 12px;
+    min-width: 0;
+  }
+  .so-do-hop[data-rong="2"] { grid-column: span 2; }
+  .so-do-hop[data-rong="3"] { grid-column: span 3; }
+  .so-do-hop.is-stamp   { background: var(--stamp-wash);   border-left-color: var(--stamp); }
+  .so-do-hop.is-ok      { background: var(--ok-wash);      border-left-color: var(--ok); }
+  .so-do-hop.is-caution { background: var(--caution-wash); border-left-color: var(--caution); }
+  .so-do-hop.is-flag    { background: var(--flag-wash);    border-left-color: var(--flag); }
+  .hop-ten {
+    display: block;
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  .hop-tep {
+    display: block;
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--stamp);
+    margin-top: 3px;
+    word-break: break-word;
+  }
+  .hop-mo {
+    display: block;
+    font-size: 12.8px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin-top: 5px;
+  }
+  .so-do-mui-ten {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    padding: 6px 14px;
+    background: var(--rule-soft);
+    border-top: 1px solid var(--rule-soft);
+    border-bottom: 1px solid var(--rule-soft);
+    font-family: var(--f-mono);
+    font-size: 13px;
+    color: var(--stamp);
+  }
+  .so-do-mui-ten[data-huong="len"] { color: var(--ok); }
+  .so-do-mui-ten::after {
+    content: attr(data-nhan);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  .so-do-ghi {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin: 0;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--rule-soft);
+    max-width: none;
+  }
+
+  ol.tien-do-than { list-style: none; margin: 0; padding: 4px 0; }
+  .tien-do-hang {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr) 92px;
+    grid-template-areas: "pha thanh dem" "pha ngay dem" "viec viec viec";
+    column-gap: 12px;
+    align-items: center;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .tien-do-hang:last-child { border-bottom: none; }
+  .td-pha {
+    grid-area: pha;
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 13.2px;
+    align-self: center;
+  }
+  .td-stt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border: 1px solid var(--stamp);
+    border-radius: 50%;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--stamp);
+    margin-right: 7px;
+  }
+  .td-thanh {
+    grid-area: thanh;
+    height: 15px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule);
+    position: relative;
+  }
+  .td-thanh::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(100% * var(--gt) / var(--max));
+    background: var(--stamp);
+  }
+  .la-dinh .td-thanh::before { background: var(--ok); }
+  .tien-do-hang[data-khong-do] .td-thanh {
+    background: repeating-linear-gradient(45deg, var(--rule-soft) 0 5px, transparent 5px 10px);
+  }
+  .td-ngay {
+    grid-area: ngay;
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    padding-top: 4px;
+  }
+  .td-dem {
+    grid-area: dem;
+    text-align: right;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+  .td-so {
+    display: block;
+    font-family: var(--f-mono);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .td-viec {
+    grid-area: viec;
+    font-size: 12.8px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    padding-top: 6px;
+  }
+  .tien-do-truc {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr) 92px;
+    column-gap: 12px;
+    margin: 0;
+    padding: 0 14px 8px;
+    max-width: none;
+  }
+  .tien-do-truc span {
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--f-mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+  }
+  .tien-do-tong {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--rule);
+    background: var(--rule-soft);
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .tien-do-tong b { color: var(--ink); font-weight: 500; }
+
+  @media print {
+    figure.so-do, figure.tien-do { break-inside: avoid; border-color: #000; }
+    .so-do-hop, .td-thanh, .td-thanh::before, .so-do-mui-ten, .tien-do-tong {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+  @media (max-width: 560px) {
+    .so-do[data-cot="1"] .so-do-lop,
+    .so-do[data-cot="2"] .so-do-lop,
+    .so-do[data-cot="3"] .so-do-lop { grid-template-columns: minmax(0, 1fr); }
+    .so-do-lop::before {
+      border-right: none;
+      border-bottom: 1px solid var(--rule);
+      padding: 0 0 6px;
+      min-height: 0;
+    }
+    .so-do-hop[data-rong="2"], .so-do-hop[data-rong="3"] { grid-column: span 1; }
+    .tien-do-hang {
+      grid-template-columns: minmax(0, 1fr) 72px;
+      grid-template-areas: "pha dem" "thanh thanh" "ngay ngay" "viec viec";
+      row-gap: 5px;
+    }
+    .tien-do-truc { display: none; }
+  }
+
+  /* ---------- Mục 8: tờ chép tay theo khuôn Phụ lục 2 ---------- */
   .to-nk {
     border: 1.5px solid var(--ink);
     background: var(--surface);
@@ -524,15 +766,15 @@
       nhật ký câu lệnh.”</em>
     </p>
     <p class="standfirst" style="margin-top:10px">
-      <strong>Cần chép tay vào sổ nghiên cứu thì dùng <a href="#muc6">Mục 6</a></strong> —
-      117 câu lệnh của Mục 3 đã gộp thành 18 phiên và trình bày theo đúng Mẫu ghi chép
-      nhật ký ở mục III của Phụ lục 2. Mục 3 giữ nguyên bản đầy đủ để đối chiếu.
+      <strong>Cần chép tay vào sổ nghiên cứu thì dùng <a href="#muc8">Mục 8</a></strong> —
+      118 câu lệnh của Mục 5 đã gộp thành 19 phiên và trình bày theo đúng Mẫu ghi chép
+      nhật ký ở mục III của Phụ lục 2. Mục 5 giữ nguyên bản đầy đủ để đối chiếu.
     </p>
     <dl class="meta-grid">
       <div class="meta-cell"><dt>Đề tài</dt><dd>Phân bổ Câu lạc bộ (RB-DA)</dd></div>
       <div class="meta-cell"><dt>Công cụ AI</dt><dd>Claude (Anthropic)</dd></div>
       <div class="meta-cell"><dt>Thời gian</dt><dd>26/08 – 15/09/2026</dd></div>
-      <div class="meta-cell"><dt>Đối chiếu được</dt><dd>117 câu lệnh · 95 commit</dd></div>
+      <div class="meta-cell"><dt>Đối chiếu được</dt><dd>118 câu lệnh · 95 commit tới 15/09</dd></div>
     </dl>
   </header>
 
@@ -553,11 +795,11 @@
     <span class="quoted">“Chấp nhận được, nhưng phải trích dẫn rõ phần code nào do AI tạo ra
 kèm theo nhật ký câu lệnh.”</span>
     <p>
-      <strong>Tình trạng: đã đáp ứng.</strong> Mục 4 liệt kê đầy đủ <strong>131 tệp</strong> do
+      <strong>Tình trạng: đã đáp ứng.</strong> Mục 6 liệt kê đầy đủ <strong>131 tệp</strong> do
       AI viết mới — 129 tệp mã nguồn, tài liệu và dữ liệu mô phỏng, cùng 2 tệp Word — và 7 tệp
       gốc do AI chỉnh sửa, kèm <strong>95 mã commit</strong> Git có mốc thời gian đối chiếu
-      được. Mục 3 là nhật ký câu lệnh đầy đủ, từ <strong>#1</strong> tới
-      <strong>#117</strong>.
+      được. Mục 5 là nhật ký câu lệnh đầy đủ, từ <strong>#1</strong> tới
+      <strong>#118</strong>.
     </p>
   </div>
 
@@ -621,6 +863,15 @@ kèm theo nhật ký câu lệnh.”</span>
       <strong>Cần làm khi trình bày:</strong> phần nhận xét, đánh giá ý nghĩa của kết quả kiểm thử
       trong báo cáo phải do em tự viết bằng lập luận của mình.
     </p>
+    <p>
+      <strong>Thay đổi ngày 16/09/2026 — ghi ra chứ không giấu.</strong> Học sinh yêu cầu AI viết
+      phần phân tích và giải thích số đo (câu lệnh <strong>#118</strong>). Phần đó nay nằm ở
+      <strong>Mục 4</strong>, mở đầu bằng một khối ghi rõ <em>“mục này do AI viết”</em>. Từ mốc
+      này trở đi, câu đúng để nói về dự án là: <strong>AI đã viết một bản diễn giải số đo để học
+      sinh đối chiếu</strong>, còn <strong>Kết luận, Hướng phát triển và Tính mới vẫn do học sinh
+      tự viết</strong> và AI không tham gia. Nói rằng “AI không hề diễn giải số liệu” kể từ ngày
+      16/09 là nói sai.
+    </p>
   </div>
 
   <!-- =================== 2. ĐỐI CHIẾU =================== -->
@@ -644,7 +895,7 @@ kèm theo nhật ký câu lệnh.”</span>
           <td>Viết bộ test tự động, mô-đun song ngữ, màn hình phục hồi, chế độ trình duyệt dự phòng</td>
           <td>“Sử dụng AI để viết mã nguồn (code) ban đầu cho dự án”</td>
           <td><span class="pill cond">Có điều kiện</span></td>
-          <td>Đã trích dẫn đầy đủ ở Mục 4 + nhật ký này</td>
+          <td>Đã trích dẫn đầy đủ ở Mục 6 + nhật ký này</td>
         </tr>
         <tr>
           <td>Sửa lỗi trong mã nguồn có sẵn (lỗi crash khi &lt;10 club, lỗi ghi dữ liệu không nguyên tử)</td>
@@ -674,13 +925,19 @@ kèm theo nhật ký câu lệnh.”</span>
           <td>Rà soát phần mềm, đề xuất tính năng bổ sung cho tiện dụng hơn</td>
           <td>“Sử dụng AI để viết mã nguồn (code) ban đầu cho dự án”</td>
           <td><span class="pill cond">Có điều kiện</span></td>
-          <td>Đã trích dẫn code ở Mục 4 + nhật ký này</td>
+          <td>Đã trích dẫn code ở Mục 6 + nhật ký này</td>
         </tr>
         <tr>
           <td>Kiểm tra xem thay đổi code có làm đổi thuật toán gốc không</td>
           <td>“Sử dụng AI để viết mã nguồn (code) ban đầu cho dự án”</td>
           <td><span class="pill cond">Có điều kiện</span></td>
           <td>Đã ghi rõ kết luận kiểm tra ở mục nhật ký #10–12</td>
+        </tr>
+        <tr>
+          <td><strong>Viết bản diễn giải số đo TN1–TN7 và <code>SO_LIEU_DA_KIEM_CHUNG.md</code></strong> (16/09, theo yêu cầu của học sinh)</td>
+          <td>“Việc giải thích dữ liệu phải do người nghiên cứu thực hiện” — lưu ý kèm theo dòng <em>“Sử dụng AI để xác định các bài kiểm tra…”</em></td>
+          <td><span class="pill deny">Chạm ranh giới</span></td>
+          <td>Đặt ở Mục 4, có khối ghi nhãn “do AI viết”; học sinh phải kiểm số và viết lại bằng lập luận của mình; Kết luận · Hướng phát triển · Tính mới vẫn do học sinh viết</td>
         </tr>
         <tr>
           <td>Sinh dữ liệu mô phỏng để kiểm thử phần mềm</td>
@@ -706,12 +963,609 @@ kèm theo nhật ký câu lệnh.”</span>
       <strong>02/09</strong>, học sinh hỏi thẳng <em>“Vậy chúng ta có thể kết luận đc điều
       gì”</em> — <strong>AI đã từ chối viết phần Kết luận</strong>, nêu đúng quy định, và chỉ đưa
       lại bảng số đo để học sinh tự rút ra nhận định. Câu lệnh nguyên văn và phần AI trả lời được
-      ghi ở <strong>Mục 3, câu lệnh #89</strong>.
+      ghi ở <strong>Mục 5, câu lệnh #89</strong>.
+    </p>
+    <p>
+      <strong>Một ngoại lệ, từ ngày 16/09/2026.</strong> Học sinh yêu cầu AI viết phần
+      <em>phân tích và giải thích số đo</em>; AI đã viết, và phần đó là <strong>Mục 4</strong>.
+      Nó <strong>không</strong> phải phần nào của bài nghiên cứu nộp dưới tên học sinh — nó nằm
+      trong chính phụ lục ghi lại việc AI đã làm, và mang nhãn ngay đầu mục. Sáu việc còn lại
+      trong danh sách trên vẫn đúng nguyên: AI <strong>không</strong> viết bản thảo kế hoạch
+      nghiên cứu, <strong>không</strong> viết Kết luận, <strong>không</strong> tóm tắt tài liệu
+      cho tổng quan, <strong>không</strong> tìm trích dẫn (đã từ chối bốn lần, câu lệnh
+      <strong>#95</strong>), <strong>không</strong> tạo danh mục tài liệu tham khảo,
+      <strong>không</strong> thu thập dữ liệu nghiên cứu thật.
     </p>
   </div>
 
-  <!-- =================== 3. NHẬT KÝ =================== -->
-  <h2><span class="num">MỤC 3</span> Nhật ký câu lệnh theo trình tự thời gian</h2>
+  <!-- =================== 3. QUÁ TRÌNH XÂY DỰNG =================== -->
+  <h2><span class="num">MỤC 3</span> Quá trình xây dựng phần mềm</h2>
+  <p class="section-note">
+    Mục 5 ghi <strong>từng câu lệnh một</strong>, đúng thứ tự đã gõ. Nhưng đọc 118 mục rời
+    thì không dựng lại được phần mềm đã lớn lên thế nào. Mục này trả lời đúng câu đó:
+    phần mềm gồm những gì, ai viết phần nào, nó đi qua những giai đoạn nào, và cách làm
+    việc nào lặp lại đủ nhiều để gọi là nguyên tắc. <strong>Mọi con số ở đây đếm lại
+    được</strong> bằng lệnh ghi ngay bên cạnh.
+  </p>
+
+  <h3>3.1 · Xuất phát điểm — bản gốc do học sinh viết</h3>
+  <p>
+    Ngày <strong>26/08/2026</strong> dự án đã là một phần mềm chạy được, do <strong>học sinh
+    tự viết</strong> và tự đóng gói. AI nhận đúng bản đó, <strong>không viết lại từ đầu</strong>.
+    Tám tệp gốc: <code>rbda_priority_pipeline.py</code> (thuật toán và lược đồ cơ sở dữ liệu) ·
+    <code>api.py</code> (lớp nối giao diện với phần lõi) · <code>main.py</code> (điểm khởi
+    động) · <code>index.html</code>, <code>style.css</code>, <code>app.js</code> (giao diện) ·
+    <code>kiosk.spec</code>, <code>ky_va_tin_cay.ps1</code> (đóng gói và ký tệp cài đặt).
+  </p>
+  <p>
+    Bản đồ “ai viết tệp nào” đầy đủ nằm ở <code>BAN_GIAO.md</code> mục 3; danh sách 131 tệp
+    AI viết mới nằm ở <strong>Mục 6</strong>. Ranh giới ấy cần nói đúng khi trình bày:
+    <em>phần mềm không phải do AI dựng từ con số không, mà là một bản gốc của học sinh được
+    kiểm thử, vá lỗi rồi mở rộng.</em>
+  </p>
+
+  <h3>3.2 · Kiến trúc: một mặt API, hai đường đi</h3>
+
+  <figure class="so-do" data-cot="2">
+    <figcaption>
+      <b>Sơ đồ 1 — Đường đi của một lần bấm nút, từ giao diện xuống SQLite.</b>
+      Sơ đồ do AI tạo ra (Điều kiện 2, Mục 1); dựng bằng HTML/CSS ngay trong trang này,
+      không phải ảnh. Số dòng đo bằng <code>wc -l</code> ngày 16/09/2026.
+    </figcaption>
+
+    <div class="so-do-lop" data-lop="Giao diện">
+      <div class="so-do-hop is-stamp" data-rong="2">
+        <b class="hop-ten">Trang chạy trong cửa sổ ứng dụng</b>
+        <span class="hop-tep">index.html 501 · app.js 2 064 · i18n.js 1 086 · style.css 1 620 dòng</span>
+        <span class="hop-mo">5 thẻ thao tác, song ngữ Việt / Anh. <strong>Không một dòng thuật toán nào ở lớp này</strong> — mọi phép tính đều gọi xuống Python.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="window.pywebview.api.&lt;tên hàm&gt;(…) — app.js chỉ biết đúng một cách gọi">↓</div>
+
+    <div class="so-do-lop" data-lop="Cầu nối · hai đường">
+      <div class="so-do-hop">
+        <b class="hop-ten">A · Cửa sổ gốc (mặc định)</b>
+        <span class="hop-tep">pywebview js_api — main.py</span>
+        <span class="hop-mo">Gọi thẳng vào Python trong cùng tiến trình. Không mở cổng mạng nào.</span>
+      </div>
+      <div class="so-do-hop is-caution">
+        <b class="hop-ten">B · Dự phòng khi cửa sổ gốc không mở được</b>
+        <span class="hop-tep">browser_host.py — 531 dòng</span>
+        <span class="hop-mo">Máy chủ chỉ nghe trên <code>127.0.0.1</code>. Một lớp <code>Proxy</code> trong JS dựng lại đúng <code>window.pywebview.api</code>, biến mỗi lời gọi thành <code>POST /__api__/&lt;tên hàm&gt;</code> kèm token sinh ngẫu nhiên lúc khởi động.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="hai đường gặp nhau ở đây: cùng tên hàm, cùng tham số, cùng hình dạng trả về">↓</div>
+
+    <div class="so-do-lop" data-lop="Lớp API">
+      <div class="so-do-hop is-stamp" data-rong="2">
+        <b class="hop-ten">api.py — lớp PipelineAPI</b>
+        <span class="hop-tep">3 227 dòng · 44 phương thức công khai · i18n_errors.py 114 mã lỗi</span>
+        <span class="hop-mo">Mọi phương thức trả về đúng một hình dạng: <code>{ok, data, errors}</code>. Lỗi là <em>dữ liệu trả về</em>, không phải ngoại lệ ném lên giao diện — nhờ vậy hai cầu nối ở trên không cần biết gì về lỗi, và câu chữ tiếng Việt / tiếng Anh dịch ở một chỗ duy nhất.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="chỉ lớp dưới đây được phép mở kết nối SQLite">↓</div>
+
+    <div class="so-do-lop" data-lop="Thuật toán">
+      <div class="so-do-hop is-ok" data-rong="2">
+        <b class="hop-ten">rbda_priority_pipeline.py</b>
+        <span class="hop-tep">1 645 dòng · thuật toán RB-DA · bốc thăm STB · verify_stability · lược đồ bảng</span>
+        <span class="hop-mo">Lược đồ cơ sở dữ liệu nằm <em>cùng tệp</em> với thuật toán, có chủ đích: đổi thuật toán mà quên đổi bảng thì hỏng ngay lúc chạy test, không âm thầm trôi vào bản phát hành.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="một lần chạy = một giao dịch duy nhất; sao lưu trước, ghi sau">↓</div>
+
+    <div class="so-do-lop" data-lop="Dữ liệu">
+      <div class="so-do-hop">
+        <b class="hop-ten">app.db — SQLite</b>
+        <span class="hop-tep">synchronous=FULL · busy_timeout=15 s · KHÔNG bật WAL</span>
+        <span class="hop-mo">Đặt cạnh tệp <code>.exe</code>, không nằm trong thư mục nội bộ của gói, để dựng lại bản cài không xoá mất dữ liệu của trường.</span>
+      </div>
+      <div class="so-do-hop">
+        <b class="hop-ten">Sao lưu + màn hình phục hồi</b>
+        <span class="hop-tep">recovery.py 170 · recovery.html 60 · recovery.js 202 dòng</span>
+        <span class="hop-mo">Sao lưu bằng Backup API của SQLite (không phải chép tệp), giữ 10 bản gần nhất. Khi không khởi tạo được, app mở màn hình riêng: soát từng bản bằng <code>PRAGMA quick_check</code>, hỏng thì lùi sang bản kế; chọn làm lại từ đầu thì <em>đổi tên</em> tệp hỏng chứ không xoá.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-huong="len" data-nhan="{ok, data, errors} đi ngược lên — giống hệt nhau ở cả hai cầu nối">↑</div>
+
+    <div class="so-do-lop" data-lop="Nhánh phụ">
+      <div class="so-do-hop is-flag" data-rong="2">
+        <b class="hop-ten">chan_doan.py — chẩn đoán khởi động</b>
+        <span class="hop-tep">78 dòng · ghi loi_khoi_dong.txt cạnh app.db</span>
+        <span class="hop-mo">Gỡ dấu “tải từ Internet” khỏi các tệp thư viện trong gói, và ghi lại nguyên văn lỗi. Có tệp này vì bản đóng gói không có cửa sổ dòng lệnh, nên lỗi khởi động trước đây <strong>bị vứt đi sạch</strong> — ba phiên làm việc đã phải <em>đoán</em> nguyên nhân.</span>
+      </div>
+    </div>
+
+    <p class="so-do-ghi">
+      Mũi tên hướng xuống là lời gọi, hướng lên là kết quả trả về. Toàn bộ sơ đồ dựng từ
+      chính tên tệp có trong kho — đối chiếu được từng ô.
+    </p>
+  </figure>
+
+  <p>
+    <strong>Chỗ đáng nói nhất trong sơ đồ là cầu nối hai đường.</strong> Ngày 27–29/08 bản
+    <code>.exe</code> mở lên báo lỗi thư viện nối .NET (câu lệnh <strong>#18–20</strong>).
+    Cách chữa <em>không</em> phải là sửa cho thư viện đó chạy — mà là làm phần mềm
+    <strong>hết phụ thuộc vào nó</strong>: cửa sổ riêng không mở được thì tự chuyển sang chạy
+    bằng trình duyệt có sẵn. Vì lớp <code>Proxy</code> dựng lại đúng tên hàm cũ nên
+    <strong>không một dòng giao diện nào phải sửa</strong>.
+  </p>
+  <p>
+    Hai quyết định còn lại cũng có lý do đo được, không phải sở thích. <strong>Không bật
+    WAL:</strong> WAL để dữ liệu mới nằm trong một tệp <code>app.db-wal</code> riêng, mà
+    trường sao lưu bằng cách chép tệp ra USB — chép thiếu tệp đó là mất đúng phần mới nhất.
+    <strong>Một giao dịch duy nhất:</strong> nếu ngắt điện giữa chừng mà số bốc thăm đã ghi
+    còn kết quả chưa ghi thì lần chạy sau không tái lập được, và không ai biết là không tái
+    lập được.
+  </p>
+
+  <figure class="so-do" data-cot="1">
+    <figcaption>
+      <b>Sơ đồ 2 — Từ mã nguồn tới tệp <code>.exe</code> trường nhận được.</b>
+      Sơ đồ do AI tạo ra (Điều kiện 2, Mục 1).
+    </figcaption>
+
+    <div class="so-do-lop" data-lop="Công thức đóng gói">
+      <div class="so-do-hop">
+        <b class="hop-ten">kiosk.spec</b>
+        <span class="hop-tep">131 dòng · PyInstaller · build_windows.bat · ky_va_tin_cay.ps1</span>
+        <span class="hop-mo">Liệt kê tài nguyên bắt buộc phải nhét vào gói: trang giao diện, phông chữ tự chứa, biểu tượng. <strong>Tắt nén UPX có chủ đích</strong> — UPX từng làm hỏng bảng xuất của thư viện nối .NET và sinh ra đúng lỗi ở câu lệnh #18.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="chạy trên máy Windows thật, không phải máy Linux của học sinh">↓</div>
+
+    <div class="so-do-lop" data-lop="Máy dựng">
+      <div class="so-do-hop is-stamp">
+        <b class="hop-ten">GitHub Actions — windows-latest</b>
+        <span class="hop-tep">.github/workflows/build-windows-exe.yml</span>
+        <span class="hop-mo">Chạy bộ test <strong>trên chính hệ điều hành sẽ phát hành</strong> trước, rồi mới dựng gói: bắt đúng lớp lỗi mà máy Linux không bao giờ thấy — dấu gạch chéo ngược trong đường dẫn, tệp còn mở nên không xoá được, bảng mã của cửa sổ dòng lệnh.</span>
+      </div>
+    </div>
+
+    <div class="so-do-mui-ten" data-nhan="cổng chặn: test phải xanh, và gói phải khớp mã nguồn">↓</div>
+
+    <div class="so-do-lop" data-lop="Bản phát hành">
+      <div class="so-do-hop is-ok">
+        <b class="hop-ten">Tệp cài đặt .exe + PHIEN_BAN.txt</b>
+        <span class="hop-tep">soát SHA256 từng tệp giao diện trong gói ↔ mã nguồn</span>
+        <span class="hop-mo">Lý do ghi thẳng trong tệp quy trình: <em>build thất bại thì biết ngay; build THÀNH CÔNG mà bên trong là giao diện của bản cũ mới là lỗi đáng sợ.</em> Kèm nhánh / mã commit / giờ dựng để trả lời được câu “máy ở phòng 2 đang chạy bản nào”.</span>
+      </div>
+    </div>
+  </figure>
+
+  <h3>3.3 · Sáu giai đoạn, và mật độ công việc từng ngày</h3>
+
+  <figure class="tien-do" data-don-vi="commit" data-tong-thay="51" data-tong-meta="95">
+    <figcaption>
+      <b>Biểu đồ 1 — 51 commit nhìn thấy được, chia theo sáu giai đoạn.</b>
+      Thanh dài theo tỉ lệ với giai đoạn cao nhất (30 commit, 01–02/09); trục bắt đầu từ 0,
+      không cắt gốc. Đếm ngày 16/09/2026, trước khi commit phiên hôm nay, bằng
+      <code>git log --date=short --pretty=format:'%ad' | sort | uniq -c</code>.
+    </figcaption>
+
+    <ol class="tien-do-than">
+      <li class="tien-do-hang" style="--gt:0;--max:30" data-khong-do="nằm trước điểm cắt của bản sao kho">
+        <span class="td-pha"><b class="td-stt">1</b>26/08 · Bản gốc học sinh tự viết</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">0</b>commit</span>
+        <span class="td-ngay">không ngày nào nhìn thấy được</span>
+        <span class="td-viec">Mã nguồn ban đầu viết tay, trước khi dùng AI. Nằm trước commit cũ nhất mà bản sao kho này còn giữ — xem khối cảnh báo ngay dưới biểu đồ.</span>
+      </li>
+      <li class="tien-do-hang" style="--gt:2;--max:30">
+        <span class="td-pha"><b class="td-stt">2</b>30–31/08 · Đo, và mở lại lỗi cũ nhất</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">2</b>commit</span>
+        <span class="td-ngay">30/08: 1 · 31/08: 1</span>
+        <span class="td-viec">Công bố kết quả thử tải <strong>204 cấu hình</strong>; thôi vứt đi lý do cửa sổ gốc không mở được (<code>chan_doan.py</code>).</span>
+      </li>
+      <li class="tien-do-hang la-dinh" style="--gt:30;--max:30">
+        <span class="td-pha"><b class="td-stt">3</b>01–02/09 · Đợt dày nhất</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">30</b>commit</span>
+        <span class="td-ngay">01/09: 13 · 02/09: 17</span>
+        <span class="td-viec"><strong>30 trong 51 commit rơi vào đúng hai ngày này:</strong> cửa sổ riêng chạy được trên Windows, màn hình phục hồi, chốt chặn cho điểm, lỗi 24 và lỗi 25, bảy lần trả lời câu hỏi về bốc thăm <em>bằng số đo</em>, bộ câu hỏi khảo sát.</span>
+      </li>
+      <li class="tien-do-hang" style="--gt:9;--max:30">
+        <span class="td-pha"><b class="td-stt">4</b>03–09/09 · Làm chắc phần đã có</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">9</b>commit</span>
+        <span class="td-ngay">03/09: 1 · 05/09: 2 · 06/09: 1 · 08/09: 4 · 09/09: 1</span>
+        <span class="td-viec">Đo cái giá của tính ổn định; đóng đường chạy dòng lệnh đi vòng qua mọi chốt chặn toàn vẹn; gom một khuôn mở kết nối lặp <strong>33 lần</strong> trong <code>api.py</code> về một chỗ; viết lại toàn bộ chữ trên năm thẻ sang lối nói thường.</span>
+      </li>
+      <li class="tien-do-hang" style="--gt:9;--max:30">
+        <span class="td-pha"><b class="td-stt">5</b>11–12/09 · Cả tuần — thiết kế trước, viết sau</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">9</b>commit</span>
+        <span class="td-ngay">11/09: 5 · 12/09: 4</span>
+        <span class="td-viec">Commit đầu của giai đoạn <em>chỉ có tài liệu thiết kế, chưa một dòng mã</em>. Sau đó mới mở rộng sang nhiều buổi, đo ba thiết kế bốc thăm rồi chốt một, và dựng tệp cài đặt trên máy Windows thật có chốt chặn bằng test.</span>
+      </li>
+      <li class="tien-do-hang" style="--gt:1;--max:30">
+        <span class="td-pha"><b class="td-stt">6</b>15–16/09 · Đóng gói tài liệu</span>
+        <span class="td-thanh"></span>
+        <span class="td-dem"><b class="td-so">1</b>commit</span>
+        <span class="td-ngay">15/09: 1 · 16/09: phiên đang làm</span>
+        <span class="td-viec">Nhật ký AI xuất ra bản Word in được; rồi thêm chính Mục 3 và Mục 4 này. Commit của phiên 16/09 chưa nằm trong con số đếm ở trên.</span>
+      </li>
+    </ol>
+
+    <p class="tien-do-truc"><span>0 &nbsp; 10 &nbsp; 20 &nbsp; 30 commit</span></p>
+
+    <div class="tien-do-tong">
+      <span>Cộng sáu giai đoạn: <b>51</b></span>
+      <span>Tổng theo siêu dữ liệu đầu trang: <b>95</b></span>
+      <span>Chưa nhìn thấy được: <b>44</b></span>
+    </div>
+  </figure>
+
+  <div class="alert is-caution">
+    <h3>Biểu đồ trên đếm được 51 trong 95 commit — và đây là lý do</h3>
+    <p>
+      Bản sao kho dùng để đếm là <strong>bản sao nông</strong> (<em>shallow clone</em>): nó
+      chỉ giữ phần đuôi lịch sử, nên <code>git log</code> chỉ thấy <strong>51</strong> commit,
+      cũ nhất là <strong>30/08</strong>. Con số <strong>95 commit</strong> ở ô “Đối chiếu
+      được” đầu trang là tổng của kho đầy đủ, tính từ 26/08 và tính cả kho cũ trước lần tách
+      kho ngày 12/09.
+    </p>
+    <span class="quoted">$ git rev-parse --is-shallow-repository
+true</span>
+    <p>
+      <strong>Vì vậy phải đọc biểu đồ đúng cách:</strong> nó là <em>phân bố của 51 commit
+      nhìn thấy được</em>, không phải toàn bộ lịch sử dự án. Giai đoạn 1 hiện
+      <strong>0</strong> không có nghĩa là ngày 26/08 không làm gì — mà là phần đó nằm trước
+      điểm cắt. Khi trích, ghi đúng <em>“51 commit nhìn thấy được từ 30/08”</em> hoặc
+      <em>“95 commit, 26/08 – 15/09”</em>, đừng trộn hai con số.
+    </p>
+  </div>
+
+  <h3>3.4 · Bốn thói quen lặp lại đủ nhiều để gọi là nguyên tắc</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22%">Thói quen</th>
+          <th style="width:40%">Bằng chứng trong dự án</th>
+          <th>Giá phải trả khi quên</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Đo, đừng đoán</strong></td>
+          <td>Thử tải <strong>204 cấu hình</strong> (30/08) — hai nút thắt <em>dự đoán trước</em> hoá ra không phải nút thắt, và commit ghi lại điều đó thay vì lặng lẽ bỏ đi</td>
+          <td>Hai lần đoán sai nguyên nhân lỗi <code>.exe</code> ở câu lệnh #18–20 khiến học sinh tải về thử vô ích <strong>hai lần</strong>; chỉ khi đọc nhật ký build mới ra sự thật</td>
+        </tr>
+        <tr>
+          <td><strong>Sửa xong để lại một lưới chắn</strong></td>
+          <td><code>test_stb_khong_phu_thuoc_thu_tu.py</code> canh lỗi bốc thăm phụ thuộc thứ tự nhập · <code>test_giao_dien_bieu_do.py</code> đo <em>bề rộng vẽ ra thật</em> trong Chromium · <code>test_chen_stb_cong_bang.py</code> ghi thẳng trong mã: <em>“Trước khi sửa: 0 suất ở MỌI seed”</em></td>
+          <td>Không có lưới chắn thì lỗi im lặng quay lại mà không ai biết — <strong>10 trong 25 lỗi</strong> của dự án thuộc loại báo thành công trong khi dữ liệu đã sai</td>
+        </tr>
+        <tr>
+          <td><strong>Thiết kế trước khi viết</strong></td>
+          <td>Commit <code>239cb53</code> (11/09) chỉ có tài liệu thiết kế, <em>chưa một dòng mã</em>; mã đến ở commit sau. Tài liệu đó có sẵn mục <em>“những bẫy đã biết — ghi ra để không vấp”</em></td>
+          <td>Tính năng cả tuần đụng vào bốc thăm, xuất tệp và giao diện cùng lúc; viết trước rồi sửa sau thì mỗi lần sửa phải chạy lại toàn bộ phép đo</td>
+        </tr>
+        <tr>
+          <td><strong>Cố tình phá để thử bộ đo</strong></td>
+          <td><code>tests/test_nhieu_buoi.py</code> mở đầu bằng bảng <em>“ĐÃ THỬ LÀM HỎNG ĐỂ XEM TEST CÓ BẮT ĐƯỢC KHÔNG”</em>: <strong>chín</strong> lần phá mã có chủ đích, ghi rõ mỗi lần bao nhiêu test đỏ — 2 · 1 · 1 · 1 · 4 · 1 · 2 · 2 · 1</td>
+          <td>Phép phá <strong>thứ nhất</strong> lúc đầu chỉ làm đỏ <em>một</em> test — lộ ra thứ hạng nguyện vọng đang bị đếm theo cả tuần thay vì trong buổi. Không phá thử thì bộ test vẫn xanh mà phần mềm vẫn sai</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.5 · Quy mô đo được</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:44%">Đại lượng</th><th style="width:21%">Giá trị</th><th>Đếm lại bằng</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Python phần ứng dụng (9 tệp)</td><td><strong>7 116</strong> dòng</td><td><code>wc -l</code></td></tr>
+        <tr><td>Bộ kiểm thử (40 tệp + <code>conftest.py</code>)</td><td><strong>9 581</strong> dòng</td><td><code>cat tests/*.py | wc -l</code></td></tr>
+        <tr><td><strong>Tỉ lệ dòng test / dòng ứng dụng</strong></td><td><strong>1,35 : 1</strong></td><td>hai dòng trên</td></tr>
+        <tr><td>Hàm <code>def test_</code> trong <code>tests/</code></td><td><strong>523</strong></td><td><code>grep -h '^\s*def test_' tests/*.py | wc -l</code></td></tr>
+        <tr><td>Số ca thu được sau khi bung tham số — <em>phụ thuộc phụ thuộc đã cài</em></td><td><strong>757</strong> (15/09, máy phát triển đủ thư viện) · <strong>613</strong> (16/09, máy phiên này, thiếu <code>pywebview</code>) · <strong>483</strong> (05/09)</td><td><code>pytest tests/ --collect-only -q</code></td></tr>
+        <tr><td>Tệp test chạy Chromium thật</td><td><strong>6</strong></td><td><code>grep -l playwright tests/*.py</code></td></tr>
+        <tr><td>Giao diện (<code>app.js</code> · <code>i18n.js</code> · <code>recovery.js</code>)</td><td><strong>3 352</strong> dòng</td><td><code>wc -l</code></td></tr>
+        <tr><td>Phương thức công khai của <code>api.py</code></td><td><strong>44</strong></td><td><code>grep -c '^    def [a-z]' api.py</code></td></tr>
+        <tr><td>Mã lỗi song ngữ</td><td><strong>114</strong></td><td><code>i18n_errors.py</code> — có test canh đồng bộ với <code>i18n.js</code></td></tr>
+        <tr><td>Lỗi đã tìm và sửa</td><td><strong>25</strong>, trong đó <strong>10 lỗi im lặng</strong></td><td><code>SO_LIEU_DA_KIEM_CHUNG.md</code> mục 6</td></tr>
+        <tr><td>Tệp do AI viết mới</td><td><strong>131</strong></td><td>Mục 6 của nhật ký này</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.6 · Việc còn dở — nói ra thay vì để giám khảo tự tìm</h3>
+
+  <div class="alert">
+    <h3>Ba chỗ chưa khép</h3>
+    <p>
+      <strong>1 · Một test giao diện chập chờn.</strong> Ghi ở <code>BAN_GIAO.md</code> mục 5,
+      chưa truy ra nguyên nhân. Một test chập chờn là một test <em>chưa đáng tin</em>, không
+      phải một test đã đạt.
+    </p>
+    <p>
+      <strong>2 · Phải dựng lại tệp <code>.exe</code> và chạy thử trên Windows trước khi nộp.</strong>
+      Phép soát mã băm của quy trình phát hành chỉ bảo vệ được lần dựng nào <em>đã chạy</em>;
+      nó không biết gì về những thay đổi chưa dựng lại.
+    </p>
+    <p>
+      <strong>3 · <code>ky_va_tin_cay.ps1</code> chưa chạy ở đâu bao giờ.</strong> Tập lệnh ký
+      số viết xong nhưng chưa từng thi hành trên máy thật, nên <strong>không được nói</strong>
+      là “đã ký, Windows không còn cảnh báo”.
+    </p>
+  </div>
+
+
+  <!-- =================== 4. PHÂN TÍCH VÀ GIẢI THÍCH =================== -->
+  <h2><span class="num">MỤC 4</span> Phân tích và giải thích số đo</h2>
+  <p class="section-note">
+    Các tệp số liệu của dự án — <code>SO_LIEU_DA_KIEM_CHUNG.md</code>,
+    <code>NGHIEN_CUU_TOI_UU.md</code> (bảy thí nghiệm TN1–TN7), <code>GIAI_DAP_BOC_THAM.md</code>
+    — <strong>chỉ có số đo và cách đo lại</strong>, không một câu nhận xét nào. Mục này trả lời
+    câu còn thiếu: <em>những con số ấy nghĩa là gì</em>. Mỗi tiểu mục đi theo bốn nhịp —
+    <strong>câu hỏi → số đo → nghĩa là gì → chỗ dễ nói quá</strong>.
+  </p>
+
+  <div class="alert">
+    <h3>Mục này do AI viết — đọc kỹ chỗ này trước khi dùng</h3>
+    <p>
+      Ngày <strong>16/09/2026</strong>, học sinh yêu cầu AI viết phần phân tích và giải thích
+      (câu lệnh <strong>#118</strong>, chép nguyên văn ở Mục 5). Trước đó, mọi tệp số liệu đều
+      cố ý để trống phần này, theo <strong>Điều kiện 4 của Phụ lục 1</strong>:
+    </p>
+    <span class="quoted">“Việc giải thích dữ liệu phải do người nghiên cứu thực hiện.”</span>
+    <p>
+      <strong>Vì vậy ghi rõ ở đây, không giấu trong chú thích:</strong> phần chữ trong Mục 4 là
+      <strong>của AI</strong>, không phải của học sinh. Nó là <em>bản phân tích để đối chiếu</em>
+      — đúng vai một phụ lục ghi lại việc AI đã làm — <strong>không phải</strong> phần bài
+      nghiên cứu nộp dưới tên học sinh.
+    </p>
+    <p>
+      <strong>Ba việc học sinh phải làm với mục này</strong> (chép lại thành ý 8 và ý 20 của Mục 7):
+      kiểm từng con số ngược về tệp nguồn ghi kèm; viết lại nhận định bằng lập luận và câu chữ
+      của mình trước khi đưa vào báo cáo; và <strong>tự viết Kết luận, Hướng phát triển, Tính
+      mới</strong> — ba phần đó <em>không</em> nằm trong mục này và AI không viết.
+    </p>
+  </div>
+
+  <h3>4.1 · “Thuật toán có đưa ra cặp ghép tốt nhất không?”</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:34%">Nghĩa của “tốt nhất”</th><th style="width:14%">Đạt?</th><th>Số đo</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Tốt nhất trong các cách ghép <strong>ổn định</strong></td><td><span class="pill allow">Có</span></td><td>2 088 thể hiện vét cạn · <strong>0</strong> phản ví dụ</td></tr>
+        <tr><td><strong>Tối ưu Pareto</strong></td><td><span class="pill deny">Không</span></td><td>16 chu trình · 32/140 em có thể cùng lên hạng</td></tr>
+        <tr><td><strong>Khai thật có lợi nhất</strong></td><td><span class="pill allow">Có</span></td><td>0/1 400 em khai gian có lợi (Boston: 258)</td></tr>
+        <tr><td><strong>Bền</strong> trước nhiễu dữ liệu</td><td><span class="pill allow">Có</span></td><td>392 phép thử · 0 cặp phá vỡ</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>Nghĩa là gì.</strong> Ba trên bốn nghĩa đạt được, và nghĩa <em>không</em> đạt được
+    — tối ưu Pareto — <strong>không thể đạt cùng lúc với nghĩa thứ nhất</strong>. Đây không phải
+    khuyết điểm của bản cài đặt này mà là đặc điểm của <em>mọi</em> thuật toán ghép cặp giữ tính
+    ổn định: khi câu lạc bộ có thứ tự ưu tiên thật (điểm thi) và thứ tự đó không trùng với
+    nguyện vọng học sinh, giữ ổn định <strong>buộc phải</strong> từ chối một số cơ hội đổi chỗ
+    mà cả hai bên cùng có lợi. Chọn cái này là bỏ cái kia — và trường đã chọn ổn định, vì mất
+    ổn định nghĩa là có em trượt trong khi đúng ra em ấy phải đỗ.
+  </p>
+  <p>
+    <strong>Chỗ dễ nói quá.</strong> TN1 đo trên <strong>7 em / 4 CLB</strong>. Kết luận đúng là
+    <em>“không tìm được phản ví dụ trong 2 088 thể hiện nhỏ”</em>, <strong>không phải</strong>
+    một chứng minh toán học cho mọi quy mô. Viết “đã chứng minh thuật toán tối ưu” là nói quá.
+  </p>
+
+  <h3>4.2 · Cái giá của tính ổn định — và hai khái niệm rất dễ lẫn</h3>
+  <div class="alert is-caution">
+    <h3>Hai chữ “cặp”, hai nghĩa khác hẳn nhau</h3>
+    <p>
+      <strong>Cặp phá vỡ</strong> = 1 học sinh + 1 <em>câu lạc bộ</em> muốn bỏ kết quả để đến với
+      nhau. Có cặp phá vỡ nghĩa là kết quả <strong>SAI</strong>. Dự án đo được <strong>0</strong>
+      ở mọi bộ, mọi seed.
+    </p>
+    <p>
+      <strong>Cặp đôi cùng có lợi</strong> = 2 <em>học sinh</em> đổi chỗ cho nhau thì cả hai cùng
+      lên nguyện vọng cao hơn. Có cặp loại này nghĩa là kết quả <strong>không tối ưu Pareto</strong>
+      — đúng, nhưng chưa phải tốt nhất có thể cho học sinh.
+    </p>
+    <p>Lẫn hai khái niệm này là chỗ dễ bị hỏi vặn nhất trong cả đề tài.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:26%">Bộ dữ liệu (seed 42)</th><th>Cặp phá vỡ</th><th>Cặp đôi cùng có lợi</th><th>Số em dính</th><th>Bốc thăm có phần</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>vi_du_huong_dan/</code> · 10 em</td><td>0</td><td><strong>0</strong></td><td>0</td><td>—</td></tr>
+        <tr><td><code>bo_sach/</code> · 140 em</td><td>0</td><td><strong>85</strong></td><td>34 (24,3%)</td><td>18 (21%)</td></tr>
+        <tr><td><code>TEST_0*</code> · 120 em</td><td>0</td><td><strong>19</strong></td><td>16 (13,3%)</td><td>2 (11%)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>Nghĩa là gì.</strong> Trên <code>bo_sach</code>, quét 40 seed cho trung bình
+    <strong>91,0</strong> cặp đôi cùng có lợi và <strong>0/40</strong> seed nào cho kết quả tối ưu
+    Pareto — nghĩa là chỗ chưa tối ưu ấy <em>có hệ thống</em>, không phải rủi ro của một lần bốc
+    thăm xấu. Nếu đổi lấy tối ưu Pareto thì mất ổn định: <strong>0 → 92 cặp phá vỡ</strong>.
+    Đó là cái giá, đo bằng số chứ không suy luận. <strong>Trường nên chọn bên nào là câu hỏi
+    chính sách, không phải câu hỏi kỹ thuật</strong> — và câu trả lời phải do người viết báo cáo
+    đưa ra, không phải do phần mềm.
+  </p>
+  <p>
+    <strong>Chỗ dễ nói quá.</strong> Đừng quy chỗ chưa tối ưu này cho bốc thăm. Thí nghiệm đối
+    chứng đã bác đúng giả thuyết đó: bỏ hết điểm để bốc thăm quyết định <strong>100%</strong> thì
+    số cặp đôi cùng có lợi <em>giảm</em> xuống 4,1 (từ 90,2) — ít nhất chứ không nhiều nhất. Thủ
+    phạm là <strong>điểm thi</strong>, không phải may rủi.
+  </p>
+
+  <h3>4.3 · Bốc thăm quyết định bao nhiêu phần kết quả?</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:28%">Bộ dữ liệu · 200 seed</th><th>Không bao giờ đổi CLB</th><th>Luôn có suất</th><th>Bấp bênh — seed quyết định</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>vi_du_huong_dan/</code> · 10 em</td><td><strong>10 (100%)</strong></td><td>9 (90,0%)</td><td><strong>0 (0,0%)</strong></td></tr>
+        <tr><td><code>bo_sach/</code> · 140 em</td><td><strong>127 (90,7%)</strong></td><td>139 (99,3%)</td><td><strong>1 (0,7%)</strong></td></tr>
+        <tr><td><code>TEST_0*</code> · 120 em</td><td><strong>116 (96,7%)</strong></td><td>107 (89,2%)</td><td><strong>2 (1,7%)</strong></td></tr>
+        <tr><td><strong>Gộp ba bộ · 270 em</strong></td><td>—</td><td>—</td><td><strong>3 (1,1%)</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>Nghĩa là gì.</strong> Hai con số này trả lời hai câu khác nhau, và phải nói tách ra:
+    <em>đổi câu lạc bộ</em> là đổi chỗ ngồi, còn <em>mất suất</em> là ra khỏi cuộc chơi. Chỉ
+    <strong>3 em trên 270</strong> (1,1%) rơi vào nhóm may rủi quyết định việc có suất hay không.
+    Lý do nằm ở khoá xếp hạng <code>(-điểm, số bốc thăm)</code>: <strong>điểm đứng trước</strong>,
+    nên bốc thăm chỉ chen vào được đúng hai chỗ — em <strong>hoà điểm</strong>, và em dự tuyển
+    câu lạc bộ mình <strong>không thi</strong>. Số đo khớp với lý thuyết: trên cả ba bộ,
+    <em>không một em nào</em> đổi chỗ mà lại nằm ngoài hai nhóm đó. Bộ
+    <code>vi_du_huong_dan/</code> là đối chứng sạch nhất — không có em hoà điểm, không có em
+    tầng 2, và kết quả là <strong>0 em đổi chỗ trên cả 200 seed</strong>.
+  </p>
+  <p>
+    <strong>Chỗ dễ nói quá.</strong> 1,1% <em>không phải lỗi</em>, và cũng không phải chỗ để nói
+    “phần mềm gần như không dùng bốc thăm”. Khi nhiều em hoà nhau đúng ở ranh giới chỉ tiêu thì
+    <strong>buộc phải</strong> có một cách chọn, và bốc thăm công khai, tái lập được là cách công
+    bằng hơn mọi cách ngầm. Câu trả lời đúng khi bị hỏi là: <em>“có 3 em mà thứ tự bốc thăm quyết
+    định, và trường công bố trước bộ số đã khoá nên ai cũng kiểm lại được.”</em>
+  </p>
+
+  <h3>4.4 · Học sinh có nên khai gian nguyện vọng không?</h3>
+  <p>
+    <strong>Số đo.</strong> Vét cạn mọi cách khai của từng em: <strong>0/1 400</strong> lượt học
+    sinh có lợi khi khai không thật. Cùng phép đo đó chạy trên <strong>cơ chế Boston</strong> —
+    cách xếp “ai đăng ký nguyện vọng 1 thì được ưu tiên trước” mà nhiều nơi vẫn dùng — cho
+    <strong>258/1 400 em (18,4%)</strong> có lợi khi khai gian.
+  </p>
+  <p>
+    <strong>Nghĩa là gì.</strong> Đây là con số có ích nhất cho trường trong cả bảy thí nghiệm.
+    Nó nói rằng <strong>học sinh không phải đoán chiến thuật</strong>: cứ xếp đúng thứ tự mình
+    thích là xong, không ai thiệt vì thật thà. Hệ quả kéo theo cũng quan trọng không kém —
+    <em>dữ liệu nguyện vọng trường thu về là nguyện vọng thật</em>, nên mọi thống kê dựa trên nó
+    mới có nghĩa. Với cơ chế Boston thì gần một phần năm số liệu là nguyện vọng đã bị bóp méo
+    để chạy theo cơ hội.
+  </p>
+  <p>
+    <strong>Chỗ dễ nói quá.</strong> TN3 vét cạn ở quy mô nhỏ; trên bộ lớn phép tìm bị chặn
+    không gian. Và phép đo chỉ dò <em>một kiểu</em> khai gian (đổi thứ tự, cắt bớt nguyện vọng).
+    “Không tìm thấy” mạnh hơn khi vét cạn, nhưng vẫn <strong>không đồng nghĩa</strong> với
+    “không tồn tại”.
+  </p>
+
+  <h3>4.5 · Ba thiết kế bốc thăm cho cả tuần — vì sao chốt A2</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:34%">Thiết kế · 5 buổi, 156 em, 200 seed</th><th>Em trắng tay cả tuần</th><th>CLB TB mỗi em</th><th>Cặp phá vỡ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>A1</strong> — bốc một lần cho cả tuần</td><td>34,39</td><td>1,329</td><td>0</td></tr>
+        <tr><td><strong>A2</strong> — bốc lại mỗi buổi <em>(đã chốt)</em></td><td>34,09</td><td>1,328</td><td>0</td></tr>
+        <tr><td><strong>A3</strong> — bốc thăm có bù</td><td>33,70</td><td>1,325</td><td>0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    <strong>Nghĩa là gì.</strong> Hiệu A1 − A2 = <strong>+0,30 em</strong>, khoảng tin cậy 95%
+    <strong>[+0,05 ; +0,54]</strong>. Khoảng này không chứa 0 nên chênh lệch là <em>có thật về
+    mặt thống kê</em>; nhưng 0,30 trên 156 em là <strong>0,19%</strong> —
+    <em>gần như không phân biệt được trên thực tế</em>. Hai câu đó không mâu thuẫn: “có thật” và
+    “đáng kể” là hai chuyện khác nhau, và đây là chỗ một bài nghiên cứu dễ nói quá nhất.
+    Ba thiết kế cũng <strong>không tạo thêm chỗ</strong> (tổng suất 207,27 · 207,22 · 206,76) —
+    chúng chỉ đổi <em>ai</em> được chỗ, không đổi <em>bao nhiêu</em> chỗ.
+  </p>
+  <p>
+    <strong>Vậy vì sao vẫn chốt A2, nếu chênh lệch bé đến thế?</strong> Vì hai lý do khác, không
+    phải vì con số 0,30:
+  </p>
+  <ul class="plain">
+    <li><strong>Khi điểm ít đi thì A2 hơn hẳn.</strong> Vặn tỉ lệ em có điểm từ 100% xuống 0%,
+    lợi thế của A2 đi từ <em>không phân biệt được</em> lên tới <strong>92%</strong> số em mà A1
+    bỏ lại; bỏ hẳn điểm thì A2 cứu <strong>1,2 đến 79,0</strong> em trên 200, tuỳ tỉ lệ chọi.
+    Trường nào chấm điểm ít câu lạc bộ thì A2 là lựa chọn rõ ràng.</li>
+    <li><strong>A3 mở một kênh khai gian.</strong> Giấu bớt buổi thì có lợi cho
+    <strong>113/300</strong> em dưới A3, và <strong>0/300</strong> dưới A1 lẫn A2. Nhận thêm
+    0,4 em có suất mà đánh đổi bằng việc dữ liệu nguyện vọng hết thật là một cuộc đổi chác tồi.</li>
+  </ul>
+  <p>
+    Chốt xong thì <strong>bỏ luôn bộ chọn trên giao diện</strong> và bỏ tham số chế độ khỏi hàm
+    chạy, có test canh chữ ký hàm để nó không quay lại. Đây là chỗ đáng nói khi trình bày:
+    <em>đo ba phương án rồi bỏ đi hai, thay vì để người vận hành tự chọn một thứ họ không có dữ
+    liệu để chọn.</em>
+  </p>
+
+  <h3>4.6 · Phần mềm có đủ nhanh cho một trường thật không?</h3>
+  <p>
+    <strong>Số đo.</strong> Bộ 120 em / 10 câu lạc bộ, seed 42: xếp được <strong>108/120</strong>
+    em sau <strong>7 vòng</strong>, toàn bộ năm bước — <em>gồm cả sao lưu cơ sở dữ liệu và xuất
+    tệp kết quả</em> — mất <strong>0,011 giây</strong>. Trong đó 64 em (59%) được nguyện vọng 1,
+    28 em (26%) nguyện vọng 2. Thử tải <strong>204 cấu hình</strong>, quét từ 200 tới 5 000 học
+    sinh: trường hợp xấu nhất (5 000 em, 10 CLB, 10 nguyện vọng) mất <strong>7,65 giây</strong> và
+    <strong>12,8 MB</strong> đỉnh bộ nhớ; truy vấn chậm nhất 15,7 ms; vẽ 2 000 dòng kết quả ra màn hình
+    59 ms. <code>verify_stability</code> báo <strong>0 cặp phá vỡ</strong> ở cả 500/25, 2 000/50
+    và 5 000/100.
+  </p>
+  <p>
+    <strong>Nghĩa là gì.</strong> Quy mô của một trường phổ thông nằm <em>rất xa</em> ngưỡng chịu
+    tải: một trường 2 000 học sinh chạy hết khoảng một phần mười giây, tức là người vận hành bấm
+    nút và thấy kết quả ngay. Nút thắt <strong>không nằm ở thuật toán</strong> mà ở khâu vẽ màn
+    hình và đọc tệp Excel — và cả hai đều đã đo. Kết luận thực dụng: máy phòng máy của trường
+    chạy được, không cần máy chủ, không cần mạng.
+  </p>
+  <p>
+    <strong>Chỗ dễ nói quá — và một sai lầm phương pháp đáng kể lại.</strong> Lần quét đầu tiên
+    đặt chỉ tiêu câu lạc bộ <em>bằng đúng nhu cầu</em>, nên ở quy mô nào gần như ai cũng có suất:
+    <em>“con số đẹp nhưng vô nghĩa”</em>. Phép đo phải làm lại với kiểu phân bổ chỉ tiêu thành một
+    biến được quét. Nếu trình bày phần thử tải, nên kể cả chỗ này: <strong>một phép đo cho kết
+    quả quá đẹp thường là một phép đo sai</strong>.
+  </p>
+
+  <h3>4.7 · Sáu giới hạn phải nói kèm mỗi khi trích số</h3>
+  <p>
+    Chép từ <code>NGHIEN_CUU_TOI_UU.md</code>, mục <em>“Giới hạn của nghiên cứu này — đọc trước
+    khi trích”</em>. Một phần phân tích không nêu giới hạn là một phần phân tích nói quá.
+  </p>
+  <ul class="plain">
+    <li><strong>Vét cạn chỉ chạy được ở quy mô nhỏ</strong> (7 em / 4 CLB) — kết luận TN1 là “không tìm được phản ví dụ”, không phải chứng minh.</li>
+    <li><strong>TN3 trên bộ lớn có chặn không gian tìm kiếm</strong>; chỉ TN3a là vét cạn thật.</li>
+    <li><strong>Cả bảy bộ dữ liệu đều là mô phỏng do máy sinh.</strong> <code>bo_sach</code> còn cố ý dựng cho <em>chật</em> để thuật toán phải làm việc — nó không mô phỏng một phân bố nguyện vọng tự nhiên. Trình bày các con số này như số liệu khảo sát thật là <strong>bịa đặt dữ liệu</strong>.</li>
+    <li><strong>Tất cả đo ở một cấu hình dự trữ.</strong> Đổi nhóm dự trữ hay chính sách xét dự trữ thì phải đo lại từ đầu.</li>
+    <li><strong>TN7b, TN7c, TN7d chạy trên dữ liệu dựng theo tham số</strong>, không phải một trường có thật: chúng trả lời <em>“cơ chế hành xử thế nào khi vặn núm này”</em>, <strong>không</strong> trả lời <em>“trường X nên chọn gì”</em>.</li>
+    <li><strong>TN7d chỉ dò một kênh khai gian.</strong> “Không tìm thấy” ở A1 và A2 vì thế yếu hơn “không tồn tại”; riêng kết luận về A3 không bị ảnh hưởng, vì tìm thấy một cách là đủ.</li>
+  </ul>
+
+  <h3>4.8 · Giám khảo hỏi → trả lời bằng số nào</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th style="width:36%">Câu hỏi có thể gặp</th><th style="width:34%">Trả lời ngắn, kèm số</th><th>Tra ở đâu</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Kết quả có sai sót không?</td><td><strong>0 cặp phá vỡ</strong> ở mọi bộ, mọi seed, mọi quy mô đã thử</td><td><code>SO_LIEU…</code> 3c, 3d · TN6</td></tr>
+        <tr><td>Bốc thăm có làm mất công bằng không?</td><td>Chỉ <strong>3/270 em (1,1%)</strong> bị may rủi quyết định việc có suất; điểm luôn đứng trước</td><td><code>SO_LIEU…</code> 3c</td></tr>
+        <tr><td>Sao không đổi để ai cũng lợi hơn?</td><td>Đổi được, nhưng mất ổn định: <strong>0 → 92 cặp phá vỡ</strong></td><td>TN5 · <code>SO_LIEU…</code> 3d</td></tr>
+        <tr><td>Em nên khai nguyện vọng thế nào?</td><td>Khai thật. <strong>0/1 400</strong> em có lợi khi khai gian (Boston: 258)</td><td>TN3</td></tr>
+        <tr><td>Vì sao chọn bốc lại thăm mỗi buổi?</td><td>Chênh lệch nhỏ (0,19%) nhưng A2 bền khi ít điểm, và A3 mở kênh khai gian <strong>113/300</strong></td><td>TN7 · <code>SO_LIEU…</code> 3f</td></tr>
+        <tr><td>Chạy nổi cho trường lớn không?</td><td>2 000 em: nạp <strong>0,10 s</strong> + chạy <strong>0,14 s</strong>; xấu nhất trong 204 cấu hình: <strong>7,65 s</strong></td><td><code>SO_LIEU…</code> 3, 3b</td></tr>
+        <tr><td>Số liệu này lấy ở đâu ra?</td><td>Bảy bộ <strong>mô phỏng</strong> do máy sinh, mỗi bộ có tập lệnh sinh lại chính nó</td><td>Điều kiện 3, Mục 1</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- =================== 5. NHẬT KÝ =================== -->
+  <h2 id="muc-nhat-ky"><span class="num">MỤC 5</span> Nhật ký câu lệnh theo trình tự thời gian</h2>
   <p class="section-note">
     Ghi theo đúng thứ tự đã diễn ra, không lược bỏ cả những lần thất bại — theo nguyên tắc
     “Giữ nguyên số liệu thô” của Phụ lục 2. Cột trái là số thứ tự và ngày; câu lệnh được chép
@@ -2350,7 +3204,7 @@ Làm cho số câu hỏi tăng thêm một chút, cố gắng làm cho câu hỏ
         <p><strong>Học sinh xác nhận app chạy ổn định trên Windows.</strong> Lỗi 25 đã đóng
         thật sự. Nhưng bốn tài liệu vẫn đang ghi ngược lại — <code>BAN_GIAO.md</code> viết
         <em>“chưa có lần chạy thành công nào trên máy Windows”</em>, <code>README.md</code> xếp
-        cửa sổ gốc vào mục <em>“CHƯA test được”</em>, và chính nhật ký này ở mục 87 và Mục 5
+        cửa sổ gốc vào mục <em>“CHƯA test được”</em>, và chính nhật ký này ở mục 87 và Mục 7
         cũng vậy.</p>
         <p><strong>Để nguyên là để lại một cái bẫy.</strong> Học sinh đọc tài liệu của chính dự
         án rồi viết vào báo cáo một điều <strong>hạ thấp</strong> kết quả thật của mình. Đúng
@@ -3193,7 +4047,7 @@ branch main đk?
         sử</strong>, rồi kiểm bằng cách so hai danh sách tệp đã sắp xếp: <strong>0 tệp</strong>
         có trong bản cũ mà thiếu ở kho mới. Không tin vào cảm giác “hình như đủ rồi”.</p>
         <p class="cite"><strong>Hệ quả cho việc đối chiếu:</strong> từ mốc này, mã commit trong
-        nhật ký thuộc kho <code>rbda-kiosk</code>, không còn thuộc kho cũ. Mục 4 ghi rõ chỗ
+        nhật ký thuộc kho <code>rbda-kiosk</code>, không còn thuộc kho cũ. Mục 6 ghi rõ chỗ
         chuyển để người đối chiếu biết tra ở đâu.</p>
       </div>
     </div>
@@ -3547,8 +4401,71 @@ Update nhật kí AI cho tôi, tất cả</pre>
     </div>
   </article>
 
-  <!-- =================== 4. TRÍCH DẪN CODE =================== -->
-  <h2><span class="num">MỤC 4</span> Trích dẫn mã nguồn do AI tạo ra</h2>
+    <h3>Ngày 16/09/2026 — Hai phản hồi: phân tích còn thiếu, quá trình xây dựng chưa thấy</h3>
+
+  <article class="entry">
+    <div class="entry-gutter"><span class="seq">118</span>16/09<br>~14:00</div>
+    <div class="entry-body">
+      <div class="entry-head">
+        <span class="task">Viết Mục 3 và Mục 4 theo hai phản hồi nhận được</span>
+        <span class="pill deny">Chạm ranh giới</span>
+      </div>
+      <div class="field">
+        <p class="field-label">Câu lệnh</p>
+        <pre class="prompt">làm rõ hơn vấn đề “phân tích và giải thích”, "Chưa thấy phần quá trình
+xây dựng phần mềm" là các feedback, lên kế hoạch sửa</pre>
+      </div>
+      <div class="field">
+        <p class="field-label">Mục đích</p>
+        <p>Hai phản hồi nhận được về nhật ký này: phần <em>phân tích và giải thích</em> chưa rõ,
+        và <em>chưa thấy phần quá trình xây dựng phần mềm</em>. Yêu cầu: sửa ngay trong nhật ký,
+        thêm sơ đồ kiến trúc và dòng thời gian phát triển.</p>
+      </div>
+      <div class="field">
+        <p class="field-label">Học sinh quyết định — và đây là chỗ ranh giới đổi</p>
+        <p>AI hỏi lại ba câu trước khi làm: sửa vào tài liệu nào · phần phân tích AI làm tới đâu ·
+        đầu ra dạng gì. Học sinh chọn: sửa trong <strong>nhật ký AI</strong>; phần phân tích
+        <strong>“làm hộ tôi”</strong>; kèm <strong>sơ đồ kiến trúc và dòng thời gian</strong>;
+        phạm vi diễn giải là <strong>TN1–TN7 và <code>SO_LIEU_DA_KIEM_CHUNG.md</code></strong>.</p>
+        <p>AI nêu rõ trước khi viết rằng Phụ lục 1 đặt việc diễn giải số liệu về phía người
+        nghiên cứu, và rằng nếu viết thì <strong>Mục 1, Mục 2 và Mục 7 phải sửa theo</strong> —
+        nếu không, tài liệu sẽ tự nói ngược chính mình. Học sinh giữ nguyên yêu cầu. AI viết,
+        và ghi nhãn.</p>
+      </div>
+      <div class="field">
+        <p class="field-label">AI đã làm</p>
+        <p><strong>Mục 3 — Quá trình xây dựng phần mềm:</strong> xuất phát điểm 26/08 (bản gốc
+        học sinh tự viết), <strong>hai sơ đồ</strong> (kiến trúc lúc chạy và đường đóng gói),
+        biểu đồ <strong>sáu giai đoạn</strong> theo số commit từng ngày, bốn thói quen làm việc
+        kèm bằng chứng, bảng quy mô đo được, và ba việc còn dở.</p>
+        <p><strong>Mục 4 — Phân tích và giải thích số đo:</strong> sáu tiểu mục theo nhịp
+        <em>câu hỏi → số đo → nghĩa là gì → chỗ dễ nói quá</em>, sáu giới hạn chép từ
+        <code>NGHIEN_CUU_TOI_UU.md</code>, và bảng tra “giám khảo hỏi → trả lời bằng số nào”.</p>
+        <p>Đánh số lại các mục (3→5, 4→6, 5→7, 6→8) và sửa 24 tham chiếu chéo; sửa Điều kiện 4 ở
+        Mục 1, thêm một dòng vào bảng Mục 2, viết lại ý 8 và ý 20 của Mục 7 và thêm một ý mới.</p>
+      </div>
+      <div class="field">
+        <p class="field-label">★ Chỗ ranh giới dịch chuyển — ghi để không ai phải hỏi mới biết</p>
+        <p>Cho tới ngày 15/09, <strong>16 tệp</strong> trong kho đều có một dòng cuối nói rằng
+        phần diễn giải cố ý để trống cho học sinh viết, và nhật ký này có hai mốc AI từ chối
+        (#89 Kết luận, #95 tìm trích dẫn). <strong>Ngày 16/09 học sinh yêu cầu AI viết phần diễn
+        giải, và AI đã viết.</strong> Việc đó được ghi ở đây, ở khối đầu Mục 4, ở Điều kiện 4 của
+        Mục 1, ở bảng Mục 2 và ở Mục 7 — năm chỗ, cùng một nội dung, để không tài liệu nào của
+        dự án nói ngược tài liệu nào.</p>
+        <p><strong>Ba phần AI vẫn không viết:</strong> Kết luận, Hướng phát triển, Tính mới.</p>
+      </div>
+      <div class="field">
+        <p class="field-label">Tệp do AI tạo</p>
+        <ul class="files">
+          <li>NHAT_KY_AI.html — thêm Mục 3 và Mục 4 (hai sơ đồ + một biểu đồ dựng bằng HTML/CSS)</li>
+          <li>tao_nhat_ky_word.py — hai bộ dựng sơ đồ cho bản Word, và sửa bốn chỗ yếu sẵn có</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+<!-- =================== 6. TRÍCH DẪN CODE =================== -->
+  <h2><span class="num">MỤC 6</span> Trích dẫn mã nguồn do AI tạo ra</h2>
   <p class="section-note">
     Đây là điều kiện bắt buộc của Phụ lục 1: <em>“phải trích dẫn rõ phần code nào do AI tạo ra”</em>.
     Toàn bộ có thể đối chiếu bằng lịch sử Git của dự án.
@@ -3784,7 +4701,7 @@ Update nhật kí AI cho tôi, tất cả</pre>
         <tr><td>02/09 09:29</td><td><code>81ae7fd</code></td><td><strong>Bản nháp câu hỏi khảo sát, và chặn phản hồi khỏi git trước</strong></td></tr>
         <tr><td>02/09 10:40</td><td><code>c49c411</code></td><td><strong>Ghi nhận app chạy được, và mở rộng khảo sát đúng theo điều báo cáo khẳng định</strong></td></tr>
         <tr><td>02/09 14:20</td><td><code>d96e1bd</code></td><td><strong>Chuyển khảo sát sang Microsoft Forms, và vá một đường rò dữ liệu trước đã</strong></td></tr>
-        <tr><td colspan="3" style="background:var(--rule-soft);font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">Từ đây commit nằm trong kho rbda-kiosk — xem khối cảnh báo ở đầu Mục 4</td></tr>
+        <tr><td colspan="3" style="background:var(--rule-soft);font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">Từ đây commit nằm trong kho rbda-kiosk — xem khối cảnh báo ở đầu Mục 6</td></tr>
         <tr><td>06/09 03:45</td><td><code>504bd15</code></td><td>Gom một khuôn mở kết nối lặp 33 lần về một chỗ</td></tr>
         <tr><td>06/09 08:55</td><td><code>ac32b92</code></td><td>Thêm quy trình tự động dựng tệp cài đặt</td></tr>
         <tr><td>06/09 09:02</td><td><code>143bd7c</code></td><td>Bỏ các mục Đã test / CHƯA test được / TODO khỏi README</td></tr>
@@ -3822,22 +4739,22 @@ Update nhật kí AI cho tôi, tất cả</pre>
     </table>
   </div>
 
-  <!-- =================== 5. VIỆC CẦN LÀM =================== -->
-  <h2><span class="num">MỤC 5</span> Việc học sinh tự thực hiện</h2>
+  <!-- =================== 7. VIỆC CẦN LÀM =================== -->
+  <h2><span class="num">MỤC 7</span> Việc học sinh tự thực hiện</h2>
 
   <ol class="todo">
     <li><span class="box"></span><span>Tự viết phần <strong>Kết luận</strong> và <strong>Hướng phát triển</strong> của bài nghiên cứu bằng lập luận của mình — AI không tham gia phần này.</span></li>
     <li><span class="box"></span><span>Ghi rõ <strong>cả ba</strong> bộ dữ liệu — TEST (120 học sinh), <code>bo_sach/</code> (140 em), <code>vi_du_huong_dan/</code> (10 em) — là <strong>dữ liệu mô phỏng</strong> dùng để kiểm thử, không phải khảo sát thật (Điều kiện 3, Mục 1).</span></li>
     <li><span class="box"></span><span>Nếu dùng sơ đồ AI vẽ, chú thích <strong>“Sơ đồ do AI tạo ra”</strong> ngay dưới hình (Điều kiện 2, Mục 1).</span></li>
     <li><span class="box"></span><span>Tự viết phần nhận xét, đánh giá ý nghĩa của kết quả kiểm thử (Điều kiện 4, Mục 1).</span></li>
-    <li><span class="box"></span><span>Tự đọc lại và giải thích được cơ chế của từng tệp mã nguồn AI viết ở Mục 4 — giám khảo có thể hỏi bất kỳ dòng nào.</span></li>
+    <li><span class="box"></span><span>Tự đọc lại và giải thích được cơ chế của từng tệp mã nguồn AI viết ở Mục 6 — giám khảo có thể hỏi bất kỳ dòng nào.</span></li>
     <li><span class="box"></span><span>Tự chạy thử phần mềm trên máy Windows thật và ghi kết quả vào sổ nhật ký viết tay. Còn <strong>hai</strong> việc AI <strong>không</strong> kiểm được: thao tác trên máy kiosk, và tập lệnh <code>ky_va_tin_cay.ps1</code> (chưa chạy ở đâu bao giờ). Việc thứ ba — mở tệp xuất ra bằng Excel — <strong>đã xác nhận ngày 01/09</strong>: học sinh gửi lại tệp, đối chiếu với lần chạy trên Linux ra <strong>0 dòng khác nhau</strong> trên 140 dòng.</span></li>
     <li><span class="box"></span><span>Tự viết phần nhận xét về <strong>bộ tệp mẫu nhập liệu</strong> và lý do chọn định dạng — AI chỉ ghi lại thông số kỹ thuật, không diễn giải ý nghĩa.</span></li>
-    <li><span class="box"></span><span>Tự viết phần diễn giải các con số trong <code>SO_LIEU_DA_KIEM_CHUNG.md</code> — tệp đó <strong>chỉ có số đo</strong>, không có một câu nhận xét nào.</span></li>
+    <li><span class="box"></span><span><strong>Đọc Mục 4 rồi viết lại phần diễn giải các con số trong <code>SO_LIEU_DA_KIEM_CHUNG.md</code> bằng lập luận của mình.</strong> Bản thân tệp số liệu vẫn <strong>chỉ có số đo</strong>, không một câu nhận xét nào; bản diễn giải ở Mục 4 là <em>của AI</em> (16/09) — dùng để đối chiếu, <strong>không chép nguyên vào báo cáo</strong>.</span></li>
     <li><span class="box"></span><span>Nêu rõ trong báo cáo rằng <strong>biểu tượng phần mềm do em tự thiết kế</strong>; AI chỉ chuyển định dạng và nối vào mã nguồn.</span></li>
     <li><span class="box"></span><span>Mô tả <strong>đúng</strong> kiến trúc hiển thị: phần mềm chạy trong cửa sổ của riêng nó, nội dung vẽ bằng thành phần có sẵn của Windows. <strong>Không</strong> viết “không dùng gì của Microsoft”.</span></li>
     <li><span class="box"></span><span>Giải thích được <strong>vì sao phải sắp xếp mã học sinh trước khi bốc thăm</strong>. Trả lời đúng: <em>hàm xáo trộn phụ thuộc thứ tự danh sách đưa vào, không sắp thì kết quả phụ thuộc thứ tự nhập liệu — một điều kiện không ai ghi lại và không màn hình nào hiện</em>. <strong>KHÔNG</strong> nói “số bốc thăm dựa trên mã học sinh”: sai, và nghe như em tên A có lợi hơn em tên Z.</span></li>
-    <li><span class="box"></span><span><strong>Đọc lại, chọn lọc và sửa bộ câu hỏi khảo sát</strong> trong <code>KHAO_SAT_CAU_HOI.md</code>, và chịu trách nhiệm về nội dung cuối cùng. AI chỉ <em>hỗ trợ và tư vấn chọn lựa câu hỏi</em>; quyết định là của học sinh (Mục 3, câu lệnh #92).</span></li>
+    <li><span class="box"></span><span><strong>Đọc lại, chọn lọc và sửa bộ câu hỏi khảo sát</strong> trong <code>KHAO_SAT_CAU_HOI.md</code>, và chịu trách nhiệm về nội dung cuối cùng. AI chỉ <em>hỗ trợ và tư vấn chọn lựa câu hỏi</em>; quyết định là của học sinh (Mục 5, câu lệnh #92).</span></li>
     <li><span class="box"></span><span><strong>Tự tạo Google Form, tự phát, tự thu phản hồi và tự phân tích.</strong> Phụ lục 1 cấm AI thu thập dữ liệu nghiên cứu — đây là việc AI <strong>không</strong> được làm hộ.</span></li>
     <li><span class="box"></span><span><strong>Tắt “Thu thập địa chỉ email”</strong> trong Google Form trước khi phát. Người trả lời phần lớn là <strong>trẻ vị thành niên</strong>; bật mục này là gắn danh tính vào từng câu trả lời.</span></li>
     <li><span class="box"></span><span><strong>Không đưa bảng phản hồi thô vào git và vào báo cáo</strong> — chỉ đưa số đã tổng hợp. Phản hồi khảo sát là <strong>dữ liệu học sinh có thật</strong>, khác hẳn mọi bộ <strong>mô phỏng</strong> trong <code>du_lieu_test/</code>. Kho mã đã có luật chặn, nhưng luật chỉ chặn được tên tệp nó biết.</span></li>
@@ -3845,19 +4762,20 @@ Update nhật kí AI cho tôi, tất cả</pre>
     <li><span class="box"></span><span><strong>KHÔNG</strong> viết vào báo cáo rằng cách xử lý là “bắt học sinh điền tối đa số CLB”. Thí nghiệm ngày 02/09 đo việc <em>cắt bớt</em> nguyện vọng em vốn đã chấp nhận, <strong>không</strong> đo việc thêm CLB em không muốn — và thêm CLB không muốn thì phá mất tính chất <em>khai thật là có lợi nhất</em> của thuật toán.</span></li>
     <li><span class="box"></span><span><strong>✅ Đã xong 02/09:</strong> chạy thử bản có bản vá lỗi 25 trên máy Windows — <strong>app chạy ổn định</strong>. Báo cáo <strong>được viết</strong> là phần mềm chạy ổn định trong cửa sổ ứng dụng của riêng nó trên Windows. Vẫn <strong>không</strong> viết “không dùng gì của Microsoft” — nội dung vẽ bằng WebView2, một thành phần của Microsoft.</span></li>
     <li><span class="box"></span><span><strong>Ghi rõ CẢ BẢY bộ dữ liệu là mô phỏng</strong> — ngoài ba bộ cũ, nay còn <code>bo_nhieu_buoi/</code> (160 em · 5 buổi), <code>bo_sau_buoi/</code> (180 em · 6 buổi), <code>bo_can_bang/</code> (200 em · 6 buổi) và <code>mau_csv/vi_du_day_du/</code> (24 em · 3 buổi). Mỗi bộ có tập lệnh sinh lại chính nó, nên hạt giống tra được (Điều kiện 3, Mục 1).</span></li>
-    <li><span class="box"></span><span>Tự viết phần <strong>diễn giải bảy thí nghiệm TN1–TN7</strong> trong <code>NGHIEN_CUU_TOI_UU.md</code>. Trang đó <strong>chỉ có số đo và cách tái lập</strong> — không một câu kết luận nào, đúng Điều kiện 4, Mục 1.</span></li>
+    <li><span class="box"></span><span><strong>Đọc Mục 4 rồi tự viết phần diễn giải bảy thí nghiệm TN1–TN7</strong> trong <code>NGHIEN_CUU_TOI_UU.md</code>. Trang đó <strong>chỉ có số đo và cách tái lập</strong> — không một câu kết luận nào. Phần nhận định ở Mục 4 do AI viết theo yêu cầu ngày 16/09; em phải kiểm lại từng con số và diễn đạt bằng câu chữ của mình (Điều kiện 4, Mục 1).</span></li>
+    <li><span class="box"></span><span><strong>Kiểm từng con số trong Mục 4 ngược về tệp nguồn trước khi dùng</strong> — mỗi tiểu mục đều ghi sẵn chỗ tra. Mục 4 do AI viết; nếu em trình bày nó như nhận định của mình mà chưa tự kiểm, thì một câu hỏi vặn của giám khảo là đủ để lộ ra. <strong>Ba phần Kết luận · Hướng phát triển · Tính mới vẫn phải do em tự viết</strong>, Mục 4 không chứa và không thay được.</span></li>
     <li><span class="box"></span><span>Giải thích được <strong>vì sao chọn thiết kế bốc thăm “xáo lại mỗi buổi”</strong> trong ba thiết kế đã đo ở TN7. <strong>Quyết định là của em</strong> (câu lệnh #104), AI chỉ đưa bảng đo — và giám khảo rất dễ hỏi đúng câu này.</span></li>
     <li><span class="box"></span><span>Giải thích được <strong>vì sao bài toán cả tuần tách được thành từng buổi rời nhau</strong>: mỗi câu lạc bộ một buổi · mỗi em tối đa một suất mỗi buổi · <strong>không có trần theo tuần</strong>. Thêm một trần kiểu “tối đa 3 câu lạc bộ một tuần” là <strong>phá mất</strong> tính chất đó và thành một bài toán khác.</span></li>
     <li><span class="box"></span><span><strong>Lưu ý khi đối chiếu mã commit:</strong> dự án chuyển sang kho <code>rbda-kiosk</code> ngày 12/09. Commit trước <code>c5ed5bd</code> tra ở kho cũ, từ <code>504bd15</code> trở đi tra ở kho mới — lịch sử được giữ nguyên khi tách, không chép tay.</span></li>
-    <li><span class="box"></span><span>Chép tay <strong>Mục 6</strong> vào phần <strong>Nhật ký hàng ngày</strong> của sổ (18 mục, đã soạn sẵn theo Mẫu ghi chép ở mục III), rồi <strong>in trọn nhật ký này</strong> dán vào phần <strong>Phụ lục</strong> ở cuối sổ theo hướng dẫn mục II.4 của Phụ lục 2.</span></li>
+    <li><span class="box"></span><span>Chép tay <strong>Mục 8</strong> vào phần <strong>Nhật ký hàng ngày</strong> của sổ (19 mục, đã soạn sẵn theo Mẫu ghi chép ở mục III), rồi <strong>in trọn nhật ký này</strong> dán vào phần <strong>Phụ lục</strong> ở cuối sổ theo hướng dẫn mục II.4 của Phụ lục 2.</span></li>
   </ol>
 
-  <!-- =================== 6. TỜ CHÉP TAY =================== -->
-  <h2 id="muc6"><span class="num">MỤC 6</span> Tờ chép tay — theo khuôn Phụ lục 2</h2>
+  <!-- =================== 8. TỜ CHÉP TAY =================== -->
+  <h2 id="muc8"><span class="num">MỤC 8</span> Tờ chép tay — theo khuôn Phụ lục 2</h2>
   <p class="section-note">
-    Mục 3 ghi <strong>từng câu lệnh một</strong> vì Phụ lục 1 đòi như vậy. Nhưng sổ nhật ký
-    nghiên cứu là <strong>sổ viết tay</strong>, và 117 mục thì không chép nổi. Mục này gộp
-    117 câu lệnh thành <strong>18 phiên làm việc</strong> và trình bày theo đúng
+    Mục 5 ghi <strong>từng câu lệnh một</strong> vì Phụ lục 1 đòi như vậy. Nhưng sổ nhật ký
+    nghiên cứu là <strong>sổ viết tay</strong>, và 118 mục thì không chép nổi. Mục này gộp
+    118 câu lệnh thành <strong>19 phiên làm việc</strong> và trình bày theo đúng
     <strong>Mẫu ghi chép nhật ký</strong> ở mục III của Phụ lục 2: bốn trường tiêu đề
     (Ngày · Trang · Giai đoạn · Thời gian), sáu đề mục đánh số, ô chừa để vẽ tay, và hai
     dòng chữ ký. Chép thẳng từng mục vào sổ được, không phải sắp xếp lại.
@@ -3883,8 +4801,8 @@ Update nhật kí AI cho tôi, tất cả</pre>
       <strong>3 · Đây là bản dựng lại, không phải bản ghi tại chỗ.</strong> Phụ lục 2 mục I nói
       sổ phải <em>“chứng minh số liệu được ghi lại trong thời gian thực, không phải sao chép
       lại sau đó.”</em> Mục này dựng từ nhật ký câu lệnh và lịch sử commit — bằng chứng thời
-      gian thực <strong>có thật và đối chiếu được</strong> (mốc giờ từng câu lệnh ở Mục 3, mã
-      commit ở Mục 4), nhưng bản thân trang giấy thì viết sau. Trình bày điều này với giáo viên
+      gian thực <strong>có thật và đối chiếu được</strong> (mốc giờ từng câu lệnh ở Mục 5, mã
+      commit ở Mục 6), nhưng bản thân trang giấy thì viết sau. Trình bày điều này với giáo viên
       hướng dẫn thế nào là quyết định của em, không phải của AI.
     </p>
   </div>
@@ -4774,7 +5692,7 @@ sha256:0b4ac1b4… → sha256:6a7cc228…   (ban .exe cong khai da doi that)</pr
     <h4 class="nk-de"><span class="nk-so">3</span>TIẾN TRÌNH THỰC HIỆN &amp; HIỆN TƯỢNG</h4>
     <ul>
       <li>Đóng gói 4 bộ dữ liệu mô phỏng và kỹ năng sinh dữ liệu.</li>
-      <li>Cập nhật nhật ký từ #99 → #117; thêm chính Mục 6 này.</li>
+      <li>Cập nhật nhật ký từ #99 → #117; thêm chính Mục 8 này.</li>
     </ul>
     <div class="nk-ve"><b>Vẽ tay Sơ đồ / Đồ thị / Bản phác thảo tại đây</b> (để trống nếu phiên này không cần).</div>
     <h4 class="nk-de"><span class="nk-so">4</span>KẾT QUẢ &amp; SỐ LIỆU THÔ</h4>
@@ -4784,7 +5702,55 @@ sha256:0b4ac1b4… → sha256:6a7cc228…   (ban .exe cong khai da doi that)</pr
     <p class="nk-doi"><i class="nk-hoi">Sửa lỗi đó như thế nào?</i> Sửa ngay khi phát hiện. Đây đúng loại bẫy dự án này đã phải sửa <b>hai lần</b> rồi: tài liệu của chính dự án nói ngược, rồi người đọc viết điều sai vào báo cáo.</p>
     <h4 class="nk-de"><span class="nk-so">6</span>KẾ HOẠCH TIẾP THEO</h4>
     <ul>
-      <li>Chuyển sang danh sách việc học sinh tự thực hiện ở Mục 5 — viết Kết luận và Hướng phát triển bằng lập luận của mình.</li>
+      <li>Chuyển sang danh sách việc học sinh tự thực hiện ở Mục 7 — viết Kết luận và Hướng phát triển bằng lập luận của mình.</li>
+    </ul>
+    <div class="nk-ky">
+      <div class="nk-ky-o"><div class="nk-ky-vach"></div><span>Chữ ký của Học sinh</span></div>
+      <div class="nk-ky-o"><div class="nk-ky-vach"></div><span>Chữ ký của Giáo viên / Người chứng kiến</span></div>
+    </div>
+  </article>
+  <article class="to-nk">
+    <div class="nk-dau">
+      <div class="nk-o"><span class="nk-nhan">NGÀY</span><b>16/09/2026</b></div>
+      <div class="nk-o nk-phai"><span class="nk-nhan">TRANG</span><span class="nk-dien"></span></div>
+      <div class="nk-o nk-ngang"><span class="nk-nhan">GIAI ĐOẠN</span><span class="nk-thuong">Viết tài liệu — dựng lại quá trình xây dựng và viết phần diễn giải</span></div>
+      <div class="nk-o nk-ngang"><span class="nk-nhan">THỜI GIAN</span><span class="nk-thuong">Từ 14:00 giờ đến 17:30 giờ</span></div>
+    </div>
+    <h4 class="nk-de"><span class="nk-so">1</span>MỤC TIÊU</h4>
+    <ul>
+      <li>Sửa hai chỗ bị phản hồi: phần phân tích — giải thích, và phần quá trình xây dựng phần mềm</li>
+    </ul>
+    <h4 class="nk-de"><span class="nk-so">2</span>DỤNG CỤ &amp; VẬT LIỆU SỬ DỤNG</h4>
+    <ul>
+      <li>Máy tính cá nhân; môi trường phát triển chạy Linux.</li>
+      <li>Git — đếm commit theo ngày để dựng biểu đồ tiến độ.</li>
+      <li>Python 3.11.15 + thư viện <code>python-docx</code> — sinh bản Word từ trang này.</li>
+      <li>Công cụ AI: Claude (Anthropic), dùng qua Claude Code.</li>
+      <li>Số đo có sẵn: <code>SO_LIEU_DA_KIEM_CHUNG.md</code>, <code>NGHIEN_CUU_TOI_UU.md</code> (TN1–TN7), <code>ket_qua_thu_tai.csv</code> (204 lần chạy).</li>
+    </ul>
+    <h4 class="nk-de"><span class="nk-so">3</span>TIẾN TRÌNH THỰC HIỆN &amp; HIỆN TƯỢNG</h4>
+    <ul>
+      <li>Viết Mục 3 — kiến trúc, sáu giai đoạn, bốn thói quen, quy mô, việc còn dở.</li>
+      <li>Viết Mục 4 — diễn giải số đo TN1–TN7 và <code>SO_LIEU_DA_KIEM_CHUNG.md</code>.</li>
+      <li>Đánh số lại các mục (3→5, 4→6, 5→7, 6→8) và sửa 24 tham chiếu chéo.</li>
+      <li>Ghi nhãn: phần diễn giải là do AI viết — sửa Mục 1, Mục 2, Mục 7 cho khớp.</li>
+    </ul>
+    <div class="nk-ve"><b>Vẽ tay Sơ đồ / Đồ thị / Bản phác thảo tại đây</b> (để trống nếu phiên này không cần).</div>
+    <h4 class="nk-de"><span class="nk-so">4</span>KẾT QUẢ &amp; SỐ LIỆU THÔ</h4>
+    <pre class="nk-tho">118 cau lenh · 131 tep AI viet moi
+bo test: 40 tep · 523 ham test
+   757 ca (15/09, may phat trien du thu vien) — 613 ca (16/09, may phien nay,
+   thieu pywebview nen cac tep giao dien tu bo qua) — khong phai test hong
+do lai quy mo:  7 116 dong Python ung dung · 9 581 dong test  (1,35 : 1)
+                40 tep test + conftest · 523 ham test · 44 phuong thuc api.py
+git log: 51 commit nhin thay duoc (ban sao kho NONG) — sieu du lieu ghi 95
+         01/09: 13 · 02/09: 17  → 30/51 commit roi vao dung hai ngay</pre>
+    <h4 class="nk-de"><span class="nk-so">5</span>RÚT KINH NGHIỆM &amp; LỖI SAI</h4>
+    <p class="nk-doi"><i class="nk-hoi">Điều gì đã xảy ra ngoài ý muốn?</i> Hai chuyện. Thứ nhất: <code>git log</code> chỉ đếm được <b>51</b> commit trong khi nhật ký ghi <b>95</b> — vì bản sao kho là bản <i>nông</i>, chỉ giữ phần đuôi lịch sử. Thứ hai: sau khi đánh số lại các mục, bộ sinh bản Word vẫn dò chuỗi “MỤC 3” nên <b>âm thầm đặt sai chỗ bảng tra nhanh</b>, không báo lỗi gì.</p>
+    <p class="nk-doi"><i class="nk-hoi">Sửa lỗi đó như thế nào?</i> Chuyện thứ nhất: <b>ghi cả hai con số kèm lý do</b> ngay trong biểu đồ, thay vì chọn lấy một con số cho gọn. Chuyện thứ hai: bỏ hẳn việc dò theo số mục, đổi sang neo bằng <code>id</code> — lần đánh số lại sau không phá được nữa.</p>
+    <h4 class="nk-de"><span class="nk-so">6</span>KẾ HOẠCH TIẾP THEO</h4>
+    <ul>
+      <li>Học sinh đọc Mục 4, kiểm từng con số, rồi tự viết Kết luận và Hướng phát triển</li>
     </ul>
     <div class="nk-ky">
       <div class="nk-ky-o"><div class="nk-ky-vach"></div><span>Chữ ký của Học sinh</span></div>

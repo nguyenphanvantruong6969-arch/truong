@@ -1597,13 +1597,22 @@ bỏ 1 câu trùng.
 > xuất ra không đoán trước được. Bộ mẫu và bộ dữ liệu test nằm trong thư mục con
 > nên không bị ảnh hưởng; `KHAO_SAT_CAU_HOI.md/.html/.docx` vẫn vào git bình thường.
 
-**Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối Mục 3 của
-artifact, cập nhật số liệu ở Mục 4.
+**Nếu phiên mới có nhật ký AI cần cập nhật:** ghi thêm câu lệnh mới vào cuối **Mục 5** của
+artifact, cập nhật số liệu ở **Mục 6**, và thêm một tờ chép tay vào **Mục 8**.
+Các mục đã đánh số lại ngày 16/09: 1 Phạm vi · 2 Đối chiếu · **3 Quá trình xây dựng phần
+mềm** · **4 Phân tích và giải thích** · 5 Nhật ký câu lệnh · 6 Trích dẫn mã nguồn ·
+7 Việc học sinh tự làm · 8 Tờ chép tay.
 
-**Trạng thái nhật ký AI (05/09/2026):** đã cập nhật tới **câu lệnh #97**, phủ hết
-ngày 02–05/09 — lỗi 24, lỗi 25, ba bộ đo bốc thăm, trang `GIAI_DAP_BOC_THAM`, bộ
-câu hỏi khảo sát 16 câu, việc chuyển sang Microsoft Forms, trang
-`CO_CHE_THUAT_TOAN`, bộ đo cái giá của tính ổn định, và ba việc ngày 05/09.
+**Trạng thái nhật ký AI (16/09/2026):** đã cập nhật tới **câu lệnh #118**, phủ hết tới
+ngày 16/09. Hai mục mới do hai phản hồi: **Mục 3 — Quá trình xây dựng phần mềm**
+(hai sơ đồ + biểu đồ sáu giai đoạn) và **Mục 4 — Phân tích và giải thích số đo**.
+
+> **Mục 4 do AI viết, theo yêu cầu của học sinh ngày 16/09 (câu lệnh #118).** Đây là chỗ
+> ranh giới dịch chuyển so với toàn bộ phần trước của dự án, nên đã ghi nhãn ở **năm chỗ**:
+> đầu Mục 4, Điều kiện 4 của Mục 1, bảng Mục 2, ý 8 và ý 20 của Mục 7, và chính câu lệnh
+> #118. Khi viết báo cáo, câu đúng là *"AI viết bản diễn giải để đối chiếu, học sinh kiểm
+> số và viết lại bằng lập luận của mình"* — **không** được viết "AI không diễn giải số
+> liệu". **Kết luận · Hướng phát triển · Tính mới vẫn do học sinh tự viết**, AI không tham gia.
 
 > **Phần khảo sát trong nhật ký ghi đúng phạm vi — đừng nới rộng khi viết báo cáo.**
 > Câu chữ do **học sinh chọn**, ghi ở câu lệnh #92:
@@ -1640,7 +1649,7 @@ Hai mốc dùng được khi giám khảo hỏi về ranh giới sử dụng AI:
 | Giải thích thuật toán RB-DA (tiếng Việt, có sơ đồ) | artifact `ef3cc025-51d6-4bb8-a8ee-92ac23c945c8` |
 | Kế hoạch kiểm thử mất dữ liệu | artifact `c0aa29df-b2b2-4e40-8e72-4adb63627a26` |
 | Nhật ký AI (PDF in được) | artifact `1369e5c3-3d9f-4d8f-8c00-0328bc1b5131` |
-| Nhật ký AI (bản Word in được, 117 câu lệnh + bảng tra nhanh) | `rbda-kiosk/NHAT_KY_AI.docx` — sinh lại bằng `python3 tao_nhat_ky_word.py` từ `NHAT_KY_AI.html` |
+| Nhật ký AI (bản Word in được, 118 câu lệnh + bảng tra nhanh) | `rbda-kiosk/NHAT_KY_AI.docx` — sinh lại bằng `python3 tao_nhat_ky_word.py` từ `NHAT_KY_AI.html` |
 | Phần mềm chạy cơ chế gì (5 lớp + cái giá của ổn định) | artifact `eced0ff9-08df-4922-a17e-5f85d99f79aa` · `CO_CHE_THUAT_TOAN.md` |
 | Tài liệu thuật toán + dữ liệu test | `TAI_LIEU_RBDA.zip` (đã gửi cho học sinh) |
 | README chi tiết | `rbda-kiosk/README.md` |

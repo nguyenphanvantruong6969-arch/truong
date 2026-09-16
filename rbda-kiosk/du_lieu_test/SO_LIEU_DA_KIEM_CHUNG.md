@@ -415,12 +415,22 @@ tới — kết quả tính được bằng tay.
 
 ## 5. Kiểm thử phần mềm
 
+**Số ca thu được phụ thuộc thư viện tuỳ chọn đã cài** — các tệp test giao diện gọi
+`pytest.importorskip("playwright")`, thiếu thư viện thì cả tệp tự bỏ qua. Vì vậy ghi
+kèm ngày đo và môi trường, thay vì một con số trần:
+
+| Ngày đo | Môi trường | Tệp test | Ca thu được | Không đạt |
+|---|---|---|---|---|
+| 05–06/09/2026 | máy phát triển | 37 | **483** | 0 |
+| 15/09/2026 | máy phát triển, đủ thư viện | 40 | **757** | 0 |
+| 15/09/2026 | GitHub Actions, `windows-latest` | 40 | **680 đạt, 10 bỏ qua** | 0 |
+| 16/09/2026 | máy phiên tài liệu, **thiếu `pywebview`** | 40 | **613** | — chỉ thu, không chạy |
+
 | Đại lượng | Giá trị |
 |---|---|
-| Tệp kiểm thử | 37 |
-| Trường hợp kiểm thử | **483** |
-| Số trường hợp không đạt | 0 |
-| Thời gian chạy toàn bộ | ~95 giây |
+| Hàm `def test_` trong `tests/` | **523** |
+| Dòng mã của bộ kiểm thử | **9 581** |
+| Thời gian chạy toàn bộ | ~95 giây (05/09) · 177 giây (15/09, 757 ca) |
 
 ## 6. Lỗi tìm được trong quá trình phát triển
 
